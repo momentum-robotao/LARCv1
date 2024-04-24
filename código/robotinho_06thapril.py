@@ -50,7 +50,7 @@ receiver.enable(timeStep)
 gps = robot.getDevice("gps")
 gps.enable(timeStep)
 position = gps.getValues()
-victimTypeH = bytes('H', "utf-8") # The victim type being sent is the letter 'H' for harmed victim
+victimTypeH = bytes('H', "utf-8")# The victim type being sent is the letter 'H' for harmed victim
 
 sensoresFrente = [robot.getDevice("ps_frente"), robot.getDevice("ps_tras")]
 sensoresEsquerda = [robot.getDevice("ps_esquerda"), robot.getDevice("ps_diagonal_esquerda")]
