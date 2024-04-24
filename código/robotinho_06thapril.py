@@ -286,7 +286,7 @@ def mover_para_tras(dist):
             break
 
 
-def mover_para_frente():
+def mover_para_frente(dist=6):
     while robot.step(timeStep) != -1:
         motorEsquerdo.setVelocity(maxVelocity)
         motorDireito.setVelocity(maxVelocity)
@@ -296,10 +296,9 @@ def mover_para_frente():
             encoder_antes()
             virar_180()
             break
-        if abs(gps.getValues()[0] - posicaoX_anterior) > 0.12  or abs(gps.getValues()[1] - posicaoY_anterior) > 0.12:
+        if encoders.getValue() - encoder_inicial > dist:
             parar()
             break
-        
 
 
 def parar():
@@ -409,7 +408,7 @@ def seguir_parede():
         encoder_antes()
         virar_esquerda()
         encoder_antes()
-        mover_para_frente()
+        mover_para_frente(6)
         delay(5)
         print("estou indo para esquerda")
 
@@ -417,7 +416,7 @@ def seguir_parede():
         # Se há parede à esquerda, mas não à frente, mova-se para frente
         #print('esquerda ocupada, frente livre')
         encoder_antes()
-        mover_para_frente()
+        mover_para_frente(6)
         delay(5)
         print("estou indo para frente")
 
@@ -427,7 +426,7 @@ def seguir_parede():
         encoder_antes()
         virar_direita()
         encoder_antes()
-        mover_para_frente()
+        mover_para_frente(6)
         delay(5)
         print("estou indo para direita")
 
@@ -515,7 +514,7 @@ def seguir_parede():
                     encoder_antes()
                     virar_direita()
                     encoder_antes()
-                    mover_para_frente()
+                    mover_para_frente(6)
                     delay(5)
                     if parede_frente(sensoresFrente):
                         ajustar_distancia()                    
@@ -523,7 +522,7 @@ def seguir_parede():
                     encoder_antes()
                     virar_esquerda()
                     encoder_antes()
-                    mover_para_frente()
+                    mover_para_frente(6)
                     delay(5)
                     if parede_frente(sensoresFrente):
                         ajustar_distancia()                       
@@ -531,7 +530,7 @@ def seguir_parede():
                     encoder_antes()
                     virar_180()
                     encoder_antes()
-                    mover_para_frente()
+                    mover_para_frente(6)
                     delay(5)
                     if parede_frente(sensoresFrente):
                         ajustar_distancia()   
