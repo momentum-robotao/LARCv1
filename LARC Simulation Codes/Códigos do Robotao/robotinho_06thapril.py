@@ -1110,7 +1110,7 @@ def mapeamento():
     mudar_direcao()
 
 # Loop principal
-mover_para_frente(0.05)
+mover_para_frente(0.01)
 sleep(0.1)  # gambiarra essencial para o robô não bugar :) NÃO TIRAR
 
 while robot.step(timeStep) != -1:

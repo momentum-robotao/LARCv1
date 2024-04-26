@@ -332,7 +332,7 @@ def virar_180():
     while robot.step(timeStep) != -1:
         motorEsquerdo.setVelocity(maxVelocity)
         motorDireito.setVelocity(-maxVelocity)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= 3.138407356207389:
+        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= math.pi:
             parar()
             break
 
@@ -342,20 +342,18 @@ def virar_esquerda():
     while robot.step(timeStep) != -1:
         motorEsquerdo.setVelocity(-maxVelocity)
         motorDireito.setVelocity(maxVelocity)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= 1.5692036781036944:
+        if abs(initial_angle - imu.getRollPitchYaw()[2]) > math.pi/2:
             parar()
             break
-
 
 # Função para virar à direita por 90 graus
 def virar_direita():
     while robot.step(timeStep) != -1:
         motorEsquerdo.setVelocity(maxVelocity)
         motorDireito.setVelocity(-maxVelocity)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= 1.5692036781036944:
+        if abs(initial_angle - imu.getRollPitchYaw()[2]) > math.pi/2:
             parar()
             break
-
 
 direcao = "direita"
 def mudar_direcao():
@@ -1206,6 +1204,6 @@ while robot.step(timeStep) != -1:
     PID() 
     parar()
     #reconhecer_vitima()
-    
+
     print("A lista de tiles vistos é : {}".format(listas_vistos))
     print("A lista de tiles marcados é : {}".format(lista_tiles_marcados))
