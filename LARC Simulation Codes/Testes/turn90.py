@@ -29,7 +29,7 @@ x = tamanho_tile/comprimento_da_roda
 n = 1
 k = 2
 direcao = ""
-tile = 5.81343
+tile = 5.85069
 
 robot = Robot()
 motorEsquerdo = robot.getDevice('left motor')
@@ -95,12 +95,31 @@ def mover_para_tras(dist):
             break
 
 
-def mover_para_frente(dist):
+def mover_para_frente(dist = tamanho_tile):
+    global posicao_atual, posicaoX_atual, posicaoY_atual
+    global posicao_anterior, posicaoX_anterior, posicaoY_anterior
+    posicaoX_anterior = posicao_atual[0]
+    posicaoY_anterior = posicao_atual[2]
+    
     while robot.step(timeStep) != -1:
-        motorEsquerdo.setVelocity(maxVelocity)
-        motorDireito.setVelocity(maxVelocity)
-        if encoders.getValue() - encoder_inicial > dist:
+        posicao_atual = gps.getValues()
+        posicaoX_atual = posicao_atual[0]
+        posicaoY_atual = posicao_atual[2]
+
+        round_func = lambda x: (x if round(x, 2) != 0 else 0)
+        set_vel = lambda delta: (maxVelocity/100 if delta >= tile-0.005 else maxVelocity)
+
+        tot_delta = round_func(abs(posicaoX_atual-posicaoX_anterior)) + round_func(abs(posicaoY_atual-posicaoY_anterior))
+
+        motorEsquerdo.setVelocity(set_vel(tot_delta))
+        motorDireito.setVelocity(set_vel(tot_delta))
+
+        if tot_delta > dist:
             parar()
+            print(f"A posição X atual é {posicaoX_atual}")
+            print(f"A posição Y atual é {posicaoY_atual}")
+            print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
+            print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
             break
 
 
@@ -125,21 +144,21 @@ def virar_180():
 
 
 # Função para virar à esquerda por 90 graus
-def virar_esquerda():
+def virar_esquerda(initial_angle):
     while robot.step(timeStep) != -1:
-        motorEsquerdo.setVelocity(-maxVelocity)
-        motorDireito.setVelocity(maxVelocity)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= 1.5692036781036944:
+        motorEsquerdo.setVelocity(-maxVelocity/5)
+        motorDireito.setVelocity(maxVelocity/5)
+        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= math.pi/2:
             parar()
             break
 
 
 # Função para virar à direita por 90 graus
-def virar_direita():
+def virar_direita(initial_angle):
     while robot.step(timeStep) != -1:
-        motorEsquerdo.setVelocity(maxVelocity)
-        motorDireito.setVelocity(-maxVelocity)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= 1.5692036781036944:
+        motorEsquerdo.setVelocity(maxVelocity/5)
+        motorDireito.setVelocity(-maxVelocity/5)
+        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= math.pi/2:
             parar()
             break
 
@@ -156,14 +175,20 @@ while robot.step(timeStep) != -1:
     
     deltaX = posicaoX_atual - posicaoX_anterior
     deltaY = posicaoY_atual - posicaoY_anterior
+
+    '''
     if start:
-        print(f"antes: {round(deltaX, 2)}")
-        posicaoX_anterior = gps.getValues()[0]
-        mover_para_frente(tile)
-        print(f"depois: {round(gps.getValues()[0] - posicaoX_anterior,2)}")
+        print(f"antes: {imu.getRollPitchYaw()[2]}")
+        virar_esquerda(imu.getRollPitchYaw()[2])
+        print(f"depois: {imu.getRollPitchYaw()[2]}")
         start = False
     parar()
-    
-
-
+    '''
+    if start:
+        print(f"antes: {deltaX}")
+        posicaoX_anterior = gps.getValues()[0]
+        mover_para_frente()
+        print(f"depois: {gps.getValues()[0] - posicaoX_anterior}")
+        start = False
+    parar()
 
