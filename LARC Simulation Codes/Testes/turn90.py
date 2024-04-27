@@ -9,7 +9,6 @@ import numpy as np
 erro_anterior = 0
 soma_erros = 0
 cor_buraco = b'...\xff'
-PI = 3.141592653589793
 timeStep = 32
 maxVelocity = 6.28
 encoder_inicial = 0.0
@@ -23,10 +22,14 @@ posicaoY_anterior = 0
 tamanho_mapa = 501
 coordenada_centro_mapa = tamanho_mapa//2
 initial_angle = 0
-
+raio_da_roda = 0.0205
+tamanho_tile = 0.12
+comprimento_da_roda = 2*math.pi*raio_da_roda
+x = tamanho_tile/comprimento_da_roda
 n = 1
 k = 2
 direcao = ""
+tile = 5.81343
 
 robot = Robot()
 motorEsquerdo = robot.getDevice('left motor')
@@ -42,6 +45,14 @@ cameraE.enable(timeStep)
 
 cameraE = robot.getDevice('cameraE')
 cameraE.enable(timeStep)'''
+
+sensoresFrente = [robot.getDevice("ps_frente"), robot.getDevice("ps_tras")]
+sensoresEsquerda = [robot.getDevice("ps_esquerda"), robot.getDevice("ps_diagonal_esquerda")]
+sensoresDireita = [robot.getDevice("ps_direita"), robot.getDevice("ps_diagonal_direita")]
+
+# Ativar sensores
+for sensor in sensoresFrente + sensoresEsquerda + sensoresDireita:
+    sensor.enable(timeStep)
 
 sensor_de_cor = robot.getDevice("colour_sensor")
 sensor_de_cor.enable(timeStep)
@@ -84,16 +95,10 @@ def mover_para_tras(dist):
             break
 
 
-def mover_para_frente(dist=6):
+def mover_para_frente(dist):
     while robot.step(timeStep) != -1:
         motorEsquerdo.setVelocity(maxVelocity)
         motorDireito.setVelocity(maxVelocity)
-        if tem_buraco():
-            andou = encoders.getValue() - encoder_inicial
-            mover_para_tras(andou - 0.35)
-            encoder_antes()
-            virar_180()
-            break
         if encoders.getValue() - encoder_inicial > dist:
             parar()
             break
@@ -141,14 +146,24 @@ def virar_direita():
 start = True
 
 while robot.step(timeStep) != -1:
-    imu_antes()
-    ''' 
+    global posicao_atual, posicaoX_atual, posicaoY_atual
+    global deltaX,deltaY
+    global coordenada_coluna_atual, coordenada_linha_atual
+    posicaoX_anterior = 0
+    posicao_atual = gps.getValues()
+    posicaoX_atual = posicao_atual[0]
+    posicaoY_atual = posicao_atual[2]
+    
+    deltaX = posicaoX_atual - posicaoX_anterior
+    deltaY = posicaoY_atual - posicaoY_anterior
     if start:
-        print(f"antes: {imu.getRollPitchYaw()[2]}")
-        virar_direita()
-        print(f"depois: {imu.getRollPitchYaw()[2]}")
+        print(f"antes: {round(deltaX, 2)}")
+        posicaoX_anterior = gps.getValues()[0]
+        mover_para_frente(tile)
+        print(f"depois: {round(gps.getValues()[0] - posicaoX_anterior,2)}")
         start = False
     parar()
-    '''
-    print(imu.getRollPitchYaw()[2])
+    
+
+
 

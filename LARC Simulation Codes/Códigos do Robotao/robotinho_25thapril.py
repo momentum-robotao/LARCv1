@@ -300,7 +300,6 @@ def mover_para_tras(dist):
             parar()
             break
 
-
 def mover_para_frente(dist=6):
     while robot.step(timeStep) != -1:
         motorEsquerdo.setVelocity(maxVelocity)
