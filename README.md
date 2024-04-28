@@ -8,6 +8,10 @@
 [] - Andar 1 tile exato
 [] - Juntar o código
 [] - Refatorar código
+    [] - Padronizar snake_case
+    [] - Não usar variável global
+    [] - Tirar print's (usa variável de ambiente de DEBUG)
+    [] - Constante em UPPER_CASE
 [] - Fazer requirements.txt
 
 ## Resolver algum dia
