@@ -372,17 +372,21 @@ def virar(direcao, degrees):
     accumulator = 0
     ang = imu.getRollPitchYaw()[2]
 
-    if direcao == "left":
-        motorEsquerdo.setVelocity(-maxVelocity / 20)
-        motorDireito.setVelocity(maxVelocity / 20)
-    elif direcao == "right":
-        motorEsquerdo.setVelocity(maxVelocity / 20)
-        motorDireito.setVelocity(-maxVelocity / 20)
+    set_vel = lambda faltante: (maxVelocity if faltante > 0.1 else maxVelocity / 100)
 
     while robot.step(timeStep) != -1:
         new_ang = imu.getRollPitchYaw()[2]
         accumulator += get_delta(ang, new_ang)
         ang = imu.getRollPitchYaw()[2]
+
+        falta = robot_to_turn_rad - accumulator
+        if direcao == "left":
+            motorEsquerdo.setVelocity(-set_vel(falta))
+            motorDireito.setVelocity(set_vel(falta))
+        elif direcao == "right":
+            motorEsquerdo.setVelocity(set_vel(falta))
+            motorDireito.setVelocity(-set_vel(falta))
+
         if accumulator >= robot_to_turn_rad:
             break
 
