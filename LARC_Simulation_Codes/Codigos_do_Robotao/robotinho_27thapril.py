@@ -36,7 +36,7 @@ cameraE = robot.getDevice("cameraE")
 cameraE.enable(timeStep)
 
 """cameraE = robot.getDevice('cameraD')
-cameraE.enable(timeStep)    
+cameraE.enable(timeStep)
 
 cameraE = robot.getDevice('cameraE')
 cameraE.enable(timeStep)"""
@@ -94,6 +94,15 @@ coordenada_linha_atual = coordenada_centro_mapa
 coordenada_coluna_atual = coordenada_centro_mapa
 deltaX = 0
 deltaY = 0
+
+
+def get_delta_rotation(ang, new_ang):
+    if new_ang * ang <= 0:
+        if round(ang) == 0:
+            return abs(ang) + abs(new_ang)
+        else:
+            return abs(abs(ang) - PI) + abs(abs(new_ang) - PI)
+    return max(ang, new_ang) - min(ang, new_ang)
 
 
 # Tem preto
@@ -357,40 +366,52 @@ def parar():
     motorDireito.setVelocity(0.0)
 
 
+def virar(direcao, degrees):
+    """
+    :param: direcao: should be 'left' or 'right'
+    """
+    parar()
+    robot_to_turn_rad = (degrees / 180) * PI
+
+    # print(f"======== Começando girada de {degrees}° e {robot_to_turn_rad} rad ========")
+
+    accumulator = 0
+    ang = imu.getRollPitchYaw()[2]
+
+    set_vel = lambda faltante: (maxVelocity if faltante > 0.1 else maxVelocity / 100)
+
+    while robot.step(timeStep) != -1:
+        new_ang = imu.getRollPitchYaw()[2]
+        accumulator += get_delta_rotation(ang, new_ang)
+        ang = imu.getRollPitchYaw()[2]
+
+        falta = robot_to_turn_rad - accumulator
+        if direcao == "left":
+            motorEsquerdo.setVelocity(-set_vel(falta))
+            motorDireito.setVelocity(set_vel(falta))
+        elif direcao == "right":
+            motorEsquerdo.setVelocity(set_vel(falta))
+            motorDireito.setVelocity(-set_vel(falta))
+
+        if accumulator >= robot_to_turn_rad:
+            break
+
+    parar()
+
+
 def virar_180(initial_angle=None):
     # Vira 180 graus
-    if initial_angle == None:
-        initial_angle = imu.getRollPitchYaw()[2]
-    while robot.step(timeStep) != -1:
-        motorEsquerdo.setVelocity(maxVelocity / 5)
-        motorDireito.setVelocity(-maxVelocity / 5)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= math.pi:
-            parar()
-            break
+    virar("right", 180)
 
 
 # Função para virar à esquerda por 90 graus
 def virar_esquerda(initial_angle=None):
-    if initial_angle == None:
-        initial_angle = imu.getRollPitchYaw()[2]
-    while robot.step(timeStep) != -1:
-        motorEsquerdo.setVelocity(-maxVelocity / 5)
-        motorDireito.setVelocity(maxVelocity / 5)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) >= math.pi / 2:
-            parar()
-            break
+    virar("left", 90)
 
 
 # Função para virar à direita por 90 graus
 def virar_direita(initial_angle=None):
-    if initial_angle == None:
-        initial_angle = imu.getRollPitchYaw()[2]
-    while robot.step(timeStep) != -1:
-        motorEsquerdo.setVelocity(maxVelocity / 5)
-        motorDireito.setVelocity(-maxVelocity / 5)
-        if abs(initial_angle - imu.getRollPitchYaw()[2]) > math.pi / 2:
-            parar()
-            break
+    virar("right", 90)
 
 
 direcao = "direita"
@@ -1357,7 +1378,7 @@ def mapeamento():
     #Robo nao se mexe no eixo Y
     else :
         print("O robo nao está andando no eixo Y. O Delta Y é : {}".format(round(deltaY,2)))
- 
+
     """
 
     posicao_anterior = posicao_atual
