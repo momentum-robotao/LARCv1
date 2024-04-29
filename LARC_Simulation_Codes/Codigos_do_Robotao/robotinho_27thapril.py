@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from controller import Robot
 
+tamanho_tile = 0.12
 erro_anterior = 0
 soma_erros = 0
 cor_buraco = b"...\xff"
@@ -19,6 +20,9 @@ mensagem_enviada = False
 posicao_anterior = (0, 0, 0)
 posicaoX_anterior = 0
 posicaoY_anterior = 0
+posicao_atual = (0, 0, 0)
+posicaoX_atual = 0
+posicaoY_atual = 0
 tamanho_mapa = 501
 coordenada_centro_mapa = tamanho_mapa // 2
 n = 1
@@ -317,14 +321,14 @@ def parede_esquerda(sensoresEsquerda):
 
 def parede_frente(sensoresFrente):
     # Retorna True se há parede à frente, senão, retorna False
-    if sensoresFrente[0].getValue() < 0.16:
+    if sensoresFrente[0].getValue() < 0.20:
         return True
     return False
 
 
 def parede_tras(sensoresFrente):
     # Retorna True se há parede à tras, senão, retorna False
-    if sensoresFrente[1].getValue() < 0.16:
+    if sensoresFrente[1].getValue() < 0.20:
         return True
     return False
 
@@ -346,18 +350,38 @@ def mover_para_tras(dist):
             break
 
 
-def mover_para_frente(dist=tile):
+def mover_para_frente(dist=tamanho_tile):
+    global posicao_atual, posicaoX_atual, posicaoY_atual
+    global posicao_anterior, posicaoX_anterior, posicaoY_anterior
+    posicaoX_anterior = posicao_atual[0]
+    posicaoY_anterior = posicao_atual[2]
+
     while robot.step(timeStep) != -1:
-        motorEsquerdo.setVelocity(maxVelocity)
-        motorDireito.setVelocity(maxVelocity)
-        if tem_buraco():
-            andou = encoders.getValue() - encoder_inicial
-            mover_para_tras(andou - 0.35)
-            encoder_antes()
-            virar_180()
-            break
-        if encoders.getValue() - encoder_inicial > dist:
+        posicao_atual = gps.getValues()
+        posicaoX_atual = posicao_atual[0]
+        posicaoY_atual = posicao_atual[2]
+
+        round_func = lambda x: (x if round(x, 2) != 0 else 0)
+        set_vel = lambda delta: (
+            maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
+        )
+
+        tot_delta = round_func(abs(posicaoX_atual - posicaoX_anterior)) + round_func(
+            abs(posicaoY_atual - posicaoY_anterior)
+        )
+
+        motorEsquerdo.setVelocity(set_vel(tot_delta))
+        motorDireito.setVelocity(set_vel(tot_delta))
+        print(set_vel(tot_delta))
+
+        # print(f"Deveria andar {dist} e andou {tot_delta}")
+
+        if tot_delta > dist:
             parar()
+            print(f"A posição X atual é {posicaoX_atual}")
+            print(f"A posição Y atual é {posicaoY_atual}")
+            print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
+            print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
             break
 
 
@@ -664,7 +688,7 @@ def seguir_parede():
                     encoder_antes()
                     virar_direita()
                     encoder_antes()
-                    mover_para_frente(6)
+                    mover_para_frente()
                     delay(5)
                     if parede_frente(sensoresFrente):
                         ajustar_distancia()
@@ -672,7 +696,7 @@ def seguir_parede():
                     encoder_antes()
                     virar_esquerda()
                     encoder_antes()
-                    mover_para_frente(6)
+                    mover_para_frente()
                     delay(5)
                     if parede_frente(sensoresFrente):
                         ajustar_distancia()
@@ -680,7 +704,7 @@ def seguir_parede():
                     encoder_antes()
                     virar_180()
                     encoder_antes()
-                    mover_para_frente(6)
+                    mover_para_frente()
                     delay(5)
                     if parede_frente(sensoresFrente):
                         ajustar_distancia()
@@ -978,7 +1002,7 @@ encoder_antes()
         print("desvio")
         delay(20)
         encoder_antes()
-        mover_para_frente(4.0)
+        mover_para_frente(tamanho_tile / 3 * 2)
         ajustar_distancia()
         # reconhecer_vitima()
         print("frente")
@@ -1388,14 +1412,14 @@ def mapeamento():
 
 
 # Loop principal
-mover_para_frente(0.01)
+mover_para_frente(0.005)
 sleep(0.1)  # gambiarra essencial para o robô não bugar :) NÃO TIRAR
 
 while robot.step(timeStep) != -1:
     seguir_parede()
     mapeamento()
     ajustar_distancia()
-    PID()
+    # PID()
     parar()
     # reconhecer_vitima()
 

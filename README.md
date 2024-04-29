@@ -13,6 +13,7 @@
     [] - Tirar print's (usa variável de ambiente de DEBUG)
     [] - Constante em UPPER_CASE
 [] - Fazer requirements.txt
+[] - No caso de ter DFS e em uma direção ele marca posição como sem parede, mas na verdade depois tenta acessá-la por lugar que tem parede, dá problema
 
 ## Resolver algum dia
 
