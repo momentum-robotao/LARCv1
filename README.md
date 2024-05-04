@@ -2,11 +2,15 @@
 
 ## TODO
 
-[] - Fazer girar exatamente (é fundamental pra usar qualquer algorítmos na minha opinião)
-    [] - Fazer função que vai rápido no início e só ao final vai mais devagar apenas para aumentar a precisão
-    [] - Versão inicial com inertialUnit
+[x] - Fazer girar exatamente (é fundamental pra usar qualquer algorítmos na minha opinião)
+    [x] - Fazer função que vai rápido no início e só ao final vai mais devagar apenas para aumentar a precisão
+    [x] - Versão inicial com inertialUnit
+    [] - Versão sem propagar erro, tendo inertialUnit esperado
 [] - Andar 1 tile exato
-[] - Juntar o código
+    [x] - Versão inical
+    [] - Andar sem propagar erro, tendo valor esperado do GPS
+[x] - Juntar o código
+[] - Acertar onde tem que reconhecer vítima
 [] - Refatorar código
     [] - Padronizar snake_case
     [] - Não usar variável global
