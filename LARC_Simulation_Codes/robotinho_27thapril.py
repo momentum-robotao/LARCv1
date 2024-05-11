@@ -1190,8 +1190,8 @@ def seguir_parede():
                     encoder_antes()
                     virar_direita()
                     encoder_antes()
-                    #mover_para_frente()
-                    #delay(5)
+                    # mover_para_frente()
+                    # delay(5)
                     if parede_frente(rangeImage):
                         ajustar_distancia()
                 direcao = "esquerda"
@@ -1787,7 +1787,6 @@ def mapeamento():
     mudar_direcao()
 
 
-
 while robot.step(timeStep) != -1:
     seguir_parede()
     mapeamento()
@@ -1796,6 +1795,6 @@ while robot.step(timeStep) != -1:
     parar()
     # reconhecer_vitima()
 
-    #print("A lista de tiles vistos é : {}".format(listas_vistos))
-    #print("A lista de tiles marcados é : {}".format(lista_tiles_marcados))
+    # print("A lista de tiles vistos é : {}".format(listas_vistos))
+    # print("A lista de tiles marcados é : {}".format(lista_tiles_marcados))
     reconhecer_vitima(cameraE)
