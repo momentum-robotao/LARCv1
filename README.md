@@ -9,6 +9,7 @@
 [] - Andar 1 tile exato
     [x] - Versão inical
     [] - Andar sem propagar erro, tendo valor esperado do GPS
+    [] - Tentar deixar movimentação mais rápida
 [x] - Juntar o código
 [] - Acertar onde tem que reconhecer vítima
 [] - Refatorar código
@@ -16,8 +17,9 @@
     [] - Não usar variável global
     [] - Tirar print's (usa variável de ambiente de DEBUG)
     [] - Constante em UPPER_CASE
-[] - Fazer requirements.txt
+[x] - Fazer requirements.txt
 [] - No caso de ter DFS e em uma direção ele marca posição como sem parede, mas na verdade depois tenta acessá-la por lugar que tem parede, dá problema
+[] - Tratar erro de bater e travar na parede
 
 ## Resolver algum dia
 
