@@ -752,6 +752,31 @@ def mover_para_frente(dist=tamanho_tile):
             break
 
 
+        if tem_buraco():
+            while robot.step(timeStep) != -1:
+                posicao_atual = gps.getValues()
+                posicaoX_atual = posicao_atual[0]
+                posicaoY_atual = posicao_atual[2]
+
+                round_func = lambda x: (x if round(x, 2) != 0 else 0)
+                set_vel = lambda delta: (
+                    maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
+                )
+
+                tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
+                    abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
+                )
+
+                motorEsquerdo.setVelocity(-set_vel(tot_delta))
+                motorDireito.setVelocity(-set_vel(tot_delta))
+
+                if tot_delta < 0.001:
+                    parar()
+                    break
+            virar_180()
+            break
+
+
 def parar():
     motorEsquerdo.setVelocity(0.0)
     motorDireito.setVelocity(0.0)
