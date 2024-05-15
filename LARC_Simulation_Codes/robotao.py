@@ -338,12 +338,12 @@ def valores_gps():
 def ajustar_distancia():
     # Ajusta a distância do robô para a parede
     rangeImage = lidar.getLayerRangeImage(0).copy()
-    if rangeImage[0] < 0.07:
-        falta = rangeImage[0]-0.07
-        mover_para_frente(falta)
-    elif rangeImage[0] < 0.12 and rangeImage[0] > 0.07:
-        falta = 0.07 - rangeImage[0]
-        mover_para_frente(falta)
+    if rangeImage[0] < 0.055:
+        falta = 0.55 - rangeImage[0]
+        mover_para_tras(falta)
+    # elif rangeImage[0] < 0.12 and rangeImage[0] > 0.07:
+    #     falta = 0.07 - rangeImage[0]
+    #     mover_para_frente(falta)
         
 
 
@@ -639,6 +639,7 @@ def reconhecer_vitima(camera):
 
 def tem_buraco():
     cor = sensor_de_cor.getImage()
+    #print(cor)
     if cor == cor_buraco:
         return True
     return False
@@ -651,28 +652,28 @@ def objeto_proximo(posicao):
 
 def parede_direita(rangeImage):
     # Retorna True se há parede à direita, senão, retorna False
-    if rangeImage[128] < 0.07:
+    if rangeImage[128] < 0.08:
         return True
     return False
 
 
 def parede_esquerda(rangeImage):
     # Retorna True se há parede à esquerda, senão, retorna False
-    if rangeImage[384] < 0.07:
+    if rangeImage[384] < 0.08:
         return True
     return False
 
 
 def parede_frente(rangeImage):
     # Retorna True se há parede à frente, senão, retorna False
-    if rangeImage[0] < 0.07:
+    if rangeImage[0] < 0.08:
         return True
     return False
 
 
 def parede_tras(rangeImage):
     # Retorna True se há parede à tras, senão, retorna False
-    if rangeImage[256] < 0.07:
+    if rangeImage[256] < 0.08:
         return True
     return False
 
@@ -689,6 +690,8 @@ def mover_para_tras(dist):
     posicaoX_anterior = posicao_atual[0]
     posicaoY_anterior = posicao_atual[2]
 
+    dist = -dist
+
     while robot.step(timeStep) != -1:
         posicao_atual = gps.getValues()
         posicaoX_atual = posicao_atual[0]
@@ -700,7 +703,7 @@ def mover_para_tras(dist):
         )
 
         tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-            abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
+            abs((posicaoY_atual) - abs(posicaoY_anterior))
         )
 
         motorEsquerdo.setVelocity(-set_vel(tot_delta))
@@ -709,7 +712,7 @@ def mover_para_tras(dist):
 
         # print(f"Deveria andar {dist} e andou {tot_delta}")
 
-        if tot_delta > dist:
+        if tot_delta <= dist:
             parar()
             #print(f"A posição X atual é {posicaoX_atual}")
             #print(f"A posição Y atual é {posicaoY_atual}")
@@ -956,6 +959,7 @@ def seguir_parede():
     global direcao
     print("direcao ", direcao)
     rangeImage = lidar.getLayerRangeImage(0).copy()
+    print(rangeImage[0])
     if not parede_esquerda(rangeImage) and not foi_visitado(direcao, "esquerda"):
         # Se não há parede à esquerda, vire à esquerda e mova-se para frente
         # print('esquerda livre,')
@@ -1811,7 +1815,6 @@ def mapeamento():
     posicaoY_anterior = posicaoY_atual
     mudar_direcao()
 
-
 while robot.step(timeStep) != -1:
     seguir_parede()
     mapeamento()
@@ -1823,3 +1826,4 @@ while robot.step(timeStep) != -1:
     # print("A lista de tiles vistos é : {}".format(listas_vistos))
     # print("A lista de tiles marcados é : {}".format(lista_tiles_marcados))
     reconhecer_vitima(cameraE)
+    # sleep(1)
