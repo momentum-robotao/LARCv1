@@ -451,7 +451,11 @@ def reconhecer_vitima(camera):
         possivel_S = ["S","SI","IS","ISI","SIS","SS","5","I5","5I","I5I","75","5L","L5","I5L","5LI","I5LI","7C","9","I9","9I","I9I","28","SE","37","AS","M",]
         possivel_P = ["POISO","POIS","POION","POIS0N","P0IS0N","POI50N","P0I50N","P0ISON","P0IS0","P0I50","POISDN","POI5ON","P0I5ON","P0I5O","POI50M","P0I50M","POI5OM",
             "P0I5OM","POIS0M","P0IS0M","PO1S0N","P01S0N","PO1S0","P01S0","POI5UN","P0I5UN","POISUN","P0ISUN","POI50UN","P0I50UN","POISOUN","P0ISOUN","POI5OUN",
-            "P0I5OUN","POIS0ON","P0IS0ON","POI5OIN","P0I5OIN","POI5D","P0I5D","POI50D","P0I50D","POIS0N5","P0IS0N5","POI50N5",
+            "P0I5OUN","POIS0ON","P0IS0ON","POI5OIN","P0I5OIN","POI5D","P0I5D","POI50D",
+            "P0I50D",
+            "POIS0N5",
+            "P0IS0N5",
+            "POI50N5",
             "P0I50N5",
             "POI5ONI",
             "P0I5ONI",
@@ -716,7 +720,7 @@ def mover_para_tras(dist):
             #print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
             break
 
-def mover_para_frente(dist):
+def mover_para_frente(dist=tamanho_tile):
     global posicao_atual, posicaoX_atual, posicaoY_atual
     global posicao_anterior, posicaoX_anterior, posicaoY_anterior
     posicaoX_anterior = posicao_atual[0]
@@ -774,68 +778,6 @@ def mover_para_frente(dist):
                     break
             virar_180()
             break
-
-def mover_para_frente(dist=tamanho_tile, should_recognize_victim=True):
-    global posicao_atual, posicaoX_atual, posicaoY_atual
-    global posicao_anterior, posicaoX_anterior, posicaoY_anterior
-    posicaoX_anterior = posicao_atual[0]
-    posicaoY_anterior = posicao_atual[2]
-
-    while robot.step(timeStep) != -1:
-        posicao_atual = gps.getValues()
-        posicaoX_atual = posicao_atual[0]
-        posicaoY_atual = posicao_atual[2]
-
-        round_func = lambda x: (x if round(x, 2) != 0 else 0)
-        set_vel = lambda delta: (
-            maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
-        )
-
-        tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-            abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
-        )
-
-        motorEsquerdo.setVelocity(set_vel(tot_delta))
-        motorDireito.setVelocity(set_vel(tot_delta))
-        #print(set_vel(tot_delta))
-
-        # print(f"Deveria andar {dist} e andou {tot_delta}")
-
-        if tot_delta > dist:
-            parar()
-            #print(f"A posição X atual é {posicaoX_atual}")
-            #print(f"A posição Y atual é {posicaoY_atual}")
-            #print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
-            #print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
-            break
-
-
-        if tem_buraco():
-            while robot.step(timeStep) != -1:
-                posicao_atual = gps.getValues()
-                posicaoX_atual = posicao_atual[0]
-                posicaoY_atual = posicao_atual[2]
-
-                round_func = lambda x: (x if round(x, 2) != 0 else 0)
-                set_vel = lambda delta: (
-                    maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
-                )
-
-                tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-                    abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
-                )
-
-                motorEsquerdo.setVelocity(-set_vel(tot_delta))
-                motorDireito.setVelocity(-set_vel(tot_delta))
-
-                if tot_delta < 0.001:
-                    parar()
-                    break
-            virar_180()
-            break
-        if should_recognize_victim:
-            # Reconhecer vítima
-            mover_para_frente(dist, should_recognize_victim=False)
 
 
 def parar():
@@ -1874,7 +1816,7 @@ def mapeamento():
     mudar_direcao()
 
 while robot.step(timeStep) != -1:
-    '''seguir_parede()
+    seguir_parede()
     mapeamento()
     ajustar_distancia()
     # PID()
@@ -1884,5 +1826,4 @@ while robot.step(timeStep) != -1:
     # print("A lista de tiles vistos é : {}".format(listas_vistos))
     # print("A lista de tiles marcados é : {}".format(lista_tiles_marcados))
     reconhecer_vitima(cameraE)
-    # sleep(1)'''
-    pass
+    # sleep(1)
