@@ -644,6 +644,25 @@ def tem_buraco():
         return True
     return False
 
+def transition_tile():
+    #blue:room1<-->room2
+    #purple:room2<-->room3
+    #red:room3<-->room4
+    #green:room1<-->room4
+    image = sensor_de_cor.getImage()
+    r = sensor_de_cor.imageGetRed(image, 2, 0, 0)
+    g = sensor_de_cor.imageGetGreen(image, 2, 0, 0)
+    b = sensor_de_cor.imageGetBlue(image, 2, 0, 0)
+    #print(cor)
+    if r==88 and g==88 and b==255 :
+        return "blue"
+    if r==189 and g==88 and b==250 :
+        return "purple"
+    if r==255 and g==88 and b==88 :
+        return "red"
+    if r==47 and g==255 and b==47 :
+        return "green"
+    
 
 def objeto_proximo(posicao):
     # Retorna True se o objeto está próximo, senão, retorna False
