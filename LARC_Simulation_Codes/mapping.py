@@ -23,7 +23,15 @@ WALL_COLLISION_DISTANCE = 0.002
 
 HOLE_COLOR = b"...\xff"
 
-# TODO: correction deve ser baseada em qual eixo está, o que começou ou perpendicular ao inicial
+Side = Literal["front", "back", "left", "right"]
+Numeric = Union[int, float]
+
+CENTRAL_ANGLE_OF_SIDE: Dict[Side, Numeric] = {
+    "front": 0,
+    "right": 90,
+    "back": 180,
+    "left": 270,
+}
 
 # Initialize logger
 try:
@@ -128,9 +136,14 @@ class Tile:
 
 @dataclass
 class Coordinate:
-    x: float
-    y: float
-    z: float
+    x: Numeric
+    y: Numeric
+    z: Numeric
+
+    def __init__(self, x: Numeric, y: Numeric, z: Numeric = 0):
+        self.x = x
+        self.y = y
+        self.z = z
 
 
 @dataclass
@@ -162,7 +175,7 @@ def round_if_almost_0(value: float):
 def delay(
     robot,
     debug_info: DebugInfo,
-    time_ms: Union[float, int],
+    time_ms: Numeric,
     time_step: int = int(os.getenv("TIME_STEP", 32)),
 ):
     if os.getenv("DEBUG"):
@@ -173,6 +186,54 @@ def delay(
         time_elapsed_ms = (robot.getTime() - init_time) * 1000.0
         if time_elapsed_ms > time_ms:
             break
+
+
+def cyclic_angle(angle: Numeric) -> Numeric:
+    """
+    It may be used for cases in which angles are cyclic and should
+    be considered in range[0; 2*PI].
+    Example of returns depending on the `angle`:
+    - `PI` => returns `PI`
+    - `-0.5 * PI` => returns `1.5 * PI`, because it is turning clockwise
+    this angle, so it is 0.5 * PI before a complete turn (2 * PI), then
+    it is `2.0 * PI - 0.5 * PI = 1.5 * PI`
+    - `5.5 * PI` => returns `1.5 * PI`, because 3.5 * PI, is 2 complete
+    turns + 1.5 * PI
+
+    :return: The `angle` in range [0; 2*PI].
+    :rtype: Same type as `angle`.
+    """
+    while angle < 0:
+        angle += 2 * PI
+    while angle >= 2 * PI:
+        angle -= 2 * PI
+
+    return angle
+
+
+ObjectsMap = OrderedDict[int, OrderedDict[int, Tile]]
+AnswerMap = List[List[str]]
+
+
+class Map:
+    def __init__(self) -> None:
+        self.objects = ObjectsMap()
+
+    def __str__(self) -> str:
+        map_str = ""
+        for x in self.objects:
+            for y in self.objects[x]:
+                tile = self.objects[x][y]
+                map_str += f"{tile}, "
+            map_str += "\n"
+        return map_str
+
+    def is_visited(self, position: Coordinate):
+        return position.x in self.objects and position.y in self.objects[position.x]
+
+    def get_answer_map(self) -> AnswerMap:
+        answer_map = AnswerMap()
+        return answer_map
 
 
 class Device(ABC):
@@ -250,7 +311,7 @@ class Lidar(Device):
             distances_by_angle[angle] = dist
 
         if os.getenv("DEBUG"):
-            debug_info.send(
+            self.debug_info.send(
                 f"Medições da distância em função do ângulo: {distances_by_angle}",
                 System.lidar_measures,
             )
@@ -292,7 +353,7 @@ class Lidar(Device):
                     distances_of_range.append(dist)
 
         if os.getenv("DEBUG"):
-            debug_info.send(
+            self.debug_info.send(
                 f"Pegas medições do intervalo cíclico baseado nos ângulos: [{initial_angle};{end_angle}]. "
                 f"Medições: {distances_of_range}",
                 System.lidar_range_measures,
@@ -302,33 +363,28 @@ class Lidar(Device):
 
     def get_side_distance(
         self,
-        side: Literal["front", "back", "left", "right"],
+        side: Union[Side, Numeric],
         field_of_view: float = 10 * DEGREE_IN_RAD,
     ) -> float:
         """
+        :param side: If it is a `Side`, the measures are centralized in
+        this side of the robot, but if it is a `float` or `int` it is
+        centralized on this angle, that should be from [0;2*PI] (in rad).
+
         :return: The average distance from `field_of_view` centralized in
         a side of the robot.
         """
-        distances = []
-        if side == "front":
-            distances = self.get_distances_of_range(
-                360 * DEGREE_IN_RAD - field_of_view / 2, field_of_view / 2
-            )
-        elif side == "right":
-            distances = self.get_distances_of_range(
-                90 * DEGREE_IN_RAD - field_of_view / 2,
-                90 * DEGREE_IN_RAD + field_of_view / 2,
-            )
-        elif side == "back":
-            distances = self.get_distances_of_range(
-                180 * DEGREE_IN_RAD - field_of_view / 2,
-                180 * DEGREE_IN_RAD + field_of_view / 2,
-            )
-        elif side == "left":
-            distances = self.get_distances_of_range(
-                270 * DEGREE_IN_RAD - field_of_view / 2,
-                270 * DEGREE_IN_RAD + field_of_view / 2,
-            )
+        if isinstance(side, str):
+            central_angle = CENTRAL_ANGLE_OF_SIDE[side]
+            start_angle = central_angle * DEGREE_IN_RAD - field_of_view / 2
+            end_angle = central_angle * DEGREE_IN_RAD + field_of_view / 2
+        elif isinstance(side, (int, float)):
+            start_angle = side - field_of_view / 2
+            end_angle = side + field_of_view / 2
+
+        distances = self.get_distances_of_range(
+            cyclic_angle(start_angle), cyclic_angle(end_angle)
+        )
 
         average_distance = sum(distances) / len(distances)
 
@@ -384,13 +440,13 @@ class Lidar(Device):
         kp: float = KP,
     ) -> float:
         rotation_angle_error = 0.0
-        if lidar.has_wall("left"):
+        if self.has_wall("left"):
             rotation_angle_error = (
-                lidar.get_side_distance("left") - expected_wall_distance
+                self.get_side_distance("left") - expected_wall_distance
             ) * kp
-        if lidar.has_wall("right"):
+        if self.has_wall("right"):
             rotation_angle_error = (
-                (lidar.get_side_distance("right") - expected_wall_distance) * kp * -1
+                (self.get_side_distance("right") - expected_wall_distance) * kp * -1
             )
 
         if os.getenv("DEBUG"):
@@ -859,76 +915,103 @@ class Motor(Device):
         return left_velocity, right_velocity
 
 
-# Initialize DebugInfo instance
-try:
-    debug_info = DebugInfo(
-        [
-            e
-            for e in ALL_SYSTEMS
-            if e
-            not in [
-                System.lidar_measures,
-                System.lidar_general,
-            ]
-        ]
-    )
-except Exception:
+AllRobotInfo = Tuple[Robot, Motor, Lidar, GPS, IMU, ColorSensor, DebugInfo]
+
+
+def dfs(
+    position: Coordinate, map: Map, all_robot_info: AllRobotInfo, area: AreaDFSMappable
+):
+    """
+    Map all the specified `area`, then go to transition `area+1`.
+    Robot position is specified by the lower left coordinate.
+
+    :return: The final position of the robot.
+    """
+    robot, motor, lidar, gps, imu, color_sensor, debug_info = all_robot_info
+    start_angle = imu.get_rotation_angle()
+
+    for delta_angle in [-90, -45, 0, 45, 90]:
+        ...
+
     if os.getenv("DEBUG"):
-        logger.error("Erro ao inicializar o logger", exc_info=True)
-        raise
+        debug_info.send(f"Mapa após iteração: {map}", System.maps)
 
 
-# Initialize robot and devices
-try:
-    robot = Robot()
+def solve_map(all_robot_info: AllRobotInfo) -> None:
+    map = Map()
 
-    motor = Motor(robot, debug_info)
-    lidar = Lidar(robot, debug_info)
-    gps = GPS(robot, debug_info)
-    imu = IMU(robot, debug_info)
-    color_sensor = ColorSensor(robot, debug_info)
-except Exception:
-    if os.getenv("DEBUG"):
-        logger.error("Erro durante inicialização do robô", exc_info=True)
-        raise
-
-
-# Show Robot attributes of initialization
-print("========= Informações do robô inicializado ==========")
-if os.getenv("DEBUG"):
-    print("Modo do robô: teste")
-else:
-    print("Modo do robô: competição")
-
-if os.getenv("DEBUG"):
-    debug_info.send("\nSobre o LIDAR", System.lidar_general)
-    debug_info.send(
-        f"\tA distância percebida é [{lidar.min_range};{lidar.max_range}]",
-        System.lidar_general,
-    )
-    debug_info.send(
-        f"\tHá {lidar.horizontal_resolution} medições na horizontal "
-        f"e {lidar.number_of_layers} layers na vertical",
-        System.lidar_general,
-    )
-    debug_info.send(
-        f"\tO FOV, entre 0 e 2*PI é: {lidar.field_of_view}",
-        System.lidar_general,
-    )
-print("=====================================================\n")
+    # TODO: map initial positions of robot
+    """
+    Coordinate(0, 1),
+    Coordinate(1, 1),
+    Coordinate(0, 0),
+    Coordinate(1, 0),
+    """
+    ...
+    # position = Coordinate(0, 0)
+    # position = dfs(position, map, all_robot_info, area=1)
+    # position = dfs(position, map, all_robot_info, area=2)
 
 
-# Robot main/loop routine
-while robot.step(int(os.getenv("TIME_STEP", 32))) != -1:
+def main() -> None:
+    # Initialize DebugInfo instance
     try:
-        # TODO => main code
-        pass
-        motor.move("forward", gps, lidar, color_sensor, TILE_SIZE * 2)
-        import time
-
-        time.sleep(5)
-
+        debug_info = DebugInfo(
+            [
+                e
+                for e in ALL_SYSTEMS
+                if e
+                not in [
+                    System.lidar_measures,
+                    System.lidar_general,
+                ]
+            ]
+        )
     except Exception:
         if os.getenv("DEBUG"):
-            logging.error("Erro na rotina principal do robô", exc_info=True)
+            logger.error("Erro ao inicializar o logger", exc_info=True)
             raise
+
+    # Initialize robot and devices
+    try:
+        robot = Robot()
+
+        motor = Motor(robot, debug_info)
+        lidar = Lidar(robot, debug_info)
+        gps = GPS(robot, debug_info)
+        imu = IMU(robot, debug_info)
+        color_sensor = ColorSensor(robot, debug_info)
+    except Exception:
+        if os.getenv("DEBUG"):
+            logger.error("Erro durante inicialização do robô", exc_info=True)
+            raise
+
+    # Show Robot attributes of initialization
+    print("========= Informações do robô inicializado ==========")
+    if os.getenv("DEBUG"):
+        print("Modo do robô: teste")
+    else:
+        print("Modo do robô: competição")
+
+    if os.getenv("DEBUG"):
+        debug_info.send("\nSobre o LIDAR", System.lidar_general)
+        debug_info.send(
+            f"\tA distância percebida é [{lidar.min_range};{lidar.max_range}]",
+            System.lidar_general,
+        )
+        debug_info.send(
+            f"\tHá {lidar.horizontal_resolution} medições na horizontal "
+            f"e {lidar.number_of_layers} layers na vertical",
+            System.lidar_general,
+        )
+        debug_info.send(
+            f"\tO FOV, entre 0 e 2*PI é: {lidar.field_of_view}",
+            System.lidar_general,
+        )
+    print("=====================================================\n")
+
+    all_robot_info = (robot, motor, lidar, gps, imu, color_sensor, debug_info)
+    solve_map(all_robot_info)
+
+
+main()
