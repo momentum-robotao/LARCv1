@@ -1,9 +1,11 @@
 import logging
 import os
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
-from typing import Dict, Literal, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
 
 from controller import Robot
 
@@ -21,10 +23,22 @@ MAX_WALL_DISTANCE = 0.030
 EXPECTED_WALL_DISTANCE = 0.019
 WALL_COLLISION_DISTANCE = 0.002
 
+# TODO: adjust these constants
+ORTOGONAL_MAX_DIST_IF_WALL = TILE_SIZE / 2
+DIAGONAL_MAX_DIST_IF_WALL1 = (
+    0.078380665  # 0.5*TILE_SIZE*cos 25°*(1+((1-tg 25)/(2*tg 25)))
+)
+DIAGONAL_MAX_DIST_IF_WALL2 = (
+    0.135481996  # 0.5*TILE_SIZE*cos 25°*(1+3*((1-tg 25)/(2*tg 25)))
+)
+
+
 HOLE_COLOR = b"...\xff"
 
+AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]
-Numeric = Union[int, float]
+Quadrant = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
+Numeric = Union[float, int]
 
 CENTRAL_ANGLE_OF_SIDE: Dict[Side, Numeric] = {
     "front": 0,
@@ -78,6 +92,11 @@ class System(Enum):
     rotation_angle_correction = "rotation angle correction"
     color_sensor_measures = "color sensor measures"
     color_sensor_detections = "color sensor detections"
+    maps = "maps"
+    dfs_state = "dfs state"
+    dfs_verification = "dfs verification"
+    dfs_decision = "dfs decision"
+    # TODO: LOG para o mapeamento e navegação
 
 
 ALL_SYSTEMS = [system for system in System]
@@ -99,12 +118,7 @@ class HazmatSign(Enum):
 WallToken = Union[HazmatSign, Victim]
 
 
-class Wall(Enum):
-    NONEXISTENT = 0
-    EXISTENT = 1
-
-
-class TileType(Enum):
+class SpecialTileType(Enum):
     AREA_4 = -1
     EMPTY = 0
     HOLE = 2
@@ -119,31 +133,35 @@ class TileType(Enum):
 
 @dataclass
 class QuarterTile:
-    up: Wall
-    down: Wall
-    left: Wall
-    right: Wall
+    walls: Set[Side] = field(default_factory=set)
 
 
 @dataclass
 class Tile:
-    top_left: QuarterTile
-    top_right: QuarterTile
-    bottom_left: QuarterTile
-    bottom_right: QuarterTile
-    type: TileType
+    quadrants: dict[Quadrant, QuarterTile] = field(default_factory=dict)
+    special_type: Union[SpecialTileType, None] = None
 
 
-@dataclass
 class Coordinate:
-    x: Numeric
-    y: Numeric
-    z: Numeric
-
-    def __init__(self, x: Numeric, y: Numeric, z: Numeric = 0):
+    def __init__(self, x: Numeric, y: Numeric, z: Optional[Numeric] = None):
         self.x = x
         self.y = y
         self.z = z
+
+    def __repr__(self) -> str:
+        return f"Coordinate(x={self.x}, y={self.y}, z={self.z})"
+
+    def __add__(self, delta: "Coordinate") -> "Coordinate":
+        new_z = None if self.z is None or delta.z is None else self.z + delta.z
+        return Coordinate(self.x + delta.x, self.y + delta.y, new_z)
+
+    def __sub__(self, delta: "Coordinate") -> "Coordinate":
+        new_z = None if self.z is None or delta.z is None else self.z - delta.z
+        return Coordinate(self.x - delta.x, self.y - delta.y, new_z)
+
+    def __mul__(self, multiplier: Numeric) -> "Coordinate":
+        new_z = None if self.z is None else self.z * multiplier
+        return Coordinate(self.x * multiplier, self.y * multiplier, new_z)
 
 
 @dataclass
@@ -211,25 +229,188 @@ def cyclic_angle(angle: Numeric) -> Numeric:
     return angle
 
 
-ObjectsMap = OrderedDict[int, OrderedDict[int, Tile]]
+DEGREE_TARGET_COORDINATE = {
+    0: Coordinate(0, 1),
+    45: Coordinate(1, 1),
+    90: Coordinate(1, 0),
+    135: Coordinate(1, -1),
+    180: Coordinate(0, -1),
+    225: Coordinate(-1, -1),
+    270: Coordinate(-1, 0),
+    315: Coordinate(-1, 1),
+    360: Coordinate(0, 1),
+}
+
+TARGET_COORDINATE = {
+    round(degree_angle * DEGREE_IN_RAD, 2): coordinate
+    for degree_angle, coordinate in DEGREE_TARGET_COORDINATE.items()
+}
+
+DELTA_TO_QUADRANT: Dict[Coordinate, Quadrant] = {
+    Coordinate(0, 0): "bottom_left",
+    Coordinate(1, 0): "bottom_right",
+    Coordinate(0, 1): "top_left",
+    Coordinate(1, 1): "top_right",
+}
+
+
+def coordinate_after_move(
+    position: Coordinate,
+    angle: Numeric,
+    angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.05)),
+) -> Coordinate:
+    angle = round(angle, 2)
+    for target_angle in TARGET_COORDINATE:
+        if abs(target_angle - angle) <= angle_max_difference:
+            return position + TARGET_COORDINATE[target_angle]
+
+    if os.getenv("DEBUG"):
+        error_message = (
+            f"Inválido {angle=} ao tentar pegar coordenada "
+            f"após movimentação começando de {position}"
+        )
+        logging.error(error_message)
+        logging.debug(f"Ângulos disponíveis: {list(TARGET_COORDINATE.keys())}")
+        raise ValueError(error_message)
+
+    # Gets the most similar angle categorized
+    most_similar_angle = (angle, position + Coordinate(0, 1))
+    for reference_angle, delta in TARGET_COORDINATE.items():
+        if abs(reference_angle - angle) < most_similar_angle[0]:
+            most_similar_angle = (reference_angle, position + delta)
+
+    return most_similar_angle[1]
+
+
+def tile_pos_with_quarter_tile(quarter_tile_pos: Coordinate) -> Coordinate:
+    """
+    :return: The `Coordinate` of tile that contains this quarter tile.
+    """
+    return Coordinate(quarter_tile_pos.x // 2, quarter_tile_pos.y // 2)
+
+
+def quarter_tile_quadrant(quarter_tile_pos: Coordinate) -> Quadrant:
+    """
+    :return: The quadrant that the quarter tile is corresponding
+    to the tile in which it is located.
+    """
+    delta = tile_pos_with_quarter_tile(quarter_tile_pos) * 2 - quarter_tile_pos
+    return DELTA_TO_QUADRANT[delta]
+
+
+def side_angle_from_map_angle(map_angle: float, robot_rotation_angle: float) -> float:
+    """
+    Returns the angle of the side of the robot that is in the same direction
+    of the `map_angle`.
+    """
+    return cyclic_angle(map_angle - robot_rotation_angle)
+
+
+# TODO: decorator ou outra lógica para logar mudanças no mapa
+# def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
+#     def wrapper(self):
+#         if os.getenv("DEBUG"):
+#             debug_info.send(
+#                 f"Mapa modificado para: {map}",
+#                 System.maps,
+#             )
+
+
+ObjectsMap = OrderedDict[Numeric, OrderedDict[Numeric, Tile]]
 AnswerMap = List[List[str]]
 
 
 class Map:
+    """
+    OBS: note that `ObjectsMap` are composed by full tile coordinates
+    while methods from `Map` deals with quarter-tile coordinates. This
+    logic is internal to the class.
+    """
+
     def __init__(self) -> None:
         self.objects = ObjectsMap()
+        self.wall_tokens: List[Tuple[Coordinate, Side]] = []
+        self.visited_quarters: Set[Coordinate] = set()
+
+    @staticmethod
+    def check_position(quarter_tile_pos: Coordinate) -> Coordinate:
+        if not isinstance(quarter_tile_pos.x, int) or not isinstance(
+            quarter_tile_pos.y, int
+        ):
+            if os.getenv("DEBUG"):
+                logger.error("Coordenada para mapeamento deve ser inteira")
+                raise ValueError("Coordenada para mapeamento não é inteira")
+            else:
+                quarter_tile_pos = Coordinate(
+                    round(quarter_tile_pos.x), round(quarter_tile_pos.y)
+                )
+
+        return quarter_tile_pos
 
     def __str__(self) -> str:
         map_str = ""
         for x in self.objects:
             for y in self.objects[x]:
                 tile = self.objects[x][y]
-                map_str += f"{tile}, "
+                map_str += f"({x},{y})={tile}, "
             map_str += "\n"
         return map_str
 
-    def is_visited(self, position: Coordinate):
-        return position.x in self.objects and position.y in self.objects[position.x]
+    def _mark_quarter_tile(self, quarter_tile_pos: Coordinate) -> None:
+        quarter_tile_pos = Map.check_position(quarter_tile_pos)
+        self.visited_quarters.add(quarter_tile_pos)
+
+        tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
+        if tile_pos.x not in self.objects:
+            self.objects[tile_pos.x] = OrderedDict()
+        if tile_pos.y not in self.objects[tile_pos.x]:
+            self.objects[tile_pos.x][tile_pos.y] = Tile()
+
+        if (
+            quarter_tile_quadrant(quarter_tile_pos)
+            not in self.objects[tile_pos.x][tile_pos.y].quadrants
+        ):
+            self.objects[tile_pos.x][tile_pos.y].quadrants[
+                quarter_tile_quadrant(quarter_tile_pos)
+            ] = QuarterTile()
+
+    def is_visited(self, quarter_tile_pos: Coordinate) -> bool:
+        quarter_tile_pos = Map.check_position(quarter_tile_pos)
+        return quarter_tile_pos in self.visited_quarters
+
+    def add_wall(self, quarter_tile_pos: Coordinate, side: Side) -> None:
+        quarter_tile_pos = Map.check_position(quarter_tile_pos)
+        self._mark_quarter_tile(quarter_tile_pos)
+
+        tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
+        self.objects[tile_pos.x][tile_pos.y].quadrants[
+            quarter_tile_quadrant(quarter_tile_pos)
+        ].walls.add(side)
+
+    def set_tile_type(
+        self,
+        quarter_tile_pos: Coordinate,
+        tile_type: SpecialTileType,
+    ) -> None:
+        quarter_tile_pos = Map.check_position(quarter_tile_pos)
+        tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
+
+        old_tile_type = self.objects[tile_pos.x][tile_pos.y].special_type
+        if old_tile_type is None or old_tile_type != tile_type:
+            if os.getenv("DEBUG"):
+                logger.error(
+                    f"Tipo do tile que contém {quarter_tile_pos} "
+                    f"era {old_tile_type} e virou {tile_type}"
+                )
+                raise ValueError(
+                    f"Tipo do tile que contém {quarter_tile_pos} foi mudado."
+                )
+
+        self.objects[tile_pos.x][tile_pos.y].special_type = tile_type
+
+    def add_wall_token(self, quarter_tile_pos: Coordinate, side: Side) -> None:
+        quarter_tile_pos = Map.check_position(quarter_tile_pos)
+        self.wall_tokens.append((quarter_tile_pos, side))
 
     def get_answer_map(self) -> AnswerMap:
         answer_map = AnswerMap()
@@ -637,6 +818,9 @@ class Motor(Device):
         turn_angle -= self._get_angle_imprecision(direction)
         self._set_angle_imprecision(0, direction)
 
+        if turn_angle <= 0.00001:
+            return
+
         angle_accumulated_delta = 0
         rotation_angle = imu.get_rotation_angle()
 
@@ -698,6 +882,40 @@ class Motor(Device):
         """Rotate 90 degrees to right."""
         self.rotate("right", PI / 2, imu)
 
+    def rotate_to_angle(
+        self,
+        angle: float,
+        imu: IMU,
+        slow_down_angle: float = 0.1,
+        high_speed: float = MAX_SPEED,
+        low_speed: float = MAX_SPEED / 100,
+    ) -> None:
+        """
+        Rotate the robot to `angle`. It rotates to the direction that
+        makes this rotation faster.
+        """
+        robot_rotation_angle = imu.get_rotation_angle()
+        angle_rotating_right = cyclic_angle(2 * PI + angle - robot_rotation_angle)
+        angle_rotating_left = 2 * PI - angle_rotating_right  # complementar angles
+        if angle_rotating_right <= PI:
+            self.rotate(
+                "right",
+                angle_rotating_right,
+                imu,
+                slow_down_angle,
+                high_speed,
+                low_speed,
+            )
+        else:
+            self.rotate(
+                "left",
+                angle_rotating_left,
+                imu,
+                slow_down_angle,
+                high_speed,
+                low_speed,
+            )
+
     def move(
         self,
         direction: Literal["forward", "backward"],
@@ -711,6 +929,7 @@ class Motor(Device):
         kp: float = KP,
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
     ) -> MovementConsequence:
+        # TODO: diferenciar hole/parede de quando tá indo pra trás e para frente
         """
         Move the robot by certain distance in meters in some direction, using
         the motors. If it enconters a hole, it raises `` and if it collide
@@ -919,7 +1138,11 @@ AllRobotInfo = Tuple[Robot, Motor, Lidar, GPS, IMU, ColorSensor, DebugInfo]
 
 
 def dfs(
-    position: Coordinate, map: Map, all_robot_info: AllRobotInfo, area: AreaDFSMappable
+    position: Coordinate,
+    map: Map,
+    all_robot_info: AllRobotInfo,
+    area: AreaDFSMappable,
+    time_step: int = int(os.getenv("TIME_STEP", 32)),
 ):
     """
     Map all the specified `area`, then go to transition `area+1`.
@@ -928,19 +1151,129 @@ def dfs(
     :return: The final position of the robot.
     """
     robot, motor, lidar, gps, imu, color_sensor, debug_info = all_robot_info
+
+    debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
+
+    robot.step(time_step)
     start_angle = imu.get_rotation_angle()
+    debug_info.send(
+        f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
+    )
 
-    for delta_angle in [-90, -45, 0, 45, 90]:
-        ...
+    # Transition to neighbours on grid, prioritizing front, left and right
+    # before diagonals
+    for delta_angle_in_degree in [-90, 0, 90, -45, 45]:
+        delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
 
-    if os.getenv("DEBUG"):
-        debug_info.send(f"Mapa após iteração: {map}", System.maps)
+        movement_angle = cyclic_angle(start_angle + delta_angle)
+        side_angle = side_angle_from_map_angle(movement_angle, imu.get_rotation_angle())
+        new_robot_position = coordinate_after_move(position, movement_angle)
+
+        debug_info.send(
+            f"DFS de {position=}, olhando vizinho de ângulo:\n"
+            f"- {delta_angle_in_degree}° em relação ao ângulo inicial da DFS\n"
+            f"- {movement_angle}rad de direção em relação ao mapa\n"
+            f"- {side_angle}rad em relação à frente do robô.\n"
+            f"Esse vizinho está na coordenada {new_robot_position}",
+            System.dfs_state,
+        )
+
+        # For each side of the tiles that would be used to go to new position,
+        # map if there is a wall there or not
+        # OBS: note that if this wall is already mapped, just leave it how it
+        # is to ensure mapping with ortogonal movements has priority
+        # compared to diagonal visualization of walls
+        left_wall_angle = cyclic_angle(side_angle - 20 * DEGREE_IN_RAD)
+        right_wall_angle = cyclic_angle(side_angle + 20 * DEGREE_IN_RAD)
+
+        left_wall_distance = lidar.get_side_distance(left_wall_angle)
+        right_wall_distance = lidar.get_side_distance(right_wall_angle)
+
+        debug_info.send(
+            "Distância das paredes no caminho para essa nova posição: "
+            f"esquerda={left_wall_distance}m e direita={right_wall_distance}m",
+            System.dfs_verification,
+        )
+
+        if delta_angle_in_degree in [90, 0, -90]:
+            left_wall_blocking = (
+                1 if left_wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
+            )
+            right_wall_blocking = (
+                1 if right_wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
+            )
+        elif delta_angle_in_degree in [45, -45]:
+            left_wall_blocking = (
+                1
+                if left_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL1
+                else (2 if left_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL2 else -1)
+            )
+            right_wall_blocking = (
+                1
+                if right_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL1
+                else (2 if right_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL2 else -1)
+            )
+        debug_info.send(
+            f"Paredes detectadas: esquerda={left_wall_blocking} e direita={right_wall_blocking}",
+            System.dfs_verification,
+        )
+        # TODO: change correspondent wall from undefined to blocked or unblocked
+
+        # visited? don't move
+        if all(
+            map.is_visited(new_robot_position + delta)
+            for delta in [
+                Coordinate(0, 0),
+                Coordinate(0, 1),
+                Coordinate(1, 0),
+                Coordinate(1, 1),
+            ]
+        ):
+            debug_info.send(
+                "Vizinho já foi visitado: não será visitado novamente",
+                System.dfs_decision,
+            )
+            continue
+
+        # blocked? don't move
+        if left_wall_blocking != -1 or right_wall_blocking != -1:
+            debug_info.send(
+                "Há paredes no caminho para o vizinho: não será visitado",
+                System.dfs_decision,
+            )
+            continue
+
+        # otherwise, visit it recursively (with dfs)
+        debug_info.send("Movendo para o vizinho", System.dfs_decision)
+        new_position_distance = (
+            TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
+        )
+        motor.rotate_to_angle(movement_angle, imu)
+        motor.move("forward", gps, lidar, color_sensor, new_position_distance)
+
+        dfs(new_robot_position, map, all_robot_info, area)
+
+        debug_info.send("Retornando do vizinho", System.dfs_decision)
+        motor.move("backward", gps, lidar, color_sensor, new_position_distance)
+
+        """
+        TODO: use bfs to return to the last tile with unvisited neighbours
+        that you are able to go to it.
+        Return from dfs the actual position so when needed, bfs is called to
+        comeback
+        First version: just comeback from the tile after calling another dfs
+        """
+    debug_info.send(
+        f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
+        System.dfs_decision,
+    )
+    motor.rotate_to_angle(start_angle, imu)
 
 
 def solve_map(all_robot_info: AllRobotInfo) -> None:
     map = Map()
 
-    # TODO: map initial positions of robot
+    # TODO: map initial positions of robot as the start tile
     """
     Coordinate(0, 1),
     Coordinate(1, 1),
@@ -948,28 +1281,33 @@ def solve_map(all_robot_info: AllRobotInfo) -> None:
     Coordinate(1, 0),
     """
     ...
-    # position = Coordinate(0, 0)
-    # position = dfs(position, map, all_robot_info, area=1)
+    position = Coordinate(0, 0)
+    position = dfs(position, map, all_robot_info, area=1)
     # position = dfs(position, map, all_robot_info, area=2)
 
 
 def main() -> None:
     # Initialize DebugInfo instance
+    if os.getenv("DEBUG"):
+        logger.info(f"Começando nova execução: {datetime.now()}")
     try:
+        print(
+            [
+                e
+                for e in ALL_SYSTEMS
+                if str(e) not in [System.lidar_measures, System.lidar_general]
+            ]
+        )
         debug_info = DebugInfo(
             [
                 e
                 for e in ALL_SYSTEMS
-                if e
-                not in [
-                    System.lidar_measures,
-                    System.lidar_general,
-                ]
+                if e not in [System.lidar_measures, System.lidar_general]
             ]
         )
     except Exception:
         if os.getenv("DEBUG"):
-            logger.error("Erro ao inicializar o logger", exc_info=True)
+            logger.error("Erro ao inicializar o debug info", exc_info=True)
             raise
 
     # Initialize robot and devices
@@ -1011,7 +1349,12 @@ def main() -> None:
     print("=====================================================\n")
 
     all_robot_info = (robot, motor, lidar, gps, imu, color_sensor, debug_info)
-    solve_map(all_robot_info)
+    try:
+        solve_map(all_robot_info)
+    except Exception:
+        if os.getenv("DEBUG"):
+            logger.critical("Erro inesperado enquanto resolvia o mapa", exc_info=True)
+            raise
 
 
 main()
