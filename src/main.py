@@ -5,9 +5,11 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import Any, Literal, Optional, Union
 
-from controller import Robot
+from controller import Robot as WebotsRobot  # type: ignore
+
+DEBUG = os.getenv("DEBUG", "").upper()[0] in ["T", "1"]
 
 PI = 3.14159265359
 DEGREE_IN_RAD = 0.0174533
@@ -40,7 +42,7 @@ Side = Literal["front", "back", "left", "right"]
 Quadrant = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
 Numeric = Union[float, int]
 
-CENTRAL_ANGLE_OF_SIDE: Dict[Side, Numeric] = {
+CENTRAL_ANGLE_OF_SIDE: dict[Side, Numeric] = {
     "front": 0,
     "right": 90,
     "back": 180,
@@ -57,9 +59,9 @@ try:
         filename=os.getenv("LOG_PATH"),
     )
     logger = logging.getLogger("Robo LARC v1")
-    print(f"Criado log com sucesso em: {os.getenv('LOG_PATH')}")
+    logger.info(f"Criado log com sucesso em: {os.getenv('LOG_PATH')}")
 except Exception:
-    if os.getenv("DEBUG"):
+    if DEBUG:
         logging.error("Erro ao inicializar o logger", exc_info=True)
         raise
 
@@ -75,12 +77,15 @@ class WallColisionError(Exception):
 
 class MovementResult(Enum):
     moved = "moved"
-    hole = "hole"
+    left_hole = "left hole"
+    right_hole = "right hole"
+    left_right_hole = "left right hole"
 
 
 class System(Enum):
+    initialization = "initialization"
+    unknown_error = "unknown error"
     delay = "delay"
-    lidar_general = "lidar general"
     lidar_measures = "lidar measures"
     lidar_range_measures = "lidar range measures"
     lidar_side_measures = "lidar side measures"
@@ -94,6 +99,7 @@ class System(Enum):
     color_sensor_measures = "color sensor measures"
     color_sensor_detections = "color sensor detections"
     maps = "maps"
+    map_changes = "map changes"
     dfs_state = "dfs state"
     dfs_verification = "dfs verification"
     dfs_decision = "dfs decision"
@@ -134,7 +140,7 @@ class SpecialTileType(Enum):
 
 @dataclass
 class QuarterTile:
-    walls: Set[Side] = field(default_factory=set)
+    walls: set[Side] = field(default_factory=set)
 
 
 @dataclass
@@ -180,7 +186,7 @@ class DebugInfo:
     ) -> None:
         self.systems_to_debug = systems_to_debug or []
         self.systems_to_ignore = systems_to_ignore or []
-        if not os.getenv("DEBUG"):
+        if not DEBUG:
             self.systems_to_debug = []
         self.send(
             "Inicializado `DebugInfo`.\n"
@@ -188,16 +194,23 @@ class DebugInfo:
             System.debug_info,
         )
 
-    def send(self, message: str, system_being_debugged: System) -> None:
+    def send(
+        self,
+        message: str,
+        system_being_debugged: System,
+        level: Literal["info", "error", "debug", "warning", "critical"] = "info",
+    ) -> None:
         if system_being_debugged not in self.systems_to_debug:
-            if (
-                os.getenv("DEBUG")
-                and system_being_debugged not in self.systems_to_ignore
-            ):
+            if DEBUG and system_being_debugged not in self.systems_to_ignore:
                 logger.debug(f"{system_being_debugged} => {message}")
             return
-        logger.info(f"{system_being_debugged} => {message}")
-        print(f"{system_being_debugged} => {message}")
+        if level in ["error", "critical"]:
+            getattr(logger, level)(
+                f"{system_being_debugged} => {message}", exc_info=True
+            )
+        else:
+            getattr(logger, level)(f"{system_being_debugged} => {message}")
+        print(f"{level.upper()} {system_being_debugged} => {message}")
 
 
 def round_if_almost_0(value: float):
@@ -210,7 +223,7 @@ def delay(
     time_ms: Numeric,
     time_step: int = int(os.getenv("TIME_STEP", 32)),
 ):
-    if os.getenv("DEBUG"):
+    if DEBUG:
         debug_info.send(f"Esperando: {time_ms}ms", System.delay)
 
     init_time = robot.getTime()
@@ -260,7 +273,7 @@ TARGET_COORDINATE = {
     for degree_angle, coordinate in DEGREE_TARGET_COORDINATE.items()
 }
 
-DELTA_TO_QUADRANT: Dict[Coordinate, Quadrant] = {
+DELTA_TO_QUADRANT: dict[Coordinate, Quadrant] = {
     Coordinate(0, 0): "bottom_left",
     Coordinate(1, 0): "bottom_right",
     Coordinate(0, 1): "top_left",
@@ -278,7 +291,7 @@ def coordinate_after_move(
         if abs(target_angle - angle) <= angle_max_difference:
             return position + TARGET_COORDINATE[target_angle]
 
-    if os.getenv("DEBUG"):
+    if DEBUG:
         error_message = (
             f"Inválido {angle=} ao tentar pegar coordenada "
             f"após movimentação começando de {position}"
@@ -335,7 +348,7 @@ def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
 # TODO: decorator ou outra lógica para logar mudanças no mapa
 # def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
 #     def wrapper(self):
-#         if os.getenv("DEBUG"):
+#         if DEBUG:
 #             debug_info.send(
 #                 f"Mapa modificado para: {map}",
 #                 System.maps,
@@ -343,7 +356,7 @@ def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
 
 
 ObjectsMap = OrderedDict[Numeric, OrderedDict[Numeric, Tile]]
-AnswerMap = List[List[str]]
+AnswerMap = list[list[str]]
 
 
 class Map:
@@ -353,18 +366,20 @@ class Map:
     logic is internal to the class.
     """
 
-    def __init__(self) -> None:
-        self.objects = ObjectsMap()
-        self.wall_tokens: List[Tuple[Coordinate, Side]] = []
-        self.visited_quarters: Set[Coordinate] = set()
+    def __init__(self, debug_info: DebugInfo) -> None:
+        self.objects = (
+            ObjectsMap()
+        )  # TODO: na verdade é ordenado por inserção e não valores?
+        self.wall_tokens: list[tuple[Coordinate, Side]] = []
+        self.visited_quarters: set[Coordinate] = set()
+        self.debug_info = debug_info
 
     @staticmethod
     def check_position(quarter_tile_pos: Coordinate) -> Coordinate:
         if not isinstance(quarter_tile_pos.x, int) or not isinstance(
             quarter_tile_pos.y, int
         ):
-            if os.getenv("DEBUG"):
-                logger.error("Coordenada para mapeamento deve ser inteira")
+            if DEBUG:
                 raise ValueError("Coordenada para mapeamento não é inteira")
             else:
                 quarter_tile_pos = Coordinate(
@@ -423,10 +438,12 @@ class Map:
 
         old_tile_type = self.objects[tile_pos.x][tile_pos.y].special_type
         if old_tile_type is None or old_tile_type != tile_type:
-            if os.getenv("DEBUG"):
-                logger.error(
+            if DEBUG:
+                self.debug_info.send(
                     f"Tipo do tile que contém {quarter_tile_pos} "
-                    f"era {old_tile_type} e virou {tile_type}"
+                    f"era {old_tile_type} e virou {tile_type}",
+                    System.map_changes,
+                    level="error",
                 )
                 raise ValueError(
                     f"Tipo do tile que contém {quarter_tile_pos} foi mudado."
@@ -445,8 +462,9 @@ class Map:
 
 class Device(ABC):
     """
-    Classes responsible for interacting with the robot, getting data from
-    their sensors and sending commands to it.
+    Classes responsible for interacting with the robot. It includes classes
+    that get data from robot (they are sensors) and classes that execute
+    actions on the robot (they are actuators).
     """
 
     @abstractmethod
@@ -485,6 +503,22 @@ class Lidar(Device):
         angle = measure_idx * (self.field_of_view / self.horizontal_resolution)
         return angle
 
+    def show_initialization_information(self) -> None:
+        self.debug_info.send("\nSobre o LIDAR", System.initialization)
+        self.debug_info.send(
+            f"\tA distância percebida é [{self.min_range};{self.max_range}]",
+            System.initialization,
+        )
+        self.debug_info.send(
+            f"\tHá {self.horizontal_resolution} medições na horizontal "
+            f"e {self.number_of_layers} layers na vertical",
+            System.initialization,
+        )
+        self.debug_info.send(
+            f"\tO FOV, entre 0 e 2*PI é: {self.field_of_view}",
+            System.initialization,
+        )
+
     def get_distances(self) -> list[float]:
         """
         Gets the distance in each angle of the robot measured in
@@ -503,11 +537,11 @@ class Lidar(Device):
             for col in range(self.horizontal_resolution):
                 distances[col] = min(distances[col], line_distances[col] - ROBOT_RADIUS)
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(f"{distances=}", System.lidar_measures)
         return distances
 
-    def get_distances_by_angle(self) -> Dict[float, float]:
+    def get_distances_by_angle(self) -> dict[float, float]:
         """
         :return: A dict where `dict[angle] = distance measured in this angle`.
         """
@@ -517,7 +551,7 @@ class Lidar(Device):
             angle = round(self._get_measure_angle(measure_idx), 2)
             distances_by_angle[angle] = dist
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"Medições da distância em função do ângulo: {distances_by_angle}",
                 System.lidar_measures,
@@ -559,10 +593,10 @@ class Lidar(Device):
                 if angle <= end_angle:
                     distances_of_range.append(dist)
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
-                f"Pegas medições do intervalo cíclico baseado nos ângulos: [{initial_angle};{end_angle}]. "
-                f"Medições: {distances_of_range}",
+                f"Pegas medições do intervalo cíclico baseado nos ângulos: "
+                f"[{initial_angle};{end_angle}]. Medições: {distances_of_range}",
                 System.lidar_range_measures,
             )
 
@@ -595,7 +629,7 @@ class Lidar(Device):
 
         average_distance = sum(distances) / len(distances)
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"Medidas correspondentes à {side} "
                 f"(com campo de visão de {field_of_view} rad): {distances}; "
@@ -617,7 +651,7 @@ class Lidar(Device):
         side_distance = self.get_side_distance(side)
         has_wall = side_distance <= max_wall_distance
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"{'Tem' if has_wall else 'Não tem'} parede em {side}. "
                 f"Limite de parede: {max_wall_distance}.",
@@ -633,7 +667,7 @@ class Lidar(Device):
     ) -> bool:
         wall_dist = self.get_side_distance(side)
         wall_collision = wall_dist <= wall_collision_dist
-        if os.getenv("DEBUG"):
+        if DEBUG:
             if wall_collision:
                 self.debug_info.send(
                     f"Colisão com parede detectada há: {wall_dist}m",
@@ -656,7 +690,7 @@ class Lidar(Device):
                 (self.get_side_distance("right") - expected_wall_distance) * kp * -1
             )
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 "Erro do ângulo de rotação do robô para ser corrigido: "
                 f"{rotation_angle_error}. Com {kp=}, com distância alvo "
@@ -684,7 +718,7 @@ class GPS(Device):
         positions = self._gps.getValues()
         x, z, y = positions
         coordinate = Coordinate(x, y, z)
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(str(coordinate), System.gps_measures)
         return coordinate
 
@@ -704,7 +738,7 @@ class IMU(Device):
 
     def get_rotation_angle(self) -> float:
         rotation_angle = self._imu.getRollPitchYaw()[2]
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"Ângulo do robô: {rotation_angle}", System.imu_measures
             )
@@ -742,7 +776,7 @@ class ColorSensor(Device):
 
     def get_color(self) -> bytes:
         color = self._color_sensor.getImage()
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"Cor reconhecida: {color}", System.color_sensor_measures
             )
@@ -755,7 +789,7 @@ class ColorSensor(Device):
         green = self._color_sensor.imageGetGreen(image, 1, 0, 0)
         blue = self._color_sensor.imageGetBlue(image, 1, 0, 0)
         color = RGB(red, green, blue)
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"Cor RGB reconhecida: {color}", System.color_sensor_measures
             )
@@ -764,7 +798,7 @@ class ColorSensor(Device):
     def has_hole(self, hole_color: bytes = HOLE_COLOR) -> bool:
         color = self.get_color()
         has_hole = color == hole_color
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"Buraco {'' if has_hole else 'não '}reconhecido.",
                 System.color_sensor_detections,
@@ -812,7 +846,7 @@ class Motor(Device):
         self._move_imprecision = value * (-1 if direction == "backward" else 1)
 
     def stop(self) -> None:
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send("Parar robô", System.motor_movement)
         self._left_motor.setVelocity(0.0)
         self._right_motor.setVelocity(0.0)
@@ -833,7 +867,7 @@ class Motor(Device):
 
         self.stop()
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"=== Começando a girar {turn_angle} rad para {direction}, "
                 f"com a correção de {self._get_angle_imprecision(direction)} "
@@ -857,7 +891,7 @@ class Motor(Device):
             )
             angle_to_rotate = turn_angle - angle_accumulated_delta
 
-            if os.getenv("DEBUG"):
+            if DEBUG:
                 self.debug_info.send(
                     f"- Já girou {angle_accumulated_delta} no total, falta "
                     f"{angle_to_rotate}",
@@ -871,7 +905,7 @@ class Motor(Device):
             )
             self._left_motor.setVelocity(left_velocity)
             self._right_motor.setVelocity(right_velocity)
-            if os.getenv("DEBUG"):
+            if DEBUG:
                 self.debug_info.send(
                     "- Definindo velocidade dos motores na rotação: "
                     f"esquerdo={left_velocity} e direito={right_velocity}",
@@ -885,7 +919,7 @@ class Motor(Device):
 
                 self.stop()
 
-                if os.getenv("DEBUG"):
+                if DEBUG:
                     self.debug_info.send(
                         f"=== Terminou de girar {angle_accumulated_delta} "
                         f"para {direction}. "
@@ -991,7 +1025,7 @@ class Motor(Device):
         """
         initial_position = gps.get_coordinates()
 
-        if os.getenv("DEBUG"):
+        if DEBUG:
             self.debug_info.send(
                 f"Começando a mover {dist} para {direction}, com imprecisão "
                 f"{self._get_move_imprecision(direction)} a ser corrigida.",
@@ -1012,13 +1046,13 @@ class Motor(Device):
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
 
-            if os.getenv("DEBUG"):
+            if DEBUG:
                 self.debug_info.send(
                     f"Já moveu {traversed_dist}, sendo {x_delta=} e {y_delta=}.",
                     System.motor_movement,
                 )
 
-            left_velocity, right_velocity = Motor.movement_velocity_controller(
+            left_velocity, right_velocity = self.movement_velocity_controller(
                 dist - traversed_dist,
                 direction,
                 rotation_angle_error,
@@ -1029,7 +1063,7 @@ class Motor(Device):
             self._left_motor.setVelocity(left_velocity)
             self._right_motor.setVelocity(right_velocity)
 
-            if os.getenv("DEBUG"):
+            if DEBUG:
                 self.debug_info.send(
                     f"Definindo velocidades como: esquerda={left_velocity} e "
                     f"direita={right_velocity}",
@@ -1041,7 +1075,7 @@ class Motor(Device):
 
                 self._set_move_imprecision(traversed_dist - dist, direction)
 
-                if os.getenv("DEBUG"):
+                if DEBUG:
                     self.debug_info.send(
                         f"Fim do movimento, andou {traversed_dist} do "
                         f"objetivo: {dist} para {direction}. Passou em "
@@ -1071,7 +1105,7 @@ class Motor(Device):
                     returning_to_safe_position=True,
                 )
 
-                if os.getenv("DEBUG"):
+                if DEBUG:
                     self.debug_info.send(
                         "Retornou à posição antiga após colidir com parede.",
                         System.lidar_wall_detection,
@@ -1079,8 +1113,21 @@ class Motor(Device):
 
                 raise WallColisionError()
 
+            # TODO: refator - consider: create deal_with_hole(); data structure for
+            # movement information, ex: slow_down_dist, high_speed, slow_speed...
             if color_sensor.has_hole() and not returning_to_safe_position:
                 self.stop()
+
+                # TODO: verificar se buraco é no quarter tile da esquerda e/ou direita
+                # self.rotate(
+                #     "left",
+                #     20 * DEGREE_IN_RAD,
+                #     imu,
+                #     slow_down_angle,
+                #     high_speed,
+                #     low_speed,
+                # )
+
                 # TODO: check hole when moving backward, doesn't sensor is only on front side?
                 self.move(
                     "backward" if direction == "forward" else "forward",
@@ -1096,13 +1143,13 @@ class Motor(Device):
                     returning_to_safe_position=True,
                 )
 
-                if os.getenv("DEBUG"):
+                if DEBUG:
                     self.debug_info.send(
                         "Retornou à posição antiga após achar buraco.",
                         System.lidar_wall_detection,
                     )
 
-                return MovementResult.hole
+                return MovementResult.left_right_hole
         return MovementResult.moved
 
     @staticmethod
@@ -1133,8 +1180,8 @@ class Motor(Device):
             right_velocity = -1 * speed
         return left_velocity, right_velocity
 
-    @staticmethod
     def movement_velocity_controller(
+        self,
         dist_to_move: float,
         direction: Literal["forward", "backward"],
         rotation_angle_error: float,
@@ -1157,11 +1204,13 @@ class Motor(Device):
         # `rotation_angle_error` faster than the other to correct it
         high_speed = min(high_speed, MAX_SPEED - abs(rotation_angle_error))
 
-        if os.getenv("DEBUG") and abs(rotation_angle_error) > MAX_SPEED:
-            logger.warning(
+        if DEBUG and abs(rotation_angle_error) > MAX_SPEED:
+            self.debug_info.send(
                 "No PID, o erro para ser corrigido da rotação do "
                 f"robô é: {rotation_angle_error}, maior do que a "
-                f"maior velocidade do robô: {MAX_SPEED}"
+                f"maior velocidade do robô: {MAX_SPEED}",
+                System.motor_velocity,
+                "warning",
             )
 
         speed = high_speed if dist_to_move > slow_down_dist else low_speed
@@ -1175,15 +1224,52 @@ class Motor(Device):
         return left_velocity, right_velocity
 
 
-AllRobotInfo = Tuple[Robot, Motor, Lidar, GPS, IMU, ColorSensor, DebugInfo]
+class Robot:
+    def __init__(
+        self,
+        webots_robot: WebotsRobot,
+        motor: Motor,
+        lidar: Lidar,
+        gps: GPS,
+        imu: IMU,
+        color_sensor: ColorSensor,
+        debug_info: DebugInfo,
+        time_step: int = int(os.getenv("TIME_STEP", 32)),
+    ):
+        self.webots_robot = webots_robot
+
+        self.motor = motor
+        self.lidar = lidar
+        self.gps = gps
+        self.imu = imu
+        self.color_sensor = color_sensor
+
+        self.time_step = time_step
+        self.debug_info = debug_info
+
+    def show_initialization_information(self) -> None:
+        self.debug_info.send(
+            "========= Informações do robô inicializado ==========",
+            System.initialization,
+        )
+        if DEBUG:
+            self.debug_info.send("Modo do robô: teste", System.initialization)
+
+            self.lidar.show_initialization_information()
+        else:
+            self.debug_info.send("Modo do robô: competição", System.initialization)
+        print("=====================================================\n")
+
+    def step(self) -> Any:
+        return self.webots_robot.step(self.time_step)
 
 
 def dfs(
     position: Coordinate,
     map: Map,
-    all_robot_info: AllRobotInfo,
+    robot: Robot,
+    debug_info: DebugInfo,
     area: AreaDFSMappable,
-    time_step: int = int(os.getenv("TIME_STEP", 32)),
 ):
     """
     Map all the specified `area`, then go to transition `area+1`.
@@ -1191,12 +1277,10 @@ def dfs(
 
     :return: The final position of the robot.
     """
-    robot, motor, lidar, gps, imu, color_sensor, debug_info = all_robot_info
-
     debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 
-    robot.step(time_step)
-    start_angle = imu.get_rotation_angle()
+    robot.step()
+    start_angle = robot.imu.get_rotation_angle()
     debug_info.send(
         f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
     )
@@ -1207,7 +1291,9 @@ def dfs(
         delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
 
         movement_angle = cyclic_angle(start_angle + delta_angle)
-        side_angle = side_angle_from_map_angle(movement_angle, imu.get_rotation_angle())
+        side_angle = side_angle_from_map_angle(
+            movement_angle, robot.imu.get_rotation_angle()
+        )
         new_robot_position = coordinate_after_move(position, movement_angle)
 
         debug_info.send(
@@ -1227,8 +1313,8 @@ def dfs(
         left_wall_angle = cyclic_angle(side_angle - 20 * DEGREE_IN_RAD)
         right_wall_angle = cyclic_angle(side_angle + 20 * DEGREE_IN_RAD)
 
-        left_wall_distance = lidar.get_side_distance(left_wall_angle)
-        right_wall_distance = lidar.get_side_distance(right_wall_angle)
+        left_wall_distance = robot.lidar.get_side_distance(left_wall_angle)
+        right_wall_distance = robot.lidar.get_side_distance(right_wall_angle)
 
         debug_info.send(
             "Distância das paredes no caminho para essa nova posição: "
@@ -1278,12 +1364,16 @@ def dfs(
         new_position_distance = (
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
-        motor.rotate_to_angle(movement_angle, imu)
+        robot.motor.rotate_to_angle(movement_angle, robot.imu)
         try:
-            movement_result = motor.move(
-                "forward", gps, lidar, color_sensor, new_position_distance
+            movement_result = robot.motor.move(
+                "forward",
+                robot.gps,
+                robot.lidar,
+                robot.color_sensor,
+                new_position_distance,
             )  # TODO: checar se buraco é de um dos lados apenas
-            if movement_result == MovementResult.hole:
+            if movement_result == MovementResult.left_right_hole:
                 continue  # TODO: mapear e logar
             elif MovementResult.moved:
                 pass
@@ -1292,11 +1382,17 @@ def dfs(
         except WallColisionError:
             continue  # TODO: mapear e logar
 
-        dfs(new_robot_position, map, all_robot_info, area)
+        dfs(new_robot_position, map, robot, debug_info, area)
 
         debug_info.send("Retornando do vizinho", System.dfs_decision)
-        motor.rotate_to_angle(movement_angle, imu)  # TODO: Is it correct?
-        motor.move("backward", gps, lidar, color_sensor, new_position_distance)
+        robot.motor.rotate_to_angle(movement_angle, robot.imu)  # TODO: Is it correct?
+        robot.motor.move(
+            "backward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            new_position_distance,
+        )
 
         """
         TODO: use bfs to return to the last tile with unvisited neighbours
@@ -1312,11 +1408,11 @@ def dfs(
         f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
         System.dfs_decision,
     )
-    motor.rotate_to_angle(start_angle, imu)
+    robot.motor.rotate_to_angle(start_angle, robot.imu)
 
 
-def solve_map(all_robot_info: AllRobotInfo) -> None:
-    map = Map()
+def solve_map(robot: Robot, debug_info: DebugInfo) -> None:
+    map = Map(debug_info)
 
     # TODO: map initial positions of robot as the start tile
     """
@@ -1327,72 +1423,55 @@ def solve_map(all_robot_info: AllRobotInfo) -> None:
     """
     ...
     position = Coordinate(0, 0)
-    position = dfs(position, map, all_robot_info, area=1)
+    position = dfs(position, map, robot, debug_info, area=1)
+    # TODO: transition between maps
     # position = dfs(position, map, all_robot_info, area=2)
 
 
 def main() -> None:
     # Initialize DebugInfo instance
-    if os.getenv("DEBUG"):
+    if DEBUG:
         logger.info(f"Começando nova execução: {datetime.now()}")
     try:
         debug_info = DebugInfo(
             systems_to_debug=[
-                e
-                for e in ALL_SYSTEMS
-                if str(e) not in [str(System.lidar_measures), str(System.lidar_general)]
+                e for e in ALL_SYSTEMS if str(e) not in [str(System.lidar_measures)]
             ],
-            systems_to_ignore=[System.lidar_measures, System.lidar_general],
+            systems_to_ignore=[System.lidar_measures],
         )
     except Exception:
-        if os.getenv("DEBUG"):
+        if DEBUG:
             logger.error("Erro ao inicializar o debug info", exc_info=True)
             raise
 
     # Initialize robot and devices
     try:
-        robot = Robot()
+        webots_robot = WebotsRobot()
 
-        motor = Motor(robot, debug_info)
-        lidar = Lidar(robot, debug_info)
-        gps = GPS(robot, debug_info)
-        imu = IMU(robot, debug_info)
-        color_sensor = ColorSensor(robot, debug_info)
+        motor = Motor(webots_robot, debug_info)
+        lidar = Lidar(webots_robot, debug_info)
+        gps = GPS(webots_robot, debug_info)
+        imu = IMU(webots_robot, debug_info)
+        color_sensor = ColorSensor(webots_robot, debug_info)
+
+        robot = Robot(webots_robot, motor, lidar, gps, imu, color_sensor, debug_info)
     except Exception:
-        if os.getenv("DEBUG"):
-            logger.error("Erro durante inicialização do robô", exc_info=True)
+        if DEBUG:
+            debug_info.send(
+                "Erro durante inicialização do robô", System.initialization, "error"
+            )
             raise
 
-    # Show Robot attributes of initialization
-    print("========= Informações do robô inicializado ==========")
-    if os.getenv("DEBUG"):
-        print("Modo do robô: teste")
-    else:
-        print("Modo do robô: competição")
-
-    if os.getenv("DEBUG"):
-        debug_info.send("\nSobre o LIDAR", System.lidar_general)
-        debug_info.send(
-            f"\tA distância percebida é [{lidar.min_range};{lidar.max_range}]",
-            System.lidar_general,
-        )
-        debug_info.send(
-            f"\tHá {lidar.horizontal_resolution} medições na horizontal "
-            f"e {lidar.number_of_layers} layers na vertical",
-            System.lidar_general,
-        )
-        debug_info.send(
-            f"\tO FOV, entre 0 e 2*PI é: {lidar.field_of_view}",
-            System.lidar_general,
-        )
-    print("=====================================================\n")
-
-    all_robot_info = (robot, motor, lidar, gps, imu, color_sensor, debug_info)
+    # Solve map
     try:
-        solve_map(all_robot_info)
+        solve_map(robot, debug_info)
     except Exception:
-        if os.getenv("DEBUG"):
-            logger.critical("Erro inesperado enquanto resolvia o mapa", exc_info=True)
+        if DEBUG:
+            debug_info.send(
+                "Erro inesperado enquanto resolvia o mapa",
+                System.unknown_error,
+                "critical",
+            )
             raise
 
 
