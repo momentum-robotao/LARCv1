@@ -57,6 +57,7 @@ try:
         filename=os.getenv("LOG_PATH"),
     )
     logger = logging.getLogger("Robo LARC v1")
+    print(f"Criado log com sucesso em: {os.getenv('LOG_PATH')}")
 except Exception:
     if os.getenv("DEBUG"):
         logging.error("Erro ao inicializar o logger", exc_info=True)
@@ -72,7 +73,7 @@ class WallColisionError(Exception):
     pass
 
 
-class MovementConsequence(Enum):
+class MovementResult(Enum):
     moved = "moved"
     hole = "hole"
 
@@ -96,7 +97,7 @@ class System(Enum):
     dfs_state = "dfs state"
     dfs_verification = "dfs verification"
     dfs_decision = "dfs decision"
-    # TODO: LOG para o mapeamento e navegação
+    debug_info = "debug info"
 
 
 ALL_SYSTEMS = [system for system in System]
@@ -172,14 +173,27 @@ class RGB:
 
 
 class DebugInfo:
-    def __init__(self, systems_to_debug: Union[list[System], None] = None) -> None:
-        self.systems_to_debug = [] if systems_to_debug is None else systems_to_debug
+    def __init__(
+        self,
+        systems_to_debug: Union[list[System], None] = None,
+        systems_to_ignore: Union[list[System], None] = None,
+    ) -> None:
+        self.systems_to_debug = systems_to_debug or []
+        self.systems_to_ignore = systems_to_ignore or []
         if not os.getenv("DEBUG"):
             self.systems_to_debug = []
+        self.send(
+            "Inicializado `DebugInfo`.\n"
+            f"Debugar: {self.systems_to_debug}\nIgnorar: {self.systems_to_ignore}",
+            System.debug_info,
+        )
 
     def send(self, message: str, system_being_debugged: System) -> None:
         if system_being_debugged not in self.systems_to_debug:
-            if os.getenv("DEBUG"):
+            if (
+                os.getenv("DEBUG")
+                and system_being_debugged not in self.systems_to_ignore
+            ):
                 logger.debug(f"{system_being_debugged} => {message}")
             return
         logger.info(f"{system_being_debugged} => {message}")
@@ -304,6 +318,18 @@ def side_angle_from_map_angle(map_angle: float, robot_rotation_angle: float) -> 
     of the `map_angle`.
     """
     return cyclic_angle(map_angle - robot_rotation_angle)
+
+
+def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
+    if delta_angle_in_degree in [90, 0, -90]:
+        wall_blocking = 1 if wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
+    elif delta_angle_in_degree in [45, -45]:
+        wall_blocking = (
+            1
+            if wall_distance <= DIAGONAL_MAX_DIST_IF_WALL1
+            else (2 if wall_distance <= DIAGONAL_MAX_DIST_IF_WALL2 else -1)
+        )
+    return wall_blocking
 
 
 # TODO: decorator ou outra lógica para logar mudanças no mapa
@@ -928,7 +954,8 @@ class Motor(Device):
         slow_down_speed: float = SLOW_DOWN_SPEED,
         kp: float = KP,
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
-    ) -> MovementConsequence:
+        returning_to_safe_position: bool = False,
+    ) -> MovementResult:
         # TODO: diferenciar hole/parede de quando tá indo pra trás e para frente
         """
         Move the robot by certain distance in meters in some direction, using
@@ -945,14 +972,22 @@ class Motor(Device):
         :param kp: Intensity of robot rotation angle corrections.
         :param expected_wall_distance: The distance from the wall that the
                                        robot is going to try to maintain.
-        :return: If the robot was able to move. False if
+        :param returning_to_safe_position: If robot is returning to a safe
+            position is expected that it will recognize a hole or wall while
+            returning to last position and it is guaranteeded that the movement
+            is safe/allowed, so it doesn't stop with holes nor walls.
+        :return: What was the result of moving. For example, if it has moved or
+            there were a hole and it returned to its start position.
+        :raises WallColisionError: If the robot collides with a wall for some
+            reason, it will return to its position before this movement and
+            then raise this exception.
 
         OBS:
         - Moves at `high_speed`, until it lasts `slow_down_dist` to move, when
         it slows down to `slow_down_speed`. This approach is intended to make
         the movement quick in general, but with a good precision as it moves
         slower in the end of the movement.
-        - Holes are not detected when moving backward.
+        - Holes are not detected when moving backward.  TODO: solve this?
         """
         initial_position = gps.get_coordinates()
 
@@ -1017,7 +1052,10 @@ class Motor(Device):
 
                 break
 
-            if lidar.wall_collision("front" if direction == "forward" else "back"):
+            if (
+                lidar.wall_collision("front" if direction == "forward" else "back")
+                and not returning_to_safe_position
+            ):
                 self.stop()
                 self.move(
                     "backward" if direction == "forward" else "forward",
@@ -1030,6 +1068,7 @@ class Motor(Device):
                     slow_down_speed,
                     kp,
                     expected_wall_distance,
+                    returning_to_safe_position=True,
                 )
 
                 if os.getenv("DEBUG"):
@@ -1040,8 +1079,9 @@ class Motor(Device):
 
                 raise WallColisionError()
 
-            if color_sensor.has_hole():
+            if color_sensor.has_hole() and not returning_to_safe_position:
                 self.stop()
+                # TODO: check hole when moving backward, doesn't sensor is only on front side?
                 self.move(
                     "backward" if direction == "forward" else "forward",
                     gps,
@@ -1053,6 +1093,7 @@ class Motor(Device):
                     slow_down_speed,
                     kp,
                     expected_wall_distance,
+                    returning_to_safe_position=True,
                 )
 
                 if os.getenv("DEBUG"):
@@ -1061,8 +1102,8 @@ class Motor(Device):
                         System.lidar_wall_detection,
                     )
 
-                return MovementConsequence.hole
-        return MovementConsequence.moved
+                return MovementResult.hole
+        return MovementResult.moved
 
     @staticmethod
     def rotation_velocity_controller(
@@ -1195,24 +1236,13 @@ def dfs(
             System.dfs_verification,
         )
 
-        if delta_angle_in_degree in [90, 0, -90]:
-            left_wall_blocking = (
-                1 if left_wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
-            )
-            right_wall_blocking = (
-                1 if right_wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
-            )
-        elif delta_angle_in_degree in [45, -45]:
-            left_wall_blocking = (
-                1
-                if left_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL1
-                else (2 if left_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL2 else -1)
-            )
-            right_wall_blocking = (
-                1
-                if right_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL1
-                else (2 if right_wall_distance <= DIAGONAL_MAX_DIST_IF_WALL2 else -1)
-            )
+        left_wall_blocking = get_blocking_wall(
+            left_wall_distance, delta_angle_in_degree
+        )
+        right_wall_blocking = get_blocking_wall(
+            right_wall_distance, delta_angle_in_degree
+        )
+
         debug_info.send(
             f"Paredes detectadas: esquerda={left_wall_blocking} e direita={right_wall_blocking}",
             System.dfs_verification,
@@ -1249,11 +1279,23 @@ def dfs(
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
         motor.rotate_to_angle(movement_angle, imu)
-        motor.move("forward", gps, lidar, color_sensor, new_position_distance)
+        try:
+            movement_result = motor.move(
+                "forward", gps, lidar, color_sensor, new_position_distance
+            )  # TODO: checar se buraco é de um dos lados apenas
+            if movement_result == MovementResult.hole:
+                continue  # TODO: mapear e logar
+            elif MovementResult.moved:
+                pass
+            else:
+                continue  # TODO: Logar esse problema
+        except WallColisionError:
+            continue  # TODO: mapear e logar
 
         dfs(new_robot_position, map, all_robot_info, area)
 
         debug_info.send("Retornando do vizinho", System.dfs_decision)
+        motor.rotate_to_angle(movement_angle, imu)  # TODO: Is it correct?
         motor.move("backward", gps, lidar, color_sensor, new_position_distance)
 
         """
@@ -1262,7 +1304,10 @@ def dfs(
         Return from dfs the actual position so when needed, bfs is called to
         comeback
         First version: just comeback from the tile after calling another dfs
+        OBS: rotation angle may be totally different, take care of it
         """
+        # TODO: check holes and wall collision
+        # TODO: check error correction with PID
     debug_info.send(
         f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
         System.dfs_decision,
@@ -1291,19 +1336,13 @@ def main() -> None:
     if os.getenv("DEBUG"):
         logger.info(f"Começando nova execução: {datetime.now()}")
     try:
-        print(
-            [
-                e
-                for e in ALL_SYSTEMS
-                if str(e) not in [System.lidar_measures, System.lidar_general]
-            ]
-        )
         debug_info = DebugInfo(
-            [
+            systems_to_debug=[
                 e
                 for e in ALL_SYSTEMS
-                if e not in [System.lidar_measures, System.lidar_general]
-            ]
+                if str(e) not in [str(System.lidar_measures), str(System.lidar_general)]
+            ],
+            systems_to_ignore=[System.lidar_measures, System.lidar_general],
         )
     except Exception:
         if os.getenv("DEBUG"):
