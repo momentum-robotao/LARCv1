@@ -9,7 +9,7 @@ from typing import Any, Literal, Optional, Union
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-DEBUG = os.getenv("DEBUG", "").upper()[0] in ["T", "1"]
+DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
 
 PI = 3.14159265359
 DEGREE_IN_RAD = 0.0174533
@@ -1258,7 +1258,10 @@ class Robot:
             self.lidar.show_initialization_information()
         else:
             self.debug_info.send("Modo do robô: competição", System.initialization)
-        print("=====================================================\n")
+        self.debug_info.send(
+            "===================================================\n",
+            System.initialization,
+        )
 
     def step(self) -> Any:
         return self.webots_robot.step(self.time_step)
