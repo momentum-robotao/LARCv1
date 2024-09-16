@@ -847,18 +847,15 @@ class IMU(Device):
     @staticmethod
     def get_delta_rotation(ang: float, new_ang: float):
         """
-        Get delta of an angle.
+        Get delta between rotation angles from IMU (that ranges from 0 to 2PI).
 
         WARNING! The angle must have changed just a little, as this
         assumption is used to calculate the delta of the angle. It
         is recommended to the change corresponds to only a time_step rotation
         """
-        if new_ang * ang <= 0:
-            if round(ang) == 0:
-                return abs(ang) + abs(new_ang)
-            else:
-                return abs(abs(ang) - PI) + abs(abs(new_ang) - PI)
-        return abs(ang - new_ang)
+        if abs(new_ang - ang) <= PI:
+            return abs(new_ang - ang)
+        return min(ang, new_ang) + (2*PI - max(ang, new_ang))
 
 
 class ColorSensor(Device):
@@ -1577,6 +1574,8 @@ def main() -> None:
 
     # Solve map
     try:
+        # while robot.step() != -1:
+        #     print(robot.imu.get_rotation_angle())
         solve_map(robot, debug_info)
     except Exception:
         if DEBUG:
