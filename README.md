@@ -34,3 +34,8 @@ Talvez usar multi-threading ou multi-processing, pode ter main Thread que movime
 - https://www.youtube.com/watch?v=AZnGRKFUU0c
 - código do André se precisar
 - https://www.youtube.com/watch?v=GT10PnUFLlE
+
+## Glossário / convenções de nomes
+
+- `RobotQuadrant`: quadrante em relação ao robô, logo, considera a inclinação do robô. Por exemplo, a frente do robô virado para cima é diferente da frente do robô virado para baixo.
+- Robot Source/Position: é a origem do robô em quarter tiles. É o quarter tile de menor x e menor y que o robô está posicionado. Foi convencionado essa informação para representar de forma única e consistente(independente do seu ângulo de rotação) a posição dele.
