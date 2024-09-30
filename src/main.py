@@ -17,7 +17,7 @@ DEGREE_IN_RAD = 0.0174533
 SLOW_DOWN_SPEED = 0.1
 SLOW_DOWN_DIST = 0.001
 MAX_SPEED = 6.28
-KP = 50.0
+KP = 10.0
 TILE_SIZE = 0.12
 WALL_TICKNESS = 0.01
 ROBOT_RADIUS = 0.0355
@@ -40,7 +40,9 @@ HOLE_COLOR = b"...\xff"
 AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]
 Quadrant = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
-RobotQuadrant = Literal["front_left", "front_right", "back_left", "back_right"]
+RobotQuadrant = Literal[
+    "front_left", "front_right", "back_left", "back_right", "front_center"
+]
 Numeric = float | int
 
 CENTRAL_ANGLE_OF_SIDE: dict[Side, Numeric] = {
@@ -291,6 +293,13 @@ DEGREE_WALL_FROM_ROBOT_POSITION: dict[
         315: [(Coordinate(0, 1), "front"), (Coordinate(0, 2), "left")],
         360: [(Coordinate(1, 1), "front")],
     },
+    "front_center": {
+        0: [(Coordinate(0, 2), "right")],
+        90: [(Coordinate(2, 0), "front")],
+        180: [(Coordinate(0, -1), "right")],
+        270: [(Coordinate(-1, 0), "front")],
+        360: [(Coordinate(0, 2), "right")],
+    },
 }
 
 WALL_FROM_ROBOT_POSITION: dict[
@@ -331,13 +340,14 @@ DELTA_TO_QUADRANT: dict[Coordinate, Quadrant] = {
 }
 
 
+# TODO: rename RobotQuadrant as it has "front_center" now
 # TODO: merge with `coordinate_after_move` to get for example the most similar rotation angle
 def calculate_wall_position(
     robot_position: Coordinate,
     robot_quadrant: RobotQuadrant,
     angle: Numeric,
     wall_idx: int,
-    angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.05)),
+    angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2)),
 ) -> tuple[Coordinate, Side]:
     equivalent_rotation_angle = None
     equivalent_rotation_angle = round(angle, 2)
@@ -376,7 +386,7 @@ def calculate_wall_position(
 def coordinate_after_move(
     position: Coordinate,
     angle: Numeric,
-    angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.05)),
+    angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2)),
 ) -> Coordinate:
     angle = round(angle, 2)
     for target_angle in TARGET_COORDINATE:
@@ -435,6 +445,12 @@ def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
             else (1 if wall_distance <= DIAGONAL_MAX_DIST_IF_WALL2 else -1)
         )
     return wall_blocking
+
+
+def get_central_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
+    if delta_angle_in_degree not in [-90, 0, 90]:
+        return -1
+    return 0 if wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
 
 
 def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -855,7 +871,7 @@ class IMU(Device):
         """
         if abs(new_ang - ang) <= PI:
             return abs(new_ang - ang)
-        return min(ang, new_ang) + (2*PI - max(ang, new_ang))
+        return min(ang, new_ang) + (2 * PI - max(ang, new_ang))
 
 
 class ColorSensor(Device):
@@ -1364,6 +1380,22 @@ class Robot:
         return self.webots_robot.step(self.time_step)
 
 
+def adjust_wall_distance(
+    robot: Robot, angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2))
+) -> None:
+    # TODO: ensure that robot initial angle (that we use as reference to angle 0)
+    # is perpendicular to wall, otherwise multiples of 90 could not be the ones that
+    # indicate that we are perpendicular to the wall and 45 + 90*x could indicate it
+    # perpendicular_to_wall = False
+    # for rotation_angle_perpendicular_to_wall in [0, 90, 180, 270, 360]:
+    #     expected_angle = rotation_angle_perpendicular_to_wall * DEGREE_IN_RAD
+    #     if abs(robot.imu.get_rotation_angle() - expected_angle) <= angle_max_difference:
+    #         perpendicular_to_wall = True
+    # if not perpendicular_to_wall:
+    #     continue
+    return
+
+
 def dfs(
     position: Coordinate,
     maze: Maze,
@@ -1378,6 +1410,7 @@ def dfs(
     :return: The final position of the robot.
     """
     debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
+    adjust_wall_distance(robot)
 
     robot.step()
     start_angle = robot.imu.get_rotation_angle()
@@ -1387,7 +1420,7 @@ def dfs(
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [-90, 0, 90, -45, 45]:
+    for delta_angle_in_degree in [-90, 0, -90, 90, -45, 45]:
         delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
 
         movement_angle = cyclic_angle(start_angle + delta_angle)
@@ -1412,10 +1445,13 @@ def dfs(
 
         left_wall_distance = robot.lidar.get_side_distance(left_wall_angle)
         right_wall_distance = robot.lidar.get_side_distance(right_wall_angle)
+        central_wall_distance = robot.lidar.get_side_distance(
+            side_angle, field_of_view=DEGREE_IN_RAD * 20
+        )
 
         debug_info.send(
-            "Distância das paredes no caminho para essa nova posição: "
-            f"esquerda={left_wall_distance}m e direita={right_wall_distance}m",
+            f"Distância das paredes no caminho para essa nova posição: {left_wall_distance=}m, "
+            f"{right_wall_distance=}m e {central_wall_distance=}m",
             System.dfs_verification,
         )
 
@@ -1425,10 +1461,14 @@ def dfs(
         right_wall_blocking = get_blocking_wall(
             right_wall_distance, delta_angle_in_degree
         )
+        central_wall_blocking = get_central_blocking_wall(
+            central_wall_distance, delta_angle_in_degree
+        )
 
         # blocked? don't move and map these walls
         debug_info.send(
-            f"Paredes detectadas: esquerda={left_wall_blocking} e direita={right_wall_blocking}",
+            f"Paredes detectadas: {left_wall_blocking=}; {right_wall_blocking=} "
+            f"e {central_wall_blocking=}",
             System.dfs_verification,
         )
         if left_wall_blocking != -1:
@@ -1444,6 +1484,21 @@ def dfs(
         if left_wall_blocking != -1 or right_wall_blocking != -1:
             debug_info.send(
                 "Há paredes no caminho para o vizinho: não será visitado",
+                System.dfs_decision,
+            )
+            continue
+
+        if (
+            central_wall_blocking != -1
+            and right_wall_blocking == -1
+            and left_wall_blocking == -1
+        ):
+            quarter_tile, side = calculate_wall_position(
+                position, "front_center", movement_angle, central_wall_blocking
+            )
+            maze.add_wall(quarter_tile, side)
+            debug_info.send(
+                "Há parede central no caminho para o vizinho: não será visitado",
                 System.dfs_decision,
             )
             continue
