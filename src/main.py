@@ -17,7 +17,7 @@ DEGREE_IN_RAD = 0.0174533
 SLOW_DOWN_SPEED = 0.1
 SLOW_DOWN_DIST = 0.001
 MAX_SPEED = 6.28
-KP = 10.0
+KP = 1.0
 TILE_SIZE = 0.12
 WALL_TICKNESS = 0.01
 ROBOT_RADIUS = 0.0355
@@ -856,7 +856,13 @@ class IMU(Device):
                 System.initialization,
             )
 
-        rotation_angle = cyclic_angle(rotation_angle - self.start_rotation_angle)
+        # TODO: check if imu always increase rotating left or it shouldn't be inverted
+        # OBS: 2*PI - angle is used because it increases rotating left and other devices
+        # decrease in this direction, with this transformation, imu angle is indexed as
+        # other devices
+        rotation_angle = 2 * PI - cyclic_angle(
+            rotation_angle - self.start_rotation_angle
+        )
         if DEBUG:
             self.debug_info.send(
                 f"Ângulo do robô: {rotation_angle}", System.imu_measures
@@ -1423,7 +1429,7 @@ def dfs(
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [-90, 0, -90, 90, -45, 45]:
+    for delta_angle_in_degree in [0, -90, 90, -45, 45]:
         delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
 
         movement_angle = cyclic_angle(start_angle + delta_angle)
@@ -1591,19 +1597,19 @@ def main() -> None:
     if DEBUG:
         logger.info(f"Começando nova execução: {datetime.now()}")
     try:
-        debug_info = DebugInfo(
-            systems_to_debug=[
-                e for e in ALL_SYSTEMS if str(e) not in [str(System.lidar_measures)]
-            ],
-            systems_to_ignore=[System.lidar_measures],
-        )
-        # want = [System.maze_snapshot]
         # debug_info = DebugInfo(
-        #     systems_to_debug=want,
-        #     systems_to_ignore=[
-        #         e for e in ALL_SYSTEMS if str(e) not in [str(w) for w in want]
+        #     systems_to_debug=[
+        #         e for e in ALL_SYSTEMS if str(e) not in [str(System.lidar_measures)]
         #     ],
+        #     systems_to_ignore=[System.lidar_measures],
         # )
+        want = [System.dfs_state]
+        debug_info = DebugInfo(
+            systems_to_debug=want,
+            systems_to_ignore=[
+                e for e in ALL_SYSTEMS if str(e) not in [str(w) for w in want]
+            ],
+        )
     except Exception:
         if DEBUG:
             logger.error("Erro ao inicializar o debug info", exc_info=True)
