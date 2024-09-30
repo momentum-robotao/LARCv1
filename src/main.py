@@ -711,6 +711,7 @@ class Lidar(Device):
         self,
         side: Side | Numeric,
         field_of_view: float = 10 * DEGREE_IN_RAD,
+        remove_inf_measures: bool = True,
     ) -> float:
         """
         :param side: If it is a `Side`, the measures are centralized in
@@ -718,7 +719,7 @@ class Lidar(Device):
         centralized on this angle, that should be from [0;2*PI] (in rad).
 
         :return: The average distance from `field_of_view` centralized in
-        a side of the robot.
+        a side of the robot. Excluding INF values.
         """
         if isinstance(side, str):
             central_angle = CENTRAL_ANGLE_OF_SIDE[side]
@@ -731,6 +732,8 @@ class Lidar(Device):
         distances = self.get_distances_of_range(
             cyclic_angle(start_angle), cyclic_angle(end_angle)
         )
+        if min(distances) != float("inf") and remove_inf_measures:
+            distances = [dist for dist in distances if dist != float("inf")]
 
         average_distance = sum(distances) / len(distances)
 
@@ -1445,9 +1448,7 @@ def dfs(
 
         left_wall_distance = robot.lidar.get_side_distance(left_wall_angle)
         right_wall_distance = robot.lidar.get_side_distance(right_wall_angle)
-        central_wall_distance = robot.lidar.get_side_distance(
-            side_angle, field_of_view=DEGREE_IN_RAD * 20
-        )
+        central_wall_distance = robot.lidar.get_side_distance(side_angle)
 
         debug_info.send(
             f"Distância das paredes no caminho para essa nova posição: {left_wall_distance=}m, "
