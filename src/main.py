@@ -17,7 +17,7 @@ DEGREE_IN_RAD = 0.0174533
 SLOW_DOWN_SPEED = 0.1
 SLOW_DOWN_DIST = 0.001
 MAX_SPEED = 6.28
-KP = 1.0
+KP = 5.0
 TILE_SIZE = 0.12
 WALL_TICKNESS = 0.01
 ROBOT_RADIUS = 0.0355
@@ -107,6 +107,7 @@ class System(Enum):
     dfs_verification = "dfs verification"
     dfs_decision = "dfs decision"
     debug_info = "debug info"
+    maze_visited = "maze visited"
 
 
 ALL_SYSTEMS = [system for system in System]
@@ -509,7 +510,7 @@ class Maze:
             map_str += "\n"
         return map_str
 
-    def mark_quarter_tile(self, quarter_tile_pos: Coordinate) -> None:
+    def _mark_quarter_tile(self, quarter_tile_pos: Coordinate) -> None:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
 
         tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
@@ -518,14 +519,34 @@ class Maze:
             quarter_tile_quadrant(quarter_tile_pos), QuarterTile()
         )
 
+    def mark_visited(self, robot_position_quarter_tile: Coordinate) -> None:
+        # TODO: make sure robot always have this 4 quarter tiles deltas => não
+        # pode começar em posição que onde ele considera como +(0,1) por exemplo
+        # é um com esses deltas e outros se ele andar pra frente
+        for delta, _ in DELTA_TO_QUADRANT.items():
+            self._mark_quarter_tile(robot_position_quarter_tile + delta)
+
     def is_visited(self, quarter_tile_pos: Coordinate) -> bool:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
-        return quarter_tile_pos.y in self.objects.get(quarter_tile_pos.x, {})
+
+        tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
+        quadrant = quarter_tile_quadrant(quarter_tile_pos)
+        self.debug_info.send(
+            f"Checking if tile {tile_pos} is visited in {quadrant=}.",
+            System.maze_visited,
+        )
+        self.debug_info.send(f"Already visited in x={tile_pos.x}:", System.maze_visited)
+        for y, visited_tile in self.objects.get(tile_pos.x, {}).items():
+            self.debug_info.send(f" - {y=}: {visited_tile}", System.maze_visited)
+        return (
+            quadrant
+            in self.objects.get(tile_pos.x, {}).get(tile_pos.y, Tile()).quadrants
+        )
 
     @log_map_change
     def add_wall(self, quarter_tile_pos: Coordinate, side: Side) -> None:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
-        self.mark_quarter_tile(quarter_tile_pos)
+        self._mark_quarter_tile(quarter_tile_pos)
 
         tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
         self.objects[tile_pos.x][tile_pos.y].quadrants[
@@ -1420,6 +1441,7 @@ def dfs(
     """
     debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
     adjust_wall_distance(robot)
+    maze.mark_visited(position)
 
     robot.step()
     start_angle = robot.imu.get_rotation_angle()
@@ -1513,12 +1535,7 @@ def dfs(
         # visited? don't move
         if all(
             maze.is_visited(new_robot_position + delta)
-            for delta in [
-                Coordinate(0, 0),
-                Coordinate(0, 1),
-                Coordinate(1, 0),
-                Coordinate(1, 1),
-            ]
+            for delta in DELTA_TO_QUADRANT.keys()
         ):
             debug_info.send(
                 "Vizinho já foi visitado: não será visitado novamente",
@@ -1578,14 +1595,6 @@ def dfs(
 def solve_map(robot: Robot, debug_info: DebugInfo) -> None:
     maze = Maze(debug_info)
 
-    # TODO: map initial positions of robot as the start tile
-    """
-    Coordinate(0, 1),
-    Coordinate(1, 1),
-    Coordinate(0, 0),
-    Coordinate(1, 0),
-    """
-    ...
     position = Coordinate(0, 0)
     position = dfs(position, maze, robot, debug_info, area=1)
     # TODO: transition between maps
@@ -1603,7 +1612,12 @@ def main() -> None:
         #     ],
         #     systems_to_ignore=[System.lidar_measures],
         # )
-        want = [System.dfs_state]
+        want = [
+            System.dfs_state,
+            System.dfs_decision,
+            System.dfs_verification,
+            System.maze_visited,
+        ]
         debug_info = DebugInfo(
             systems_to_debug=want,
             systems_to_ignore=[
