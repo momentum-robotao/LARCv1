@@ -27,12 +27,15 @@ posicaoY_anterior = 0
 posicao_atual = (0, 0, 0)
 posicaoX_atual = 0
 posicaoY_atual = 0
-tamanho_mapa = 501
+tamanho_mapa = 51
 coordenada_centro_mapa = tamanho_mapa // 2
 n = 1
 k = 2
 direcao = ""
-tile = 5.85069
+dx = [1,0,2,0] # Frente, direita, trás e esquerda
+dy = [0,1,0,2]
+
+
 
 robot = Robot()
 motorEsquerdo = robot.getDevice("left motor")
@@ -96,12 +99,14 @@ victimType = bytes(
 )  # The victim type being sent is the letter 'H' for harmed victim
 
 # Definir o mapa (Nesse Caso eu fiz um mapa 201x201, o centro é o mapa[100][100])
-mapa = np.array([[-1] * tamanho_mapa for _ in range(tamanho_mapa)])
-mapa[coordenada_centro_mapa][coordenada_centro_mapa] = 2
+mapa = np.array([[[[-1] * 4 for _ in range(4)]] * tamanho_mapa for _ in range(tamanho_mapa)])
+mapa[coordenada_centro_mapa][coordenada_centro_mapa]= 2
 coordenada_linha_atual = coordenada_centro_mapa
 coordenada_coluna_atual = coordenada_centro_mapa
 deltaX = 0
 deltaY = 0
+
+
 
 
 def get_delta_rotation(ang, new_ang):
@@ -338,12 +343,13 @@ def valores_gps():
 def ajustar_distancia():
     # Ajusta a distância do robô para a parede
     rangeImage = lidar.getLayerRangeImage(0).copy()
-    if rangeImage[0] < 0.07:
-        falta = rangeImage[0]-0.07
-        mover_para_frente(falta)
-    elif rangeImage[0] < 0.12 and rangeImage[0] > 0.07:
-        falta = 0.07 - rangeImage[0]
-        mover_para_frente(falta)
+    if rangeImage[0] < 0.05531713366508484:
+        falta = 0.05531713366508484 - rangeImage[0]
+        print("Vou mover para tras com a falta de {}".format(falta))
+        mover_para_tras(falta)
+    # elif rangeImage[0] < 0.12 and rangeImage[0] > 0.07:
+    #     falta = 0.07 - rangeImage[0]
+    #     mover_para_frente(falta)
         
 
 
@@ -695,13 +701,9 @@ def mover_para_tras(dist):
         posicaoY_atual = posicao_atual[2]
 
         round_func = lambda x: (x if round(x, 2) != 0 else 0)
-        set_vel = lambda delta: (
-            maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
-        )
+        set_vel = lambda delta: (maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity)
 
-        tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-            abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
-        )
+        tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(abs(abs(posicaoY_atual) - abs(posicaoY_anterior)))
 
         motorEsquerdo.setVelocity(-set_vel(tot_delta))
         motorDireito.setVelocity(-set_vel(tot_delta))
@@ -723,10 +725,19 @@ def mover_para_frente(dist=tamanho_tile):
     posicaoX_anterior = posicao_atual[0]
     posicaoY_anterior = posicao_atual[2]
 
+    kp = 2.5
+
+    coordenada_linha_atual += -1 if dx[0] == 2 else dx[0]
+    coordenada_linha_atual += -1 if dy[0] == 2 else dy[0]
+
     while robot.step(timeStep) != -1:
         posicao_atual = gps.getValues()
         posicaoX_atual = posicao_atual[0]
         posicaoY_atual = posicao_atual[2]
+
+        rangeImage = lidar.getLayerRangeImage(0).copy()
+        error = rangeImage[384] - 0.055 if parede_esquerda(rangeImage) else 0.055 - rangeImage[128] if parede_direita(rangeImage) else 0
+        
 
         round_func = lambda x: (x if round(x, 2) != 0 else 0)
         set_vel = lambda delta: (
@@ -737,13 +748,15 @@ def mover_para_frente(dist=tamanho_tile):
             abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
         )
 
-        motorEsquerdo.setVelocity(set_vel(tot_delta))
-        motorDireito.setVelocity(set_vel(tot_delta))
+        potD = set_vel(tot_delta) + kp*error
+        potE = set_vel(tot_delta) - kp*error
+        motorEsquerdo.setVelocity(6.28 if potE > 6.28 else -6.28 if potE < -6.28 else potE)
+        motorDireito.setVelocity(6.28 if potD > 6.28 else -6.28 if potD < -6.28 else potD)
         #print(set_vel(tot_delta))
 
         # print(f"Deveria andar {dist} e andou {tot_delta}")
 
-        if tot_delta > dist:
+        if tot_delta > dist or rangeImage[0] < 0.043:
             parar()
             #print(f"A posição X atual é {posicaoX_atual}")
             #print(f"A posição Y atual é {posicaoY_atual}")
@@ -823,11 +836,23 @@ def virar_180(initial_angle=None):
 # Função para virar à esquerda por 90 graus
 def virar_esquerda(initial_angle=None):
     virar("left", 90)
+    aux = [dx[3], dy[3]]
+    for i in range(3):
+        dx[i+1] = dx[i]
+        dy[i+ 1] = dy[i]
+    dx[0] = aux[0]
+    dy[0] = aux[1]
 
 
 # Função para virar à direita por 90 graus
 def virar_direita(initial_angle=None):
     virar("right", 90)
+    aux = [dx[3], dy[3]]
+    for i in range(3):
+        dx[i] = dx[i+1]
+        dy[i] = dy[i+1]
+    dx[3] = aux[0]
+    dy[3] = aux[1]
 
 
 direcao = "direita"
@@ -857,108 +882,18 @@ def mudar_direcao():
         #print(direcao)
 
 
-def foi_visitado(dir, sentido):
-    if dir == "direita":
-        if (
-            sentido == "direita"
-            and mapa[coordenada_linha_atual + k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-        if (
-            sentido == "esquerda"
-            and mapa[coordenada_linha_atual - k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-        if (
-            sentido == "atras"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual - k] == 2
-        ):
-            return 1
-        if (
-            sentido == "frente"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual + k] == 2
-        ):
-            return 1
-
-    if dir == "esquerda":
-        if (
-            sentido == "direita"
-            and mapa[coordenada_linha_atual - k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-        if (
-            sentido == "esquerda"
-            and mapa[coordenada_linha_atual + k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-        if (
-            sentido == "atras"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual + k] == 2
-        ):
-            return 1
-        if (
-            sentido == "frente"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual - k] == 2
-        ):
-            return 1
-
-    if dir == "baixo":
-        if (
-            sentido == "direita"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual - k] == 2
-        ):
-            return 1
-        if (
-            sentido == "esquerda"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual + k] == 2
-        ):
-            return 1
-        if (
-            sentido == "atras"
-            and mapa[coordenada_linha_atual - k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-        if (
-            sentido == "frente"
-            and mapa[coordenada_linha_atual + k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-
-    if dir == "cima":
-        if (
-            sentido == "direita"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual + k] == 2
-        ):
-            return 1
-        if (
-            sentido == "esquerda"
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual - k] == 2
-        ):
-            return 1
-        if (
-            sentido == "atras"
-            and mapa[coordenada_linha_atual + k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-        if (
-            sentido == "frente"
-            and mapa[coordenada_linha_atual - k][coordenada_coluna_atual] == 2
-        ):
-            return 1
-    else:
-        #print(" A dir é {}".format(dir))
-       # print(" O sentido é {}".format(sentido))
-        return 0
-
-
 # Função para seguir a parede
 def seguir_parede():
     global direcao
-    print("direcao ", direcao)
+    # print("direcao ", direcao)
     rangeImage = lidar.getLayerRangeImage(0).copy()
+    print("Range Image [0] is {}".format(rangeImage[0]))
+    print("Range Image [384] is {}".format(rangeImage[384]))
+    print("Range Image [128] is {}".format(rangeImage[128]))
     if not parede_esquerda(rangeImage) and not foi_visitado(direcao, "esquerda"):
+
         # Se não há parede à esquerda, vire à esquerda e mova-se para frente
-        # print('esquerda livre,')
+        print('CASO ESQUERDA')
         encoder_antes()
         virar_esquerda(imu.getRollPitchYaw()[2])
         encoder_antes()
@@ -972,7 +907,7 @@ def seguir_parede():
         and not foi_visitado(direcao, "frente")
     ):
         # Se há parede à esquerda, mas não à frente, mova-se para frente
-        # print('esquerda ocupada, frente livre')
+        print('CASO FRENTE')
         encoder_antes()
         mover_para_frente()
         delay(5)
@@ -985,7 +920,7 @@ def seguir_parede():
         and not foi_visitado(direcao, "direita")
     ):
         # Se há parede à esquerda e à frente, vire à direita e mova-se para frente
-        # print('esquerda e frente ocupadas')
+        print('CASO DIREITA')
         encoder_antes()
         virar_direita()
         encoder_antes()
@@ -1000,6 +935,7 @@ def seguir_parede():
         and not foi_visitado(direcao, "atras")
     ):
         encoder_antes()
+        print("CASO BECO")
         virar_180()
         delay(5)
 
@@ -1360,101 +1296,20 @@ def seguir_parede():
         except Exception as erro:
             print(erro)
 
-def PID():
-    rangeImage = lidar.getLayerRangeImage(0).copy()
-    global erro_anterior
-    global soma_erros
-    Kp = 38.5
-    Ki = 0.4
-    Kd = 1.0
-    erro = rangeImage[1].getValue() - 0.07
-
-    proporcional = Kp * erro
-
-    parar()
-    """ 
-    reconhecer_vitima()
-    if tem_preto():
-        ajustar_preto() #se tiver preto na esq, ajusta o centro e reconhece
-        delay(200)
-    elif tem_vermelho():
-        ajustar_vermelho()
-        delay(200)
-    """
-
-    """ 
-    if tem_buraco():
-        andou = encoders.getValue() - initial_angle
-        mover_para_tras(1.0)
-        
-encoder_antes()
-        girar()
-        
-encoder_antes()
-        virar_direita()
-    """
-    if proporcional > 12.28:
-        proporcional = 12.28
-
-    if erro - erro_anterior > 0.2:
-        parar()
-        #print("desvio")
-        delay(20)
-        encoder_antes()
-        mover_para_frente(tamanho_tile / 3 * 2)
-        ajustar_distancia()
-        # reconhecer_vitima()
-        #print("frente")
-        # delay(20)
-        # seguir_parede()
-        # delay(20)
-
-    if erro > 0:
-        # subtrai do motor esq e mantem o direito
-        motorEsquerdo.setVelocity(maxVelocity - proporcional)
-        motorDireito.setVelocity(maxVelocity)
-
-        erro_anterior = erro
-        soma_erros += erro
-    else:
-        # subtrai do motor direito e mantem o esquerdo
-        motorEsquerdo.setVelocity(maxVelocity)
-        motorDireito.setVelocity(maxVelocity + proporcional)
-        erro_anterior = erro
-        soma_erros += erro
-
-    if parede_frente(rangeImage):
-        ajustar_distancia()
-        # delay(20)
-        # ajustar_distancia()
-        # seguir_parede()
-        # delay(20)
-       # print("parede a frente")
-
-
-"""    print(f'dist{rangeImage[0].getValue()}')
-    print(f'erro: {erro}')
-    print(f'proporcional: {proporcional}')"""
-
 
 # Mapeamento
 listas_vistos = []
-lista_tiles_marcados = [(coordenada_centro_mapa, coordenada_centro_mapa)]
-
+lista_tiles_marcados = np.array([[False] * tamanho_mapa for _ in range(tamanho_mapa)])
 
 def mapeamento():
     global posicao_atual, posicaoX_atual, posicaoY_atual
     global posicao_anterior, posicaoX_anterior, posicaoY_anterior
     global listas_vistos, lista_tiles_marcados
-    global deltaX, deltaY
     global coordenada_coluna_atual, coordenada_linha_atual
 
     posicao_atual = gps.getValues()
     posicaoX_atual = posicao_atual[0]
     posicaoY_atual = posicao_atual[2]
-
-    deltaX = posicaoX_atual - posicaoX_anterior
-    deltaY = posicaoY_atual - posicaoY_anterior
     
     rangeImage = lidar.getLayerRangeImage(0).copy()
     """
@@ -1465,359 +1320,33 @@ def mapeamento():
     3 -> Tile Visto
     -1 -> Tile Indefinido
     """
+    mapa[coordenada_linha_atual][coordenada_coluna_atual][dx[0]][dy[0]] = parede_frente(rangeImage)
+    mapa[coordenada_linha_atual][coordenada_coluna_atual][dx[1]][dy[1]] = parede_direita(rangeImage)
+    mapa[coordenada_linha_atual][coordenada_coluna_atual][dx[2]][dy[2]] = parede_tras(rangeImage)
+    mapa[coordenada_linha_atual][coordenada_coluna_atual][dx[3]][dy[3]] = parede_esquerda(rangeImage)
 
-    # Início
-    if round(deltaX, 2) == round(posicaoX_atual, 2) and round(deltaY, 2) == round(
-        posicaoY_atual, 2
-    ):
-        #print("Eu estou no início")
-        if not parede_frente(rangeImage):
-            mapa[coordenada_centro_mapa][coordenada_centro_mapa + n] = 0
-            mapa[coordenada_centro_mapa][coordenada_centro_mapa + k] = 3
-            listas_vistos.append((coordenada_centro_mapa, coordenada_centro_mapa + k))
-        else:
-            mapa[coordenada_centro_mapa][coordenada_centro_mapa + n] = 1
-
-        if not parede_esquerda(rangeImage):
-            mapa[coordenada_centro_mapa - n][coordenada_centro_mapa] = 0
-            mapa[coordenada_centro_mapa - k][coordenada_centro_mapa] = 3
-            listas_vistos.append((coordenada_centro_mapa - k, coordenada_centro_mapa))
-        else:
-            mapa[coordenada_centro_mapa - n][coordenada_centro_mapa] = 1
-
-        if not parede_direita(rangeImage):
-            mapa[coordenada_centro_mapa + n][coordenada_centro_mapa] = 0
-            mapa[coordenada_centro_mapa + k][coordenada_centro_mapa] = 3
-            listas_vistos.append((coordenada_centro_mapa + k, coordenada_centro_mapa))
-        else:
-            mapa[coordenada_centro_mapa + n][coordenada_centro_mapa] = 1
-
-        mapa[coordenada_centro_mapa][
-            coordenada_centro_mapa - n
-        ] = 1  # Assumindo que tenha uma parede atrás
-
-    # DeltaX positivo
-    if round(deltaX, 2) == 0.12 or round(deltaX, 2) == 0.11 or round(deltaX, 2) == 0.13:
-        #print("O Delta X é : {}".format(round(deltaX, 2)))
-        coordenada_coluna_atual = coordenada_coluna_atual + k
-        coordenada_linha_atual = coordenada_linha_atual
-
-        # Processo de Remover Tiles Visitados das lista de tiles vistos e marcando eles (adicionando na lista de tiles_marcados)
-        if (coordenada_linha_atual, coordenada_coluna_atual) in listas_vistos:
-            listas_vistos.pop(
-                listas_vistos.index((coordenada_linha_atual, coordenada_coluna_atual))
-            )
-            lista_tiles_marcados.append(
-                (coordenada_linha_atual, coordenada_coluna_atual)
-            )
-
-        # Trocar o estado do tile de visto para visitado
-        if mapa[coordenada_linha_atual][coordenada_coluna_atual] == 3:
-            mapa[coordenada_linha_atual][coordenada_coluna_atual] = 2
-
-        # Frente
-        if (
-            not parede_frente(rangeImage)
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual + k] != 2
-        ):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + n] = 0
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + k] = 3
-
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual, coordenada_coluna_atual + k)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual, coordenada_coluna_atual + k)
-                )
-        elif parede_frente(rangeImage):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + n] = 1
-
-        # Esquerda
-        if (
-            not parede_esquerda(rangeImage)
-            and mapa[coordenada_linha_atual - k][coordenada_coluna_atual] != 2
-        ):
-            mapa[coordenada_linha_atual - n][coordenada_coluna_atual] = 0
-            mapa[coordenada_linha_atual - k][coordenada_coluna_atual] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual - k, coordenada_coluna_atual)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual - k, coordenada_coluna_atual)
-                )
-
-        elif parede_esquerda(rangeImage):
-            mapa[coordenada_linha_atual - n][coordenada_coluna_atual] = 1
-
-        # Direita
-        if (
-            not parede_direita(rangeImage)
-            and mapa[coordenada_linha_atual + k][coordenada_coluna_atual] != 2
-        ):
-            mapa[coordenada_linha_atual + n][coordenada_coluna_atual] = 0
-            mapa[coordenada_linha_atual + k][coordenada_coluna_atual] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual + k, coordenada_coluna_atual)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual + k, coordenada_coluna_atual)
-                )
-        elif parede_direita(rangeImage):
-            mapa[coordenada_linha_atual + n][coordenada_coluna_atual] = 1
-
-    # DeltaX negativo
-    elif (
-        round(deltaX, 2) == -0.12
-        or round(deltaX, 2) == -0.11
-        or round(deltaX, 2) == -0.13
-    ):
-        #print("O Delta X é : {}".format(round(deltaX, 2)))
-        coordenada_coluna_atual = coordenada_coluna_atual - k
-        coordenada_linha_atual = coordenada_linha_atual
-
-        # Processo de Remover Tiles Visitados das lista de tiles vistos e marcando eles (adicionando na lista de tiles_marcados)
-        if (coordenada_linha_atual, coordenada_coluna_atual) in listas_vistos:
-            listas_vistos.pop(
-                listas_vistos.index((coordenada_linha_atual, coordenada_coluna_atual))
-            )
-            lista_tiles_marcados.append(
-                (coordenada_linha_atual, coordenada_coluna_atual)
-            )
-
-        # Trocar o estado do tile de visto para visitado
-        if mapa[coordenada_linha_atual][coordenada_coluna_atual] == 3:
-            mapa[coordenada_linha_atual][coordenada_coluna_atual] = 2
-
-        # Frente
-        if (
-            not parede_frente(rangeImage)
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual - k] != 2
-        ):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - n] = 0
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - k] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual, coordenada_coluna_atual - k)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual, coordenada_coluna_atual - k)
-                )
-        elif parede_frente(rangeImage):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - n] = 1
-
-        # Esquerda
-        if (
-            not parede_esquerda(rangeImage)
-            and mapa[coordenada_linha_atual + k][coordenada_coluna_atual] != 2
-        ):
-            mapa[coordenada_linha_atual + n][coordenada_coluna_atual] = 0
-            mapa[coordenada_linha_atual + k][coordenada_coluna_atual] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual + k, coordenada_coluna_atual)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual + k, coordenada_coluna_atual)
-                )
-        elif parede_esquerda(rangeImage):
-            mapa[coordenada_linha_atual + n][coordenada_coluna_atual] = 1
-
-        # Direita
-        if (
-            not parede_direita(rangeImage)
-            and mapa[coordenada_linha_atual - k][coordenada_coluna_atual] != 2
-        ):
-            mapa[coordenada_linha_atual - n][coordenada_coluna_atual] = 0
-            mapa[coordenada_linha_atual - k][coordenada_coluna_atual] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual - k, coordenada_coluna_atual)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual - k, coordenada_coluna_atual)
-                )
-        elif parede_direita(rangeImage):
-            mapa[coordenada_linha_atual - n][coordenada_coluna_atual] = 1
-
-    # DeltaY positivo
-    if round(deltaY, 2) == 0.12 or round(deltaY, 2) == 0.11 or round(deltaY, 2) == 0.13:
-        #print("O Delta Y é : {}".format(round(deltaY, 2)))
-        coordenada_linha_atual = coordenada_linha_atual + k
-        coordenada_coluna_atual = coordenada_coluna_atual
-        #print((coordenada_linha_atual, coordenada_coluna_atual))
-        # Processo de Remover Tiles Visitados das lista de tiles vistos e marcando eles (adicionando na lista de tiles_marcados)
-        if (coordenada_linha_atual, coordenada_coluna_atual) in listas_vistos:
-            listas_vistos.pop(
-                listas_vistos.index((coordenada_linha_atual, coordenada_coluna_atual))
-            )
-            lista_tiles_marcados.append(
-                (coordenada_linha_atual, coordenada_coluna_atual)
-            )
-
-        # Trocar o tile visto por visitado
-        if mapa[coordenada_linha_atual][coordenada_coluna_atual] == 3:
-            mapa[coordenada_linha_atual][coordenada_coluna_atual] = 2
-
-        # Frente
-        if (
-            not parede_frente(rangeImage)
-            and mapa[coordenada_linha_atual + k][coordenada_coluna_atual] != 2
-        ):
-            mapa[coordenada_linha_atual + n][coordenada_coluna_atual] = 0
-            mapa[coordenada_linha_atual + k][coordenada_coluna_atual] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual + k, coordenada_coluna_atual)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual + k, coordenada_coluna_atual)
-                )
-
-        elif parede_frente(rangeImage):
-            mapa[coordenada_linha_atual + n][coordenada_coluna_atual] = 1
-
-        # Direita
-        if (
-            not parede_direita(rangeImage)
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual - k] != 2
-        ):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - n] = 0
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - k] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual, coordenada_coluna_atual - k)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual, coordenada_coluna_atual - k)
-                )
-        elif parede_direita(rangeImage):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - n] = 1
-
-        # Esquerda
-        if (
-            not parede_esquerda(rangeImage)
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual + k] != 2
-        ):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + n] = 0
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + k] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual, coordenada_coluna_atual + k)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual, coordenada_coluna_atual + k)
-                )
-        elif parede_esquerda(rangeImage):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + n] = 1
-
-    # DeltaY negativo
-    elif (
-        round(deltaY, 2) == -0.12
-        or round(deltaY, 2) == -0.11
-        or round(deltaY, 2) == -0.13
-    ):
-        #print("O Delta Y é : {}".format(round(deltaY, 2)))
-        coordenada_linha_atual = coordenada_linha_atual - k
-        coordenada_coluna_atual = coordenada_coluna_atual
-
-        # Processo de Remover Tiles Visitados das lista de tiles vistos e marcando eles (adicionando na lista de tiles_marcados)
-        if (coordenada_linha_atual, coordenada_coluna_atual) in listas_vistos:
-            listas_vistos.pop(
-                listas_vistos.index((coordenada_linha_atual, coordenada_coluna_atual))
-            )
-            lista_tiles_marcados.append(
-                (coordenada_linha_atual, coordenada_coluna_atual)
-            )
-
-        # Trocando o tile visto por visitado
-        if mapa[coordenada_linha_atual][coordenada_coluna_atual] == 3:
-            mapa[coordenada_linha_atual][coordenada_coluna_atual] = 2
-
-        # Frente
-        if (
-            not parede_frente(rangeImage)
-            and mapa[coordenada_linha_atual - k][coordenada_coluna_atual] != 2
-        ):
-            mapa[coordenada_linha_atual - n][coordenada_coluna_atual] = 0
-            mapa[coordenada_linha_atual - k][coordenada_coluna_atual] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual - k, coordenada_coluna_atual)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual - k, coordenada_coluna_atual)
-                )
-        elif parede_frente(rangeImage):
-            mapa[coordenada_linha_atual - n][coordenada_coluna_atual] = 1
-
-        # Direita
-        if (
-            not parede_direita(rangeImage)
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual + k] != 2
-        ):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + n] = 0
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + k] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual, coordenada_coluna_atual + k)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual, coordenada_coluna_atual + k)
-                )
-        elif parede_direita(rangeImage):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual + n] = 1
-
-        # Esquerda
-        if (
-            not parede_esquerda(rangeImage)
-            and mapa[coordenada_linha_atual][coordenada_coluna_atual - k] != 2
-        ):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - n] = 0
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - k] = 3
-            # Processo de Adicionar o tile na lista de tiles vistos
-            if (
-                not (coordenada_linha_atual, coordenada_coluna_atual - k)
-                in lista_tiles_marcados
-            ):
-                listas_vistos.append(
-                    (coordenada_linha_atual, coordenada_coluna_atual - k)
-                )
-        elif parede_esquerda(rangeImage):
-            mapa[coordenada_linha_atual][coordenada_coluna_atual - n] = 1
-
-    """
-    #Robo nao se mexe no eixo Y
-    else :
-        print("O robo nao está andando no eixo Y. O Delta Y é : {}".format(round(deltaY,2)))
-
-    """
 
     posicao_anterior = posicao_atual
     posicaoX_anterior = posicaoX_atual
     posicaoY_anterior = posicaoY_atual
-    mudar_direcao()
 
+def printMap():
+    for i in range(tamanho_mapa):
+        for j in range(tamanho_mapa):
+            if coordenada_linha_atual == i and coordenada_coluna_atual == j: print ("X ", end="")
+            elif mapa[i][j] == 1 and (): print ("- ", end = "") 
+            elif mapa[i][j] != -1: print ("* ", end="")
+            print (f"{mapa[i][j]} ", end= "")
+        print ("\n", end="")
 
 while robot.step(timeStep) != -1:
+    printMap()
     seguir_parede()
     mapeamento()
-    ajustar_distancia()
-    # PID()
     parar()
+    ajustar_distancia()
+    parar()
+    delay(20)
     # reconhecer_vitima()
 
     # print("A lista de tiles vistos é : {}".format(listas_vistos))
