@@ -5,11 +5,21 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from functools import wraps
+from logging import LogRecord
 from typing import Any, Callable, Literal
 
 from controller import Robot as WebotsRobot  # type: ignore
 
 DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
+ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DEBUG
+
+if DEBUG:
+    import requests  # type: ignore
+
+    if ON_DOCKER:
+        NGROK_URL = ""
+        with open("./ngrok.txt", "r") as file:
+            NGROK_URL = file.readlines()[0]
 
 PI = 3.14159265359
 DEGREE_IN_RAD = 0.0174533
@@ -52,6 +62,16 @@ CENTRAL_ANGLE_OF_SIDE: dict[Side, Numeric] = {
     "left": 270,
 }
 
+
+class HttpHandler(logging.Handler):
+    def __init__(self, url: str):
+        self.url = url
+
+    def emit(self, record: LogRecord) -> None:
+        log_entry = self.format(record)
+        requests.post(self.url, json={"new_entry": log_entry})
+
+
 # Initialize logger
 try:
     log_dir = os.path.dirname(os.getenv("LOG_PATH", ""))
@@ -63,6 +83,17 @@ try:
     )
     logger = logging.getLogger("Robo LARC v1")
     logger.info(f"Criado log com sucesso em: {os.getenv('LOG_PATH')}")
+    if ON_DOCKER:
+        print(f"Url do ngrok recuperada: {NGROK_URL}")
+
+        requests.json(f"{NGROK_URL}/start_simulation")
+
+        http_handler = HttpHandler(f"{NGROK_URL}/send")
+        http_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter("%(levelname)s %(message)s")
+        http_handler.setFormatter(formatter)
+        logger.addHandler(http_handler)
+
 except Exception:
     if DEBUG:
         logging.error("Erro ao inicializar o logger", exc_info=True)
@@ -1605,6 +1636,8 @@ def main() -> None:
     # Initialize DebugInfo instance
     if DEBUG:
         logger.info(f"Começando nova execução: {datetime.now()}")
+        requests.post()
+
     try:
         # debug_info = DebugInfo(
         #     systems_to_debug=[
