@@ -1,21 +1,27 @@
+import os
+from datetime import datetime
+
 import ngrok
 from flask import Flask, request
 
 app = Flask(__name__)
 
 PORT = 5555
+LOG_PATH = os.getenv("LOG_PATH", "./.logs/log.txt")
 
 
 @app.route("/start_simulation", methods=["POST"])
 def start_simulation():
-    print("Starting simulation")
-
+    print("Starting new simulation")
+    with open(LOG_PATH, "w+") as file:
+        file.write(f"Nova execução, apagando dados... {datetime.now()}\n")
     return "ok"
 
 
 @app.route("/send", methods=["POST"])
 def send_data():
-    print("Received", request.json)
+    with open(LOG_PATH, "a+") as file:
+        file.write(request.json["new_entries"])
     return "ok"
 
 

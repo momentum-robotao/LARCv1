@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -13,13 +14,12 @@ from controller import Robot as WebotsRobot  # type: ignore
 DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
 ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DEBUG
 
-if DEBUG:
+if ON_DOCKER:
     import requests  # type: ignore
 
-    if ON_DOCKER:
-        NGROK_URL = ""
-        with open("./ngrok.txt", "r") as file:
-            NGROK_URL = file.readlines()[0]
+    NGROK_URL = ""
+    with open("./ngrok.txt", "r") as file:
+        NGROK_URL = file.readlines()[0]
 
 PI = 3.14159265359
 DEGREE_IN_RAD = 0.0174533
@@ -64,12 +64,32 @@ CENTRAL_ANGLE_OF_SIDE: dict[Side, Numeric] = {
 
 
 class HttpHandler(logging.Handler):
-    def __init__(self, url: str):
+    def __init__(
+        self,
+        url: str,
+        entries_between_sends: int = int(os.getenv("ENTRIES_BETWEEN_SENDS", "30")),
+    ):
         self.url = url
+        logging.Handler.__init__(self=self)
+        self.log_queue = ""
+        self.log_counter = 0
+        self.entries_between_sends = entries_between_sends
+
+    def send_queue_data(self):
+        response = requests.post(self.url, json={"new_entries": self.log_queue})
+        if response.text != "ok":
+            print(
+                f"Erro na requisição ao logger: {response.text}. Status code: {response.status_code}"
+            )
+            time.sleep(60)
+            self.send_queue_data()
+        self.log_queue = ""
 
     def emit(self, record: LogRecord) -> None:
-        log_entry = self.format(record)
-        requests.post(self.url, json={"new_entry": log_entry})
+        self.log_queue += f"{self.format(record)}\n"
+        self.log_counter += 1
+        if self.log_counter % self.entries_between_sends == 0:
+            self.send_queue_data()
 
 
 # Initialize logger
@@ -86,13 +106,15 @@ try:
     if ON_DOCKER:
         print(f"Url do ngrok recuperada: {NGROK_URL}")
 
-        requests.json(f"{NGROK_URL}/start_simulation")
+        requests.post(f"{NGROK_URL}/start_simulation")
 
         http_handler = HttpHandler(f"{NGROK_URL}/send")
         http_handler.setLevel(logging.DEBUG)
         formatter = logging.Formatter("%(levelname)s %(message)s")
         http_handler.setFormatter(formatter)
         logger.addHandler(http_handler)
+
+        print("Adicionado handler com ngrok")
 
 except Exception:
     if DEBUG:
@@ -1636,7 +1658,6 @@ def main() -> None:
     # Initialize DebugInfo instance
     if DEBUG:
         logger.info(f"Começando nova execução: {datetime.now()}")
-        requests.post()
 
     try:
         # debug_info = DebugInfo(
@@ -1650,6 +1671,7 @@ def main() -> None:
             System.dfs_decision,
             System.dfs_verification,
             System.maze_visited,
+            System.unknown_error,
         ]
         debug_info = DebugInfo(
             systems_to_debug=want,
@@ -1696,4 +1718,9 @@ def main() -> None:
             raise
 
 
-main()
+try:
+    main()
+except Exception:
+    pass
+if ON_DOCKER:
+    http_handler.send_queue_data()
