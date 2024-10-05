@@ -12,9 +12,10 @@ COPY ./src/ .
 COPY ./venv/lib64/python3.12/site-packages/ .
 
 # Set env vars
-ENV DEBUG=True
 ENV LOG_PATH=/usr/local/controller/.logs/robo.log
 ENV TIME_STEP=32
+# IMPORTANT! Remove these DEBUG env vars during competition
+ENV DEBUG=True
 ENV ON_DOCKER=True
 ENV ENTRIES_BETWEEN_SENDS=50
 COPY ./ngrok.txt ./ngrok.txt
