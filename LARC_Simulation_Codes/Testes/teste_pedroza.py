@@ -97,27 +97,6 @@ def get_mapa(lidar, gps, imu):
     contador_imagem +=1
     return np.array(x),np.array(y)
 
-def achar_node():
-    x = []
-    y = []
-    ori = get_orientation(imu)
-    soma  = 0
-    if ori == 'north' :
-        soma = -90
-    elif ori == 'east':
-        soma = 0
-    elif ori == 'south':
-        soma = 90
-    elif ori == 'west':
-        soma = 180
-    temp = 0
-    for i in range(180):
-        if (get_distance(i,lidar) > (1.5)*0.12):
-            temp += 1
-        else:
-            x.append(get_distance(i,lidar)*math.cos((soma + i)*np.pi/180) + get_posicao_atual(gps)[0])
-            y.append(get_distance(i,lidar)*math.sin((soma + i)*np.pi/180) + get_posicao_atual(gps)[1])
-
 
 def parar():
     sleep(0.1)

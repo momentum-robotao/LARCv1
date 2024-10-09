@@ -2,7 +2,7 @@ from controller import Robot, Lidar # Step 1: Import Lidar
 import numpy as np
 from time import sleep
 import matplotlib.pyplot as plt
-import math
+
 
 IMU_THRESHOLD=np.pi/6
 
@@ -19,7 +19,7 @@ motorEsquerdo.setVelocity(0.0)
 motorDireito.setVelocity(0.0)
 encoders.enable(timestep)
 
-radius = 0.071/2
+radius = (0.071/2) 
 
 imu = robot.getDevice("inertial_unit")
 imu.enable(timestep)
@@ -31,9 +31,14 @@ gps = robot.getDevice("gps")
 gps.enable(timestep)
 
 contador_imagem = 0
+contador_imagem1 = 0
 
 x_total = []
 y_total = []
+
+def radians(degrees: int)->float:
+    return degrees*(np.pi/180)
+
 
 def get_distance(angle, lidar) -> float:
     rangeImage = lidar.getRangeImage() # Step 4: Retrieve the range image
@@ -58,13 +63,78 @@ def get_posicao_atual(gps):
         return [posicaoX_atual, posicaoY_atual]
 
 def get_orientation(imu):
-    orientation = {'north' : 0, 'east' : round(-math.pi/2,1), 'south' : round(-math.pi,1), 'west': round(math.pi/2,1)}
+    orientation = {'north' : 0, 'east' : round(-np.pi/2,1), 'south' : round(-np.pi,1), 'west': round(np.pi/2,1)}
     for key in orientation : 
         imu_value = imu.getRollPitchYaw()[2]
         if round(imu_value + IMU_THRESHOLD, 5) > orientation[key] and round(imu_value - IMU_THRESHOLD, 5) < orientation[key] : 
+            print(f"ori: {key}")
             return key
         pass
-    print(f"imu_value: {imu_value}")
+
+def conferir_circulo(centro: list, ponto: list, raio: float) -> bool:
+    """
+    confere se o ponto está dentro da circunferencia de centro e raio especificado
+    """
+    if pow(ponto[0] - centro[0], 2) + pow(ponto[1] - centro[1], 2) < pow(raio,2): return True
+    return False
+
+def achar_node(gps,imu, x , y):
+    global contador_imagem1
+    ori = get_orientation(imu)
+    P =  get_posicao_atual(gps)
+    nodeX = []
+    nodeY = []
+    d = 0.04
+    soma  = 0
+    if ori == 'north':
+        soma = -90
+    elif ori == 'east':
+        soma = 0
+    elif ori == 'south':
+        soma = 90
+    elif ori == 'west':
+        soma = 180
+
+    fig_nodes, ax_nodes = plt.subplots()
+    for i in range(70): # Tomar cuidado com o intervalo dos angulos da "frente"
+        if(x[i] == P[0] or y[i] == P[1]):
+            continue
+        Xl = x[i] + d*np.sin(radians(i))*np.sin(radians(soma)) - d*np.cos(radians(i))*np.cos(radians(soma))
+        Yl = y[i] - d*np.cos(radians(i))*np.sin(radians(soma)) - d*np.sin(radians(i))*np.cos(radians(soma))
+        condicao = False
+        for j in range(360):
+            if conferir_circulo([Xl, Yl], [x[j], y[j]], radius):
+                condicao = True
+                break
+        if not condicao: 
+            print(f"tentativa par vertice: {[Xl, Yl]}, ponto dentro: {[x[j], y[j]]}, angle {i}, x[{i}] = {x[i]}, y[{i} = {y[i]}]")
+            nodeX.append(Xl)
+            nodeY.append(Yl)
+            ax_nodes.yaxis.set_inverted(True)
+            ax_nodes.plot()
+    for i in range(340, 270, -1):
+        if(x[i] == P[0] or y[i] == P[1]):
+            continue
+        theta = 360 - i
+        Xl = x[i] + d*np.sin(radians(theta))*np.sin(radians(soma)) + d*np.cos(radians(theta))*np.cos(radians(soma))
+        Yl = y[i] - d*np.cos(radians(theta))*np.sin(radians(soma)) + d*np.sin(radians(theta))*np.cos(radians(soma))
+        condicao = False
+        for j in range(360):
+            if conferir_circulo([Xl, Yl], [x[j], y[j]], radius):
+                condicao = True
+                break
+        if not condicao: 
+            print(f"tentativa par vertice: {[Xl, Yl]}, ponto dentro: {[x[j], y[j]]}, angle {i}, x[{i}] = {x[i]}, y[{i} = {y[i]}]")
+            nodeX.append(Xl)
+            nodeY.append(Yl)
+            ax_nodes.yaxis.set_inverted(True)
+            ax_nodes.plot()
+
+    print (f"list size {len(nodeX)} and {len(nodeY)}")
+    ax_nodes.scatter(nodeX, nodeY)
+    fig_nodes.savefig(f"C:\\Users\\goten\\Desktop\\LARCv1\\LARC_Simulation_Codes\\images\\nodes_{contador_imagem1}.png")
+    plt.close(fig_nodes)
+    contador_imagem1 +=1
 
 def get_mapa(lidar, gps, imu):
     global contador_imagem
@@ -82,102 +152,24 @@ def get_mapa(lidar, gps, imu):
         soma = 180
     temp = 0
     for i in range(360):
-        if (get_distance(i,lidar) > (1.5)*0.12):
-            temp += 1
+        if (get_distance(i,lidar) > (1.3)*0.12):
+            x.append(get_posicao_atual(gps)[0])
+            y.append(get_posicao_atual(gps)[1])
         else:
-            x.append(get_distance(i,lidar)*math.cos((soma + i)*np.pi/180) + get_posicao_atual(gps)[0])
-            y.append(get_distance(i,lidar)*math.sin((soma + i)*np.pi/180) + get_posicao_atual(gps)[1])
-    for u in range(temp):
-        x.append(x[0])
-        y.append(y[0])
+            x.append(get_distance(i,lidar)*np.cos((soma + i)*np.pi/180) + get_posicao_atual(gps)[0])
+            y.append(get_distance(i,lidar)*np.sin((soma + i)*np.pi/180) + get_posicao_atual(gps)[1])
+
     fig, ax = plt.subplots()
     ax.yaxis.set_inverted(True)
     ax.scatter(x, y)
     ax.plot(get_posicao_atual(gps)[0], get_posicao_atual(gps)[1], 'x')
-    achar_node(lidar, gps, imu)
     fig.savefig(f"C:\\Users\\goten\\Desktop\\LARCv1\\LARC_Simulation_Codes\\images\\mapa_{contador_imagem}.png")
     plt.close(fig)
     contador_imagem +=1
     return np.array(x),np.array(y)
 
-def conferir_circulo(point1, point2):
-    if ((point1 >= point2 - radius) and (point1<= point2+radius)) : 
-        return True
+
     
-def achar_node(lidar,gps,imu):
-    ori = get_orientation(imu)
-    get_posicao_atual(gps)
-    Xi = get_posicao_atual(gps)[0]
-    Yi = get_posicao_atual(gps)[1]
-    d = 0.04
-    x, y = get_mapa(lidar,gps,imu)
-    soma  = 0
-    if ori == 'north' :
-        soma = -90
-    elif ori == 'east':
-        soma = 0
-    elif ori == 'south':
-        soma = 90
-    elif ori == 'west':
-        soma = 180
-     
-    # Sempre pensar em posições
-    #Fazer as Bolas
-    for i in range(180): # Tomar cuidado com o intervalo dos angulos da "frente"
-        if(ori == 'north'):
-            while((Yi - d*math.sin((soma+i))*np.pi/180) > y[i]):
-                if(conferir_circulo(Yi - d*math.sin((soma+i))*np.pi/180, y[i])) or (conferir_circulo(Xi - d*math.cos((soma+i))*np.pi/180, x[i])):
-                    d -= 0.04
-                    fig, ax = plt.subplots()
-                    circle = plt.Circle((Xi - d*math.cos((soma+i))*np.pi/180 , Yi - d*math.sin((soma+i))*np.pi/180), radius, fill = False)
-                    ax.add_patch(circle)
-                    ax.set_aspect('equal')
-                    plt.show()
-                    plt.close(fig)
-                    break
-                else:
-                    d += 0.04
-        elif(ori == 'south') : 
-            while((Yi + d*math.sin((soma+i))*np.pi/180) < y[i]):
-                if(conferir_circulo(Yi + d*math.sin((soma+i))*np.pi/180, y[i])) or (conferir_circulo(Xi + d*math.cos((soma+i))*np.pi/180, x[i])):
-                    d -= 0.04
-                    fig, ax = plt.subplots()
-                    circle = plt.Circle((Xi + d*math.cos((soma+i))*np.pi/180, Yi + d*math.sin((soma+i))*np.pi/180), radius, fill = False)
-                    ax.set_aspect('equal')
-                    ax.add_patch(circle)
-                    plt.show()
-                    plt.close(fig)
-                    break
-                else:
-                    d += 0.04
-        elif(ori == 'east'):
-            while((Xi + d*math.cos((soma+i))*np.pi/180) < x[i]):
-                if(conferir_circulo(Yi + d*math.sin((soma+i))*np.pi/180, y[i])) or (conferir_circulo(Xi + d*math.cos((soma+i))*np.pi/180, x[i])):
-                    d -= 0.04
-                    fig, ax = plt.subplots()
-                    circle = plt.Circle((Xi + d*math.cos((soma+i))*np.pi/180, Yi + d*math.sin((soma+i))*np.pi/180), radius, fill = False)
-                    ax.set_aspect('equal')
-                    ax.add_patch(circle)
-                    plt.show()
-                    plt.close(fig)
-                    break
-                else:
-                    d += 0.04
-        elif(ori == 'west'):
-            while((Xi - d*math.cos((soma+i))*np.pi/180) > x[i]):
-                if(conferir_circulo(Yi - d*math.sin((soma+i))*np.pi/180, y[i])) or (conferir_circulo(Xi - d*math.cos((soma+i))*np.pi/180, x[i])):
-                    d -= 0.04
-                    fig, ax = plt.subplots()
-                    circle = plt.Circle((Xi - d*math.cos((soma+i))*np.pi/180, Yi - d*math.sin((soma+i))*np.pi/180), radius, fill = False)
-                    ax.set_aspect('equal')
-                    ax.add_patch(circle)
-                    plt.show()
-                    plt.close(fig)
-                    break
-                else:
-                    d += 0.04
-
-
 def parar():
     sleep(0.1)
     motorEsquerdo.setVelocity(0.0)
@@ -189,7 +181,7 @@ def get_delta_rotation(ang, new_ang):
         if round(ang) == 0:
             return abs(ang) + abs(new_ang)
         else:
-            return abs(abs(ang) - math.pi) + abs(abs(new_ang) - math.pi)
+            return abs(abs(ang) - np.pi) + abs(abs(new_ang) - np.pi)
     return max(ang, new_ang) - min(ang, new_ang)
 
 def virar(direcao, degrees):
@@ -197,7 +189,7 @@ def virar(direcao, degrees):
     :param: direcao: should be 'left' or 'right'
     """
     parar()
-    robot_to_turn_rad = (degrees / 180) * math.pi
+    robot_to_turn_rad = (degrees / 180) * np.pi
 
     # print(f"======== Começando girada de {degrees}° e {robot_to_turn_rad} rad ========")
 
@@ -372,6 +364,7 @@ def seguir_parede():
 while robot.step(timestep) != -1:
     
     x, y = get_mapa(lidar,gps,imu)
+    achar_node(gps,imu, x, y)
     #print([len(x), len(y)])
     x_total.append(x)
     y_total.append(y)
