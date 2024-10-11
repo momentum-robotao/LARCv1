@@ -361,6 +361,8 @@ while robot.step(timestep) != -1:
     x, y = get_mapa(lidar,gps,imu)
     Xl, Yl = achar_node(gps,imu, x, y)
 
+    # Só juntei os nodes com o mapa total
+    '''
     fig1, ax1 = plt.subplots()
     for element in x:
         Xl.append(element)
@@ -376,7 +378,7 @@ while robot.step(timestep) != -1:
     x_total.append(x)
     y_total.append(y)
     seguir_parede()
-
+    '''
 
     delay(100)
     #ajustar_distancia()
