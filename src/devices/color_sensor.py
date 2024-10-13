@@ -1,5 +1,7 @@
 import os
 
+from controller import Robot as WebotsRobot  # type: ignore
+
 from debugging import DebugInfo, System
 from types_and_constants import DEBUG, HOLE_COLOR, RGB
 
@@ -9,7 +11,7 @@ from .device import Device
 class ColorSensor(Device):
     def __init__(
         self,
-        robot,
+        robot: WebotsRobot,
         debug_info: DebugInfo,
         color_sensor_name: str = "colour_sensor",
         time_step: int = int(os.getenv("TIME_STEP", 32)),

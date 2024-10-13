@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from controller import Robot as WebotsRobot  # type: ignore
+
 from debugging import DebugInfo
 
 
@@ -11,5 +13,7 @@ class Device(ABC):
     """
 
     @abstractmethod
-    def __init__(self, robot, debug_info: DebugInfo, *args, **kwargs) -> None:
+    def __init__(
+        self, robot: WebotsRobot, debug_info: DebugInfo, *args, **kwargs
+    ) -> None:
         pass

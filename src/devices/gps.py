@@ -1,5 +1,7 @@
 import os
 
+from controller import Robot as WebotsRobot  # type: ignore
+
 from debugging import DebugInfo, System
 from types_and_constants import DEBUG, Coordinate
 
@@ -9,7 +11,7 @@ from .device import Device
 class GPS(Device):
     def __init__(
         self,
-        robot,
+        robot: WebotsRobot,
         debug_info: DebugInfo,
         gps_name: str = "gps",
         time_step: int = int(os.getenv("TIME_STEP", 32)),

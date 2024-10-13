@@ -1,6 +1,8 @@
 import os
 from typing import Literal
 
+from controller import Robot as WebotsRobot  # type: ignore
+
 from debugging import DebugInfo, System
 from helpers import cyclic_angle, round_if_almost_0
 from types_and_constants import (
@@ -28,7 +30,7 @@ from .lidar import Lidar
 class Motor(Device):
     def __init__(
         self,
-        robot,
+        robot: WebotsRobot,
         debug_info: DebugInfo,
         left_motor_name: str = "left motor",
         right_motor_name: str = "right motor",

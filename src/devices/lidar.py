@@ -1,6 +1,8 @@
 import os
 from typing import Literal
 
+from controller import Robot as WebotsRobot  # type: ignore
+
 from debugging import DebugInfo, System
 from helpers import cyclic_angle
 from types_and_constants import (
@@ -22,7 +24,7 @@ from .device import Device
 class Lidar(Device):
     def __init__(
         self,
-        robot,
+        robot: WebotsRobot,
         debug_info: DebugInfo,
         lidar_name: str = "lidar",
         time_step: int = int(os.getenv("TIME_STEP", 32)),

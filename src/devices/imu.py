@@ -1,5 +1,7 @@
 import os
 
+from controller import Robot as WebotsRobot  # type: ignore
+
 from debugging import DebugInfo, System
 from helpers import cyclic_angle
 from types_and_constants import DEBUG, PI
@@ -10,7 +12,7 @@ from .device import Device
 class IMU(Device):
     def __init__(
         self,
-        robot,
+        robot: WebotsRobot,
         debug_info: DebugInfo,
         imu_name: str = "inertial_unit",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
