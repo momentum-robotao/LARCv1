@@ -1,6 +1,8 @@
 import logging
 import os
 
+from controller import Robot as WebotsRobot  # type: ignore
+
 from debugging import DebugInfo, System
 from types_and_constants import (
     DEBUG,
@@ -20,7 +22,7 @@ from types_and_constants import (
 
 
 def delay(
-    robot,
+    robot: WebotsRobot,
     debug_info: DebugInfo,
     time_ms: Numeric,
     time_step: int = int(os.getenv("TIME_STEP", 32)),
