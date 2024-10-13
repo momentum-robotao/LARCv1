@@ -17,7 +17,7 @@ ENV TIME_STEP=32
 # IMPORTANT! Remove these DEBUG env vars during competition
 ENV DEBUG=True
 ENV ON_DOCKER=True
-ENV ENTRIES_BETWEEN_SENDS=50
+ENV ENTRIES_BETWEEN_SENDS=100
 COPY ./ngrok.txt ./ngrok.txt
 
 # Run controller (using extern controller helper)

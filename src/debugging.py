@@ -70,7 +70,8 @@ class DebugInfo:
             )
         else:
             getattr(self.logger, level)(f"{system_being_debugged} => {message}")
-        print(f"{level.upper()} {system_being_debugged} => {message}")
+        # TODO: entender porque o robô estava travando com esse print
+        # print(f"{level.upper()} {system_being_debugged} => {message}")
 
 
 if ON_DOCKER:
