@@ -53,20 +53,21 @@ class Lidar(Device):
         return angle
 
     def show_initialization_information(self) -> None:
-        self.debug_info.send("\nSobre o LIDAR", System.initialization)
-        self.debug_info.send(
-            f"\tA distância percebida é [{self.min_range};{self.max_range}]",
-            System.initialization,
-        )
-        self.debug_info.send(
-            f"\tHá {self.horizontal_resolution} medições na horizontal "
-            f"e {self.number_of_layers} layers na vertical",
-            System.initialization,
-        )
-        self.debug_info.send(
-            f"\tO FOV, entre 0 e 2*PI é: {self.field_of_view}",
-            System.initialization,
-        )
+        if DEBUG:
+            self.debug_info.send("\nSobre o LIDAR", System.initialization)
+            self.debug_info.send(
+                f"\tA distância percebida é [{self.min_range};{self.max_range}]",
+                System.initialization,
+            )
+            self.debug_info.send(
+                f"\tHá {self.horizontal_resolution} medições na horizontal "
+                f"e {self.number_of_layers} layers na vertical",
+                System.initialization,
+            )
+            self.debug_info.send(
+                f"\tO FOV, entre 0 e 2*PI é: {self.field_of_view}",
+                System.initialization,
+            )
 
     def get_distances(self) -> list[float]:
         """

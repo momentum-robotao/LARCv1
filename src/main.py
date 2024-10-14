@@ -5,7 +5,7 @@ from datetime import datetime
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
-from devices import GPS, IMU, ColorSensor, Lidar, Motor
+from devices import GPS, IMU, ColorSensor, Communicator, Lidar, Motor
 from dfs import dfs
 from maze import Maze
 from robot import Robot
@@ -66,12 +66,14 @@ def main() -> None:
         #     systems_to_ignore=[System.lidar_measures],
         # )
         want = [
-            System.dfs_state,
-            System.dfs_decision,
-            System.dfs_verification,
-            System.maze_visited,
+            # System.dfs_state,
+            # System.dfs_decision,
+            # System.dfs_verification,
+            # System.maze_visited,
             System.unknown_error,
+            System.maze_snapshot,
         ]
+        want = ALL_SYSTEMS
         debug_info = DebugInfo(
             logger,
             systems_to_debug=want,
@@ -94,8 +96,19 @@ def main() -> None:
         gps = GPS(webots_robot, debug_info)
         imu = IMU(webots_robot, debug_info)
         color_sensor = ColorSensor(webots_robot, debug_info)
+        communicator = Communicator(webots_robot, debug_info)
+    except Exception:
+        if DEBUG:
+            debug_info.send(
+                "Erro durante inicialização dos devices", System.initialization, "error"
+            )
+            raise
 
-        robot = Robot(webots_robot, motor, lidar, gps, imu, color_sensor, debug_info)
+    try:
+        robot = Robot(
+            webots_robot, motor, lidar, gps, imu, color_sensor, communicator, debug_info
+        )
+        robot.step()
     except Exception:
         if DEBUG:
             debug_info.send(
@@ -105,9 +118,9 @@ def main() -> None:
 
     # Solve map
     try:
-        # while robot.step() != -1:
-        #     print(robot.imu.get_rotation_angle())
-        solve_map(robot, debug_info)
+        # solve_map(robot, debug_info)
+        print(robot.communicator.get_game_information())
+        robot.communicator.send_end_of_play()
     except Exception:
         if DEBUG:
             debug_info.send(

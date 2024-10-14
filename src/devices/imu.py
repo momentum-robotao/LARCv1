@@ -29,10 +29,11 @@ class IMU(Device):
         rotation_angle = self._imu.getRollPitchYaw()[2]
         if self.start_rotation_angle is None:
             self.start_rotation_angle = rotation_angle
-            self.debug_info.send(
-                f"Ângulo de rotação inicial do robô, que virará o ângulo 0: {rotation_angle}",
-                System.initialization,
-            )
+            if DEBUG:
+                self.debug_info.send(
+                    f"Ângulo de rotação inicial do robô, que virará o ângulo 0: {rotation_angle}",
+                    System.initialization,
+                )
 
         # TODO: check if imu always increase rotating left or it shouldn't be inverted
         # OBS: 2*PI - angle is used because it increases rotating left and other devices

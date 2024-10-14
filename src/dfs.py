@@ -12,6 +12,7 @@ from helpers import (
 from maze import Maze
 from robot import Robot
 from types_and_constants import (
+    DEBUG,
     DEGREE_IN_RAD,
     DELTA_TO_QUADRANT,
     TILE_SIZE,
@@ -51,15 +52,17 @@ def dfs(
 
     :return: The final position of the robot.
     """
-    debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
+    if DEBUG:
+        debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
     adjust_wall_distance(robot)
     maze.mark_visited(position)
 
     robot.step()
     start_angle = robot.imu.get_rotation_angle()
-    debug_info.send(
-        f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
-    )
+    if DEBUG:
+        debug_info.send(
+            f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
+        )
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
@@ -72,14 +75,15 @@ def dfs(
         )
         new_robot_position = coordinate_after_move(position, movement_angle)
 
-        debug_info.send(
-            f"DFS de {position=}, olhando vizinho de ângulo:\n"
-            f"- {delta_angle_in_degree}° em relação ao ângulo inicial da DFS\n"
-            f"- {movement_angle}rad de direção em relação ao mapa\n"
-            f"- {side_angle}rad em relação à frente do robô.\n"
-            f"Esse vizinho está na coordenada {new_robot_position}",
-            System.dfs_state,
-        )
+        if DEBUG:
+            debug_info.send(
+                f"DFS de {position=}, olhando vizinho de ângulo:\n"
+                f"- {delta_angle_in_degree}° em relação ao ângulo inicial da DFS\n"
+                f"- {movement_angle}rad de direção em relação ao mapa\n"
+                f"- {side_angle}rad em relação à frente do robô.\n"
+                f"Esse vizinho está na coordenada {new_robot_position}",
+                System.dfs_state,
+            )
 
         # For each side of the tiles that would be used to go to new position,
         # map if there is a wall there or not
@@ -90,11 +94,12 @@ def dfs(
         right_wall_distance = robot.lidar.get_side_distance(right_wall_angle)
         central_wall_distance = robot.lidar.get_side_distance(side_angle)
 
-        debug_info.send(
-            f"Distância das paredes no caminho para essa nova posição: {left_wall_distance=}m, "
-            f"{right_wall_distance=}m e {central_wall_distance=}m",
-            System.dfs_verification,
-        )
+        if DEBUG:
+            debug_info.send(
+                f"Distância das paredes no caminho para essa nova posição: {left_wall_distance=}m, "
+                f"{right_wall_distance=}m e {central_wall_distance=}m",
+                System.dfs_verification,
+            )
 
         left_wall_blocking = get_blocking_wall(
             left_wall_distance, delta_angle_in_degree
@@ -107,11 +112,12 @@ def dfs(
         )
 
         # blocked? don't move and map these walls
-        debug_info.send(
-            f"Paredes detectadas: {left_wall_blocking=}; {right_wall_blocking=} "
-            f"e {central_wall_blocking=}",
-            System.dfs_verification,
-        )
+        if DEBUG:
+            debug_info.send(
+                f"Paredes detectadas: {left_wall_blocking=}; {right_wall_blocking=} "
+                f"e {central_wall_blocking=}",
+                System.dfs_verification,
+            )
         if left_wall_blocking != -1:
             quarter_tile, side = calculate_wall_position(
                 position, "front_left", movement_angle, left_wall_blocking
@@ -123,10 +129,11 @@ def dfs(
             )
             maze.add_wall(quarter_tile, side)
         if left_wall_blocking != -1 or right_wall_blocking != -1:
-            debug_info.send(
-                "Há paredes no caminho para o vizinho: não será visitado",
-                System.dfs_decision,
-            )
+            if DEBUG:
+                debug_info.send(
+                    "Há paredes no caminho para o vizinho: não será visitado",
+                    System.dfs_decision,
+                )
             continue
 
         if (
@@ -138,10 +145,11 @@ def dfs(
                 position, "front_center", movement_angle, central_wall_blocking
             )
             maze.add_wall(quarter_tile, side)
-            debug_info.send(
-                "Há parede central no caminho para o vizinho: não será visitado",
-                System.dfs_decision,
-            )
+            if DEBUG:
+                debug_info.send(
+                    "Há parede central no caminho para o vizinho: não será visitado",
+                    System.dfs_decision,
+                )
             continue
 
         # visited? don't move
@@ -149,14 +157,16 @@ def dfs(
             maze.is_visited(new_robot_position + delta)
             for delta in DELTA_TO_QUADRANT.keys()
         ):
-            debug_info.send(
-                "Vizinho já foi visitado: não será visitado novamente",
-                System.dfs_decision,
-            )
+            if DEBUG:
+                debug_info.send(
+                    "Vizinho já foi visitado: não será visitado novamente",
+                    System.dfs_decision,
+                )
             continue
 
         # otherwise, visit it recursively (with dfs)
-        debug_info.send("Movendo para o vizinho", System.dfs_decision)
+        if DEBUG:
+            debug_info.send("Movendo para o vizinho", System.dfs_decision)
         new_position_distance = (
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
@@ -180,7 +190,8 @@ def dfs(
 
         dfs(new_robot_position, maze, robot, debug_info, area)
 
-        debug_info.send("Retornando do vizinho", System.dfs_decision)
+        if DEBUG:
+            debug_info.send("Retornando do vizinho", System.dfs_decision)
         robot.motor.move(
             "backward",
             robot.gps,
@@ -197,8 +208,9 @@ def dfs(
         First version: just comeback from the tile after calling another dfs
         OBS: rotation angle may be totally different, take care of it
         """
-    debug_info.send(
-        f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
-        System.dfs_decision,
-    )
+    if DEBUG:
+        debug_info.send(
+            f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
+            System.dfs_decision,
+        )
     robot.motor.rotate_to_angle(start_angle, robot.imu)

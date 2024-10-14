@@ -21,7 +21,7 @@ class GPS(Device):
 
         self.debug_info = debug_info
 
-    def get_coordinates(self) -> Coordinate:
+    def get_position(self) -> Coordinate:
         positions = self._gps.getValues()
         x, _z, y = positions
         coordinate = Coordinate(x, y)

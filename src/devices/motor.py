@@ -244,7 +244,7 @@ class Motor(Device):
         slower in the end of the movement.
         - Holes are not detected when moving backward.  TODO: solve this?
         """
-        initial_position = gps.get_coordinates()
+        initial_position = gps.get_position()
 
         if DEBUG:
             self.debug_info.send(
@@ -257,7 +257,7 @@ class Motor(Device):
         self._set_move_imprecision(0, direction)
 
         while self._robot.step(self._time_step) != -1:
-            actual_position = gps.get_coordinates()
+            actual_position = gps.get_position()
 
             rotation_angle_error = lidar.get_rotation_angle_error(
                 expected_wall_distance, kp

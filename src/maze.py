@@ -91,13 +91,16 @@ class Maze:
 
         tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
         quadrant = quarter_tile_quadrant(quarter_tile_pos)
-        self.debug_info.send(
-            f"Checking if tile {tile_pos} is visited in {quadrant=}.",
-            System.maze_visited,
-        )
-        self.debug_info.send(f"Already visited in x={tile_pos.x}:", System.maze_visited)
-        for y, visited_tile in self.objects.get(tile_pos.x, {}).items():
-            self.debug_info.send(f" - {y=}: {visited_tile}", System.maze_visited)
+        if DEBUG:
+            self.debug_info.send(
+                f"Checking if tile {tile_pos} is visited in {quadrant=}.",
+                System.maze_visited,
+            )
+            self.debug_info.send(
+                f"Already visited in x={tile_pos.x}:", System.maze_visited
+            )
+            for y, visited_tile in self.objects.get(tile_pos.x, {}).items():
+                self.debug_info.send(f" - {y=}: {visited_tile}", System.maze_visited)
         return (
             quadrant
             in self.objects.get(tile_pos.x, {}).get(tile_pos.y, Tile()).quadrants

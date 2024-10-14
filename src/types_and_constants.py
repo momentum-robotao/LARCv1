@@ -9,6 +9,8 @@ ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DE
 PI = 3.14159265359
 DEGREE_IN_RAD = 0.0174533
 
+METER_TO_CM = 100
+
 SLOW_DOWN_SPEED = 0.1
 SLOW_DOWN_DIST = 0.001
 MAX_SPEED = 6.28
@@ -57,6 +59,14 @@ class WallColisionError(Exception):
     """
     Exception raised when the robot colides with a wall and it
     has already returned to its last position.
+    """
+
+    pass
+
+
+class LackOfProgressError(Exception):
+    """
+    Exception raised when a lack of progress is detected.
     """
 
     pass
