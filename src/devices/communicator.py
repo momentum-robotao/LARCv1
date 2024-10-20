@@ -24,7 +24,8 @@ GAME_INFORMATION_CODE = "G"
 
 class GameInformation(NamedTuple):
     score: int  # TODO: confirmar tipo
-    remaining_time: float  # TODO: confirmar tipo
+    remaining_simulation_time: float  # TODO: confirmar tipo
+    remaining_real_world_time: float
 
 
 class Communicator(Device):
@@ -131,7 +132,7 @@ class Communicator(Device):
 
     def occured_lack_of_progress(self) -> bool:
         received_data = self.get_received_data()
-        if received_data:
+        if received_data and len(received_data) == 1:
             first_data_received, *_args = struct.unpack("c", received_data)
             event_code = first_data_received.decode("utf-8")
             if event_code == self.LACK_OF_PROGRESS_CODE:
@@ -167,10 +168,10 @@ class Communicator(Device):
         while not game_information:
             received_data = self.get_received_data()
 
-            if not received_data:
+            if not received_data or len(received_data) != 16:
                 if DEBUG:
                     self.debug_info.send(
-                        "Dados não recebidos",
+                        f"Dados inválidos ou não recebidos: {received_data!r}",
                         System.communicator_get_game_information,
                     )
                 self.robot_delay(time_ms=100)
@@ -188,14 +189,12 @@ class Communicator(Device):
                 continue
 
             first_data_received, *other_data_received = struct.unpack(
-                "c f i", received_data
+                "c f i i", received_data
             )
             event_code = first_data_received.decode("utf-8")
 
             if event_code == self.GAME_INFORMATION:
-                game_information = GameInformation(
-                    score=other_data_received[0], remaining_time=other_data_received[1]
-                )
+                game_information = GameInformation(*other_data_received)
 
         if DEBUG:
             self.debug_info.send(
