@@ -7,6 +7,7 @@ from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
 from helpers import delay
+from maze import AnswerMaze
 from types_and_constants import (
     DEBUG,
     METER_TO_CM,
@@ -20,12 +21,13 @@ from .device import Device
 LACK_OF_PROGRESS_CODE = "L"
 END_OF_PLAY_CODE = "E"
 GAME_INFORMATION_CODE = "G"
+MAP_EVALUATE_REQUEST_CODE = "M"
 
 
 class GameInformation(NamedTuple):
-    score: int  # TODO: confirmar tipo
-    remaining_simulation_time: float  # TODO: confirmar tipo
-    remaining_real_world_time: float
+    score: float
+    remaining_simulation_time: int  # in seconds
+    remaining_real_world_time: int  # in seconds
 
 
 class Communicator(Device):
@@ -41,8 +43,9 @@ class Communicator(Device):
         receiver_name: str = "receiver",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
         lack_of_progress_code: str = LACK_OF_PROGRESS_CODE,
-        end_of_play: str = END_OF_PLAY_CODE,
-        game_information: str = GAME_INFORMATION_CODE,
+        end_of_play_code: str = END_OF_PLAY_CODE,
+        game_information_code: str = GAME_INFORMATION_CODE,
+        map_evaluate_request_code: str = MAP_EVALUATE_REQUEST_CODE,
     ) -> None:
         self._emitter = robot.getDevice(emitter_name)
         self._receiver = robot.getDevice(receiver_name)
@@ -51,8 +54,9 @@ class Communicator(Device):
         self.robot_delay = partial(delay, robot, debug_info)
 
         self.LACK_OF_PROGRESS_CODE = lack_of_progress_code
-        self.END_OF_PLAY_CODE = end_of_play
-        self.GAME_INFORMATION = game_information
+        self.END_OF_PLAY_CODE = end_of_play_code
+        self.GAME_INFORMATION = game_information_code
+        self.MAP_EVALUATE_REQUEST_CODE = map_evaluate_request_code
 
     def send_message(self, message: bytes) -> None:
         if DEBUG:
@@ -129,6 +133,19 @@ class Communicator(Device):
             )
         message = bytes(self.END_OF_PLAY_CODE, "utf-8")
         self.send_message(message)
+
+    def send_maze(self, maze: AnswerMaze) -> None:
+        maze_shape = (len(maze), 0 if len(maze) == 0 else len(maze[0]))
+        flat_maze = ",".join([elm for line in maze for elm in line])
+
+        parsed_shape = struct.pack("2i", *maze_shape)
+        parsed_maze = flat_maze.encode("utf-8")
+
+        all_bytes = parsed_shape + parsed_maze
+        self.send_message(all_bytes)
+
+        map_evaluate_request = struct.pack("c", self.MAP_EVALUATE_REQUEST_CODE.encode())
+        self.send_message(map_evaluate_request)
 
     def occured_lack_of_progress(self) -> bool:
         received_data = self.get_received_data()
