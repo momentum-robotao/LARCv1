@@ -31,6 +31,7 @@ class System(Enum):
     dfs_decision = "dfs decision"
     debug_info = "debug info"
     maze_visited = "maze visited"
+    maze_answer = "maze answer"
     communicator_send_messages = "communicator send messages"
     communicator_send_wall_token = "communicator send wall token"
     communicator_send_lack_of_progress = "communicator send lack of progress"

@@ -11,7 +11,13 @@ try:
     from helpers import delay
     from maze import Maze
     from robot import Robot
-    from types_and_constants import DEBUG, NGROK_URL, ON_DOCKER, Coordinate
+    from types_and_constants import (
+        DEBUG,
+        NGROK_URL,
+        ON_DOCKER,
+        Coordinate,
+        SpecialTileType,
+    )
 
     if ON_DOCKER:
         import requests  # type: ignore
@@ -47,7 +53,8 @@ try:
 
     def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
         position = Coordinate(0, 0)
-        position = dfs(position, maze, robot, debug_info, area=1)
+        maze.set_tile_type(position, SpecialTileType.STARTING)
+        # position = dfs(position, maze, robot, debug_info, area=1)
         # TODO: transition between maps
         # position = dfs(position, maze, all_robot_info, area=2)
 
@@ -127,9 +134,7 @@ try:
 
         # Solve map
         try:
-            # solve_map(robot, debug_info, maze)
-            delay(webots_robot, debug_info, 500)
-            # end_game(robot.communicator, maze)
+            solve_map(robot, debug_info, maze)
         except Exception:
             if DEBUG:
                 debug_info.send(
@@ -141,9 +146,18 @@ try:
 
         # Routine to inform supervisor about the end of play. In the end, we get map bonus
         # TODO: maybe use a while to keep sending it until it works
-        communicator.send_maze(maze.get_answer_maze())
-        communicator.send_end_of_play()
-        delay(webots_robot, debug_info, 5000)
+        try:
+            communicator.send_maze(maze.get_answer_maze())
+            communicator.send_end_of_play()
+            delay(webots_robot, debug_info, 5000)
+        except Exception:
+            if DEBUG:
+                debug_info.send(
+                    "Erro inesperado enquanto finalizava o jogo e enviava o mapa",
+                    System.unknown_error,
+                    "critical",
+                )
+                raise
 
     try:
         main()

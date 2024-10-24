@@ -72,6 +72,11 @@ class LackOfProgressError(Exception):
     pass
 
 
+# Related to mapping
+# TODO: ajustar com tamanho máximo
+MAP_SIZE = (60, 60)
+
+
 class MovementResult(Enum):
     moved = "moved"
     left_hole = "left hole"
@@ -96,16 +101,22 @@ WallToken = HazmatSign | Victim
 
 
 class SpecialTileType(Enum):
-    AREA_4 = -1
-    EMPTY = 0
-    HOLE = 2
-    SWAMP = 3
-    CHECKPOINT = 4
-    STARTING = 5
-    CONNECTION_1_TO_2 = 6
-    CONNECTION_2_TO_3 = 7
-    CONNECTION_3_TO_4 = 8
-    CONNECTION_1_TO_4 = 9
+    AREA_4 = "-1"
+    HOLE = "2"
+    SWAMP = "3"
+    CHECKPOINT = "4"
+    STARTING = "5"
+    CONNECTION_1_TO_2 = "6"
+    CONNECTION_2_TO_3 = "7"
+    CONNECTION_3_TO_4 = "8"
+    CONNECTION_1_TO_4 = "9"
+
+
+class MappingEncode(Enum):
+    """Encodings required by Erebus for objects."""
+
+    WALL = "1"
+    DEFAULT = "0"
 
 
 @dataclass
@@ -119,6 +130,7 @@ class Tile:
     special_type: SpecialTileType | None = None
 
 
+# Data classes
 class Coordinate:
     def __init__(self, x: Numeric, y: Numeric):
         self.x = x
