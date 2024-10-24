@@ -37,6 +37,7 @@ class System(Enum):
     communicator_send_end_of_play = "communicator send end of play"
     communicator_receive_data = "communicator receive data"
     communicator_get_game_information = "communicator get game information"
+    communicator_send_maze = "communicator send maze"
 
 
 ALL_SYSTEMS = [system for system in System]

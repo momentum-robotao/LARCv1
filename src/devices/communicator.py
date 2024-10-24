@@ -135,6 +135,10 @@ class Communicator(Device):
         self.send_message(message)
 
     def send_maze(self, maze: AnswerMaze) -> None:
+        if DEBUG:
+            self.debug_info.send(
+                "Convertendo mapa para enviá-lo", System.communicator_send_maze
+            )
         maze_shape = (len(maze), 0 if len(maze) == 0 else len(maze[0]))
         flat_maze = ",".join([elm for line in maze for elm in line])
 
@@ -144,6 +148,11 @@ class Communicator(Device):
         all_bytes = parsed_shape + parsed_maze
         self.send_message(all_bytes)
 
+        if DEBUG:
+            self.debug_info.send(
+                "Enviando pedido de análise do mapa enviado",
+                System.communicator_send_maze,
+            )
         map_evaluate_request = struct.pack("c", self.MAP_EVALUATE_REQUEST_CODE.encode())
         self.send_message(map_evaluate_request)
 

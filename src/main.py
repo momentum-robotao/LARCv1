@@ -140,6 +140,7 @@ try:
                 raise
 
         # Routine to inform supervisor about the end of play. In the end, we get map bonus
+        # TODO: maybe use a while to keep sending it until it works
         communicator.send_maze(maze.get_answer_maze())
         communicator.send_end_of_play()
         delay(webots_robot, debug_info, 5000)
