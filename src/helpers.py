@@ -73,16 +73,16 @@ def calculate_wall_position(
     wall_idx: int,
     angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2)),
 ) -> tuple[Coordinate, Side]:
+    angle = round(angle, 2)
     equivalent_rotation_angle = None
-    equivalent_rotation_angle = round(angle, 2)
     for testing_angle in WALL_FROM_ROBOT_POSITION[robot_quadrant]:
-        if abs(testing_angle - equivalent_rotation_angle) <= angle_max_difference:
+        if abs(testing_angle - angle) <= angle_max_difference:
             equivalent_rotation_angle = testing_angle
 
     if equivalent_rotation_angle is None:
         if DEBUG:
             error_message = (
-                f"Inválido {equivalent_rotation_angle=} ao tentar calcular posição da parede "
+                f"Inválido {angle=} ao tentar calcular posição da parede "
                 f"detectada de {robot_position=} olhando pelo {robot_quadrant=}"
             )
             logging.error(error_message)
@@ -92,12 +92,9 @@ def calculate_wall_position(
             raise ValueError(error_message)
 
         # Gets the most similar angle categorized
-        equivalent_rotation_angle = equivalent_rotation_angle
+        equivalent_rotation_angle = angle
         for testing_angle in WALL_FROM_ROBOT_POSITION[robot_quadrant]:
-            if (
-                abs(testing_angle - equivalent_rotation_angle)
-                < equivalent_rotation_angle
-            ):
+            if abs(testing_angle - angle) < abs(equivalent_rotation_angle - angle):
                 equivalent_rotation_angle = testing_angle
 
     delta_from_robot_position, side = WALL_FROM_ROBOT_POSITION[robot_quadrant][
