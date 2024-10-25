@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
+# TODO: colocar nos arquivos as que pelo menos por enquanto são usadas só em uma coisa Ex: navegação
+
 DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
 ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DEBUG
 
@@ -73,10 +75,6 @@ class LackOfProgressError(Exception):
 
 
 # Related to mapping
-# TODO: ajustar com tamanho máximo
-MAP_SIZE = (60, 60)
-
-
 class MovementResult(Enum):
     moved = "moved"
     left_hole = "left hole"

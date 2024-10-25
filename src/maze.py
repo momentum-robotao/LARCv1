@@ -6,14 +6,33 @@ from helpers import quarter_tile_quadrant, tile_pos_with_quarter_tile
 from types_and_constants import (
     DEBUG,
     DELTA_TO_QUADRANT,
-    MAP_SIZE,
     Coordinate,
     MappingEncode,
     Numeric,
+    Quadrant,
     QuarterTile,
     Side,
     SpecialTileType,
     Tile,
+)
+
+# TODO: ajustar com tamanho máximo
+MAP_SIZE = (60, 60)
+MARK_TILES_OF_WALL_SIDE: dict[Side, list[Coordinate]] = {
+    # TODO: confirar front = cima? ou front é frente tipo do robô quando mapeou, ficou confuso
+    "front": [Coordinate(0, 0), Coordinate(1, 0), Coordinate(2, 0)],
+    "left": [Coordinate(0, 0), Coordinate(0, 1), Coordinate(0, 2)],
+    "right": [Coordinate(2, 0), Coordinate(2, 1), Coordinate(2, 2)],
+    "back": [Coordinate(0, 2), Coordinate(1, 2), Coordinate(2, 2)],
+}
+# TODO: reunificar coordenadas padronizando sem ter matrix e plano (x cresce ou decresce pra cima)
+QUADRANT_DELTA: dict[Quadrant, Coordinate] = (
+    {  # delta to a quadrant in matrix-based coordinates
+        "top_left": Coordinate(0, 0),
+        "top_right": Coordinate(1, 0),
+        "bottom_left": Coordinate(0, 1),
+        "bottom_right": Coordinate(1, 1),
+    }
 )
 
 ObjectsMaze = dict[Numeric, dict[Numeric, Tile]]
@@ -40,14 +59,28 @@ def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
 def reindex_maze(
     objects: dict[int, dict[int, Tile]], debug_info: DebugInfo
 ) -> dict[int, dict[int, Tile]]:
-    """Reindex maze in order to remove negative coordinates.
+    """Reindex maze in order to match a matrix coordinate instead of plane coordinates.
     All objects in maze has their coordinates reindexed in order to make all coordinates positive.
     The smallest coordinate in each axis is considered the new 0/origin.
+    All coordinates are reflected by y because a plane has increasing y to up direction and matrix
+    have decreasing y to up direction.
     """
     if DEBUG:
         debug_info.send(
             f"Objetos do mapa antes de reindexar: {objects}", System.maze_answer
         )
+
+    reflected_objects: dict[int, dict[int, Tile]] = dict()
+    for x in objects:
+        for y in objects[x]:
+            reflected_objects.setdefault(x, dict())[-y] = objects[x][y]
+    if DEBUG:
+        debug_info.send(
+            f"Objetos do mapa após refletir por y: {reflected_objects}",
+            System.maze_answer,
+        )
+    objects = reflected_objects.copy()
+
     delta_x = 0
     for x in objects:
         delta_x = max(delta_x, 0 - x)
@@ -189,8 +222,9 @@ class Maze:
         Returns a matrix containing the maze in the format required by Erebus.
         https://v24.erebus.rcj.cloud/docs/rules/mapping/
         - Cada tile 5x5
+        * Índice do começo dos tiles é de 5 e 5 por ter borda comum entre eles
         """
-        self.objects = reindex_maze(self.objects, self.debug_info)
+        objects = reindex_maze(self.objects, self.debug_info)
         answer_maze: AnswerMaze = [
             [MappingEncode.DEFAULT.value for i in range(MAP_SIZE[0])]
             for j in range(MAP_SIZE[1])
@@ -200,15 +234,35 @@ class Maze:
             System.maze_answer,
         )
 
-        for x in self.objects:
-            for y in self.objects[x]:
-                if self.objects[x][y].special_type == SpecialTileType.STARTING:
-                    for mark_in_tile in [(1, 1), (1, 3), (3, 1), (3, 3)]:
-                        x_answer = 5 * x + mark_in_tile[0]
-                        y_answer = 5 * y + mark_in_tile[1]
-                        answer_maze[x_answer][y_answer] = SpecialTileType.STARTING.value
+        for x in objects:
+            for y in objects[x]:
+                if objects[x][y].special_type == SpecialTileType.STARTING:
+                    for mark_in_tile in [
+                        Coordinate(1, 1),
+                        Coordinate(1, 3),
+                        Coordinate(3, 1),
+                        Coordinate(3, 3),
+                    ]:
+                        answer_pos = Coordinate(x, y) * 4 + mark_in_tile
+                        # TODO: colocar tipagem específica de Coordinate[int] e remover type: ignore
+                        answer_maze[answer_pos.y][  # type: ignore[index]
+                            answer_pos.x  # type: ignore[index]
+                        ] = SpecialTileType.STARTING.value
         self.debug_info.send(
             f"Mapa após tile inicial: {answer_maze}", System.maze_answer
         )
+
+        for x in objects:
+            for y in objects[x]:
+                tile_pos = Coordinate(x, y) * 4
+                for quadrant in objects[x][y].quadrants:
+                    quarter_tile_pos = tile_pos + QUADRANT_DELTA[quadrant] * 2
+                    for wall_in_side in objects[x][y].quadrants[quadrant].walls:
+                        for mark_in_tile in MARK_TILES_OF_WALL_SIDE[wall_in_side]:
+                            answer_pos = quarter_tile_pos + mark_in_tile
+                            answer_maze[answer_pos.y][  # type: ignore[index]
+                                answer_pos.x  # type: ignore[index]
+                            ] = MappingEncode.WALL.value
+        self.debug_info.send(f"Mapa após paredes: {answer_maze}", System.maze_answer)
 
         return answer_maze

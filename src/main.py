@@ -54,7 +54,7 @@ try:
     def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
         position = Coordinate(0, 0)
         maze.set_tile_type(position, SpecialTileType.STARTING)
-        # position = dfs(position, maze, robot, debug_info, area=1)
+        position = dfs(position, maze, robot, debug_info, area=1, starting=True)
         # TODO: transition between maps
         # position = dfs(position, maze, all_robot_info, area=2)
 
@@ -64,21 +64,19 @@ try:
             logger.info(f"Começando nova execução: {datetime.now()}")
 
         try:
-            # debug_info = DebugInfo(
-            #     systems_to_debug=[
-            #         e for e in ALL_SYSTEMS if str(e) not in [str(System.lidar_measures)]
-            #     ],
-            #     systems_to_ignore=[System.lidar_measures],
-            # )
             want = [
                 # System.dfs_state,
                 # System.dfs_decision,
-                # System.dfs_verification,
                 # System.maze_visited,
-                System.unknown_error,
-                System.maze_snapshot,
+                # System.unknown_error,
+                # System.maze_snapshot,
+                # System.maze_changes,
+                System.maze_answer,
+                System.communicator_send_maze,
+                System.communicator_send_end_of_play,
+                System.communicator_send_messages,
             ]
-            want = ALL_SYSTEMS
+            # want = ALL_SYSTEMS
             debug_info = DebugInfo(
                 logger,
                 systems_to_debug=want,
@@ -147,16 +145,18 @@ try:
         # Routine to inform supervisor about the end of play. In the end, we get map bonus
         # TODO: maybe use a while to keep sending it until it works
         try:
-            communicator.send_maze(maze.get_answer_maze())
+            answer_maze = maze.get_answer_maze()
+            communicator.send_maze(answer_maze)
             communicator.send_end_of_play()
             delay(webots_robot, debug_info, 5000)
-        except Exception:
+        except Exception as err:
             if DEBUG:
                 debug_info.send(
                     "Erro inesperado enquanto finalizava o jogo e enviava o mapa",
                     System.unknown_error,
                     "critical",
                 )
+                print(f"Erro ao finalizar jogo e enviar mapa: {err}")
                 raise
 
     try:

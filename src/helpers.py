@@ -160,9 +160,9 @@ def side_angle_from_map_angle(map_angle: float, robot_rotation_angle: float) -> 
 
 
 def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
-    if delta_angle_in_degree in [90, 0, -90]:
+    if abs(delta_angle_in_degree) % 90 == 0:
         wall_blocking = 0 if wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
-    elif delta_angle_in_degree in [45, -45]:
+    elif abs(delta_angle_in_degree) % 45 == 0 and delta_angle_in_degree != 0:
         wall_blocking = (
             0
             if wall_distance <= DIAGONAL_MAX_DIST_IF_WALL1
@@ -172,6 +172,6 @@ def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
 
 
 def get_central_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
-    if delta_angle_in_degree not in [-90, 0, 90]:
+    if abs(delta_angle_in_degree) % 90 != 0:
         return -1
     return 0 if wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1

@@ -45,6 +45,7 @@ def dfs(
     robot: Robot,
     debug_info: DebugInfo,
     area: AreaDFSMappable,
+    starting: bool = False,
 ):
     """
     Map all the specified `area`, then go to transition `area+1`.
@@ -66,7 +67,9 @@ def dfs(
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [0, -90, 90, -45, 45]:
+    for delta_angle_in_degree in [0, -90, 90, -45, 45] + (
+        [135, 180, -135] if starting else []
+    ):
         delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
 
         movement_angle = cyclic_angle(start_angle + delta_angle)
