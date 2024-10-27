@@ -432,7 +432,7 @@
             xPos 3
             zPos 0
             floor FALSE
-            topWall 2
+            topWall 0
             rightWall 0
             bottomWall 0
             leftWall 0
@@ -562,8 +562,8 @@
             xPos 4
             zPos 0
             floor FALSE
-            topWall 3
-            rightWall 2
+            topWall 0
+            rightWall 0
             bottomWall 0
             leftWall 0
             topExternal FALSE
@@ -589,7 +589,7 @@
             zPos 1
             floor FALSE
             topWall 0
-            rightWall 1
+            rightWall 0
             bottomWall 0
             leftWall 0
             topExternal FALSE
@@ -615,7 +615,7 @@
             zPos 2
             floor FALSE
             topWall 0
-            rightWall 3
+            rightWall 0
             bottomWall 3
             leftWall 0
             topExternal FALSE
