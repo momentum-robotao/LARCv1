@@ -14,7 +14,7 @@ from robot import Robot
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
-    DELTA_TO_QUADRANT,
+    QUADRANT_OF_DELTA,
     TILE_SIZE,
     AreaDFSMappable,
     Coordinate,
@@ -67,13 +67,17 @@ def dfs(
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [0, -90, 90, -45, 45] + (
-        [135, 180, -135] if starting else []
-    ):
+    for delta_angle_in_degree in [0, -90, 90, 180]:  # -45, 45] + (
+        #     [135, 180, -135]
+        #     if starting
+        #     else []
+        #     # ? Only in the start we can't assume that backward empty: important to make sure
+        #     # everything was visited and all walls mapped
+        # ):
         delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
 
         movement_angle = cyclic_angle(start_angle + delta_angle)
-        side_angle = side_angle_from_map_angle(
+        movement_side_angle = side_angle_from_map_angle(
             movement_angle, robot.imu.get_rotation_angle()
         )
         new_robot_position = coordinate_after_move(position, movement_angle)
@@ -83,19 +87,19 @@ def dfs(
                 f"DFS de {position=}, olhando vizinho de ângulo:\n"
                 f"- {delta_angle_in_degree}° em relação ao ângulo inicial da DFS\n"
                 f"- {movement_angle}rad de direção em relação ao mapa\n"
-                f"- {side_angle}rad em relação à frente do robô.\n"
+                f"- {movement_side_angle}rad em relação à frente do robô.\n"
                 f"Esse vizinho está na coordenada {new_robot_position}",
                 System.dfs_state,
             )
 
         # For each side of the tiles that would be used to go to new position,
         # map if there is a wall there or not
-        left_wall_angle = cyclic_angle(side_angle - 20 * DEGREE_IN_RAD)
-        right_wall_angle = cyclic_angle(side_angle + 20 * DEGREE_IN_RAD)
+        left_wall_angle = cyclic_angle(movement_side_angle - 20 * DEGREE_IN_RAD)
+        right_wall_angle = cyclic_angle(movement_side_angle + 20 * DEGREE_IN_RAD)
 
         left_wall_distance = robot.lidar.get_side_distance(left_wall_angle)
         right_wall_distance = robot.lidar.get_side_distance(right_wall_angle)
-        central_wall_distance = robot.lidar.get_side_distance(side_angle)
+        central_wall_distance = robot.lidar.get_side_distance(movement_side_angle)
 
         if DEBUG:
             debug_info.send(
@@ -158,7 +162,7 @@ def dfs(
         # visited? don't move
         if all(
             maze.is_visited(new_robot_position + delta)
-            for delta in DELTA_TO_QUADRANT.keys()
+            for delta in QUADRANT_OF_DELTA.keys()
         ):
             if DEBUG:
                 debug_info.send(

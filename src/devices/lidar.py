@@ -6,7 +6,7 @@ from controller import Robot as WebotsRobot  # type: ignore
 from debugging import DebugInfo, System
 from helpers import cyclic_angle
 from types_and_constants import (
-    CENTRAL_ANGLE_OF_SIDE,
+    CENTRAL_SIDE_ANGLE_OF_SIDE,
     DEBUG,
     DEGREE_IN_RAD,
     EXPECTED_WALL_DISTANCE,
@@ -48,7 +48,7 @@ class Lidar(Device):
         """
         return self._lidar.getLayerRangeImage(line).copy()
 
-    def _get_measure_angle(self, measure_idx: int) -> float:
+    def _get_measure_side_angle(self, measure_idx: int) -> float:
         angle = measure_idx * (self.field_of_view / self.horizontal_resolution)
         return angle
 
@@ -77,7 +77,8 @@ class Lidar(Device):
 
         OBS:
         - Zero angle depends of the value set in the robot file
-        (probably, it is the front of the robot)
+        (probably, it is the front of the robot);
+        - Angle of measures are side angles.
         - The angle of the measurements increase clockwise.
         """
         # Gets minimum to get the most similar to perpendicular measures
@@ -91,26 +92,26 @@ class Lidar(Device):
             self.debug_info.send(f"{distances=}", System.lidar_measures)
         return distances
 
-    def get_distances_by_angle(self) -> dict[float, float]:
+    def get_distances_by_side_angle(self) -> dict[float, float]:
         """
-        :return: A dict where `dict[angle] = distance measured in this angle`.
+        :return: A dict where `dict[angle] = distance measured in this side angle`.
         """
         distances = self.get_distances()
-        distances_by_angle = dict()
+        distances_by_side_angle = dict()
         for measure_idx, dist in enumerate(distances):
-            angle = round(self._get_measure_angle(measure_idx), 2)
-            distances_by_angle[angle] = dist
+            side_angle = round(self._get_measure_side_angle(measure_idx), 2)
+            distances_by_side_angle[side_angle] = dist
 
         if DEBUG:
             self.debug_info.send(
-                f"Medições da distância em função do ângulo: {distances_by_angle}",
+                f"Medições da distância em função do ângulo lateral: {distances_by_side_angle}",
                 System.lidar_measures,
             )
 
-        return distances_by_angle
+        return distances_by_side_angle
 
     def get_distances_of_range(
-        self, initial_angle: float, end_angle: float
+        self, initial_side_angle: float, end_side_angle: float
     ) -> list[float]:
         """
         Gets the distance in each angle of the robot measured in
@@ -129,24 +130,24 @@ class Lidar(Device):
         [4, 5, 1, 2]
         - The angle of the measurements increase clockwise.
         """
-        distances_by_angle = self.get_distances_by_angle()
+        distances_by_side_angle = self.get_distances_by_side_angle()
         distances_of_range = []
-        if initial_angle <= end_angle:
-            for angle, dist in distances_by_angle.items():
-                if initial_angle <= angle and angle <= end_angle:
+        if initial_side_angle <= end_side_angle:
+            for side_angle, dist in distances_by_side_angle.items():
+                if initial_side_angle <= side_angle and side_angle <= end_side_angle:
                     distances_of_range.append(dist)
         else:
-            for angle, dist in distances_by_angle.items():
-                if initial_angle <= angle:
+            for side_angle, dist in distances_by_side_angle.items():
+                if initial_side_angle <= side_angle:
                     distances_of_range.append(dist)
-            for angle, dist in distances_by_angle.items():
-                if angle <= end_angle:
+            for side_angle, dist in distances_by_side_angle.items():
+                if side_angle <= end_side_angle:
                     distances_of_range.append(dist)
 
         if DEBUG:
             self.debug_info.send(
                 f"Pegas medições do intervalo cíclico baseado nos ângulos: "
-                f"[{initial_angle};{end_angle}]. Medições: {distances_of_range}",
+                f"[{initial_side_angle};{end_side_angle}]. Medições: {distances_of_range}",
                 System.lidar_range_measures,
             )
 
@@ -159,15 +160,17 @@ class Lidar(Device):
         remove_inf_measures: bool = True,
     ) -> float:
         """
+        IMPORTANT! Note that angles in `side` must be side angles.
+
         :param side: If it is a `Side`, the measures are centralized in
         this side of the robot, but if it is a `float` or `int` it is
-        centralized on this angle, that should be from [0;2*PI] (in rad).
+        centralized on this side angle, that should be from [0;2*PI] (in rad).
 
         :return: The average distance from `field_of_view` centralized in
         a side of the robot. Excluding INF values.
         """
         if isinstance(side, str):
-            central_angle = CENTRAL_ANGLE_OF_SIDE[side]
+            central_angle = CENTRAL_SIDE_ANGLE_OF_SIDE[side]
             start_angle = central_angle * DEGREE_IN_RAD - field_of_view / 2
             end_angle = central_angle * DEGREE_IN_RAD + field_of_view / 2
         elif isinstance(side, (int, float)):

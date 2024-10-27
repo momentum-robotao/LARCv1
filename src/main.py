@@ -1,10 +1,13 @@
+# import sys
+
+# print(sys.path)  # ? para ver path do controller
+
 try:
     import logging
     import os
     from datetime import datetime
 
     from controller import Robot as WebotsRobot  # type: ignore
-
     from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
     from devices import GPS, IMU, ColorSensor, Communicator, Lidar, Motor
     from dfs import dfs
@@ -65,12 +68,13 @@ try:
 
         try:
             want = [
-                # System.dfs_state,
-                # System.dfs_decision,
+                System.dfs_state,
+                System.dfs_decision,
+                System.dfs_verification,
                 # System.maze_visited,
-                # System.unknown_error,
+                System.unknown_error,
                 # System.maze_snapshot,
-                # System.maze_changes,
+                System.maze_changes,
                 System.maze_answer,
                 System.communicator_send_maze,
                 System.communicator_send_end_of_play,

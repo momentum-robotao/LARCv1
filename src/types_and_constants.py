@@ -44,12 +44,10 @@ if ON_DOCKER:
 AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]
 Quadrant = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
-RobotQuadrant = Literal[
-    "front_left", "front_right", "back_left", "back_right", "front_center"
-]
+SideDirection = Literal["front_left", "front_right", "front_center"]
 Numeric = float | int
 
-CENTRAL_ANGLE_OF_SIDE: dict[Side, Numeric] = {
+CENTRAL_SIDE_ANGLE_OF_SIDE: dict[Side, Numeric] = {
     "front": 0,
     "right": 90,
     "back": 180,
@@ -168,41 +166,41 @@ class RGB:
 # For each wall, sorted by distance, that robot may collide after moving with some rotation angle:
 # Coordinate delta from robot position to quarter tile and side of it that contains the wall
 DEGREE_WALL_FROM_ROBOT_POSITION: dict[
-    RobotQuadrant, dict[int, list[tuple[Coordinate, Side]]]
+    SideDirection, dict[int, list[tuple[Coordinate, Side]]]
 ] = {
     "front_left": {
-        0: [(Coordinate(0, 1), "front")],
-        45: [(Coordinate(1, 1), "front"), (Coordinate(1, 2), "right")],
-        90: [(Coordinate(1, 1), "right")],
+        0: [(Coordinate(0, -1), "front")],
+        45: [(Coordinate(1, -1), "front"), (Coordinate(1, -2), "right")],
+        90: [(Coordinate(1, -1), "right")],
         135: [(Coordinate(1, 0), "right"), (Coordinate(2, 0), "back")],
         180: [(Coordinate(1, 0), "back")],
-        225: [(Coordinate(0, 0), "back"), (Coordinate(0, -1), "left")],
+        225: [(Coordinate(0, 0), "back"), (Coordinate(0, 1), "left")],
         270: [(Coordinate(0, 0), "left")],
-        315: [(Coordinate(0, 1), "left"), (Coordinate(-1, 1), "front")],
-        360: [(Coordinate(0, 1), "front")],
+        315: [(Coordinate(0, -1), "left"), (Coordinate(-1, -1), "front")],
+        360: [(Coordinate(0, -1), "front")],
     },
     "front_right": {
-        0: [(Coordinate(1, 1), "front")],
-        45: [(Coordinate(1, 1), "right"), (Coordinate(2, 1), "front")],
+        0: [(Coordinate(1, -1), "front")],
+        45: [(Coordinate(1, -1), "right"), (Coordinate(2, -1), "front")],
         90: [(Coordinate(1, 0), "right")],
-        135: [(Coordinate(1, 0), "back"), (Coordinate(1, -1), "right")],
+        135: [(Coordinate(1, 0), "back"), (Coordinate(1, 1), "right")],
         180: [(Coordinate(0, 0), "back")],
         225: [(Coordinate(0, 0), "left"), (Coordinate(-1, 0), "back")],
-        270: [(Coordinate(0, 1), "left")],
-        315: [(Coordinate(0, 1), "front"), (Coordinate(0, 2), "left")],
-        360: [(Coordinate(1, 1), "front")],
+        270: [(Coordinate(0, -1), "left")],
+        315: [(Coordinate(0, -1), "front"), (Coordinate(0, -2), "left")],
+        360: [(Coordinate(1, -1), "front")],
     },
     "front_center": {
-        0: [(Coordinate(0, 2), "right")],
+        0: [(Coordinate(0, -2), "right")],
         90: [(Coordinate(2, 0), "front")],
-        180: [(Coordinate(0, -1), "right")],
+        180: [(Coordinate(0, 1), "right")],
         270: [(Coordinate(-1, 0), "front")],
-        360: [(Coordinate(0, 2), "right")],
+        360: [(Coordinate(0, -2), "right")],
     },
 }
 
 WALL_FROM_ROBOT_POSITION: dict[
-    RobotQuadrant, dict[float, list[tuple[Coordinate, Side]]]
+    SideDirection, dict[float, list[tuple[Coordinate, Side]]]
 ] = {
     robot_quadrant: {
         round(degree_angle * DEGREE_IN_RAD, 2): wall_deltas
@@ -215,25 +213,25 @@ WALL_FROM_ROBOT_POSITION: dict[
 
 
 DEGREE_TARGET_COORDINATE = {
-    0: Coordinate(0, 1),
-    45: Coordinate(1, 1),
+    0: Coordinate(0, -1),
+    45: Coordinate(1, -1),
     90: Coordinate(1, 0),
-    135: Coordinate(1, -1),
-    180: Coordinate(0, -1),
-    225: Coordinate(-1, -1),
+    135: Coordinate(1, 1),
+    180: Coordinate(0, 1),
+    225: Coordinate(-1, 1),
     270: Coordinate(-1, 0),
-    315: Coordinate(-1, 1),
-    360: Coordinate(0, 1),
+    315: Coordinate(-1, -1),
+    360: Coordinate(0, -1),
 }
 
-TARGET_COORDINATE = {
+TARGET_COORDINATE_BY_MOVE_ANGLE = {
     round(degree_angle * DEGREE_IN_RAD, 2): coordinate
     for degree_angle, coordinate in DEGREE_TARGET_COORDINATE.items()
 }
 
-DELTA_TO_QUADRANT: dict[Coordinate, Quadrant] = {
+QUADRANT_OF_DELTA: dict[Coordinate, Quadrant] = {
     Coordinate(0, 0): "bottom_left",
     Coordinate(1, 0): "bottom_right",
-    Coordinate(0, 1): "top_left",
-    Coordinate(1, 1): "top_right",
+    Coordinate(0, -1): "top_left",
+    Coordinate(1, -1): "top_right",
 }
