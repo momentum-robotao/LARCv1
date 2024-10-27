@@ -215,9 +215,11 @@ def dfs(
         First version: just comeback from the tile after calling another dfs
         OBS: rotation angle may be totally different, take care of it
         """
+
     if DEBUG:
         debug_info.send(
             f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
             System.dfs_decision,
         )
+
     robot.motor.rotate_to_angle(start_angle, robot.imu)

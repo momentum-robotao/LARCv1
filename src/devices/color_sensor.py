@@ -3,9 +3,11 @@ import os
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
-from types_and_constants import DEBUG, HOLE_COLOR, RGB
+from types_and_constants import DEBUG, RGB
 
 from .device import Device
+
+HOLE_COLOR = b"...\xff"
 
 
 class ColorSensor(Device):

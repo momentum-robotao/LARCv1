@@ -33,9 +33,6 @@ DIAGONAL_MAX_DIST_IF_WALL2 = (
     0.135481996  # 0.5*TILE_SIZE*cos 25°*(1+3*((1-tg 25)/(2*tg 25)))
 )
 
-
-HOLE_COLOR = b"...\xff"
-
 if ON_DOCKER:
     NGROK_URL = ""
     with open("./ngrok.txt", "r") as file:
@@ -97,15 +94,17 @@ WallToken = HazmatSign | Victim
 
 
 class SpecialTileType(Enum):
-    AREA_4 = "-1"
+    AREA_4 = "*"
     HOLE = "2"
     SWAMP = "3"
     CHECKPOINT = "4"
     STARTING = "5"
-    CONNECTION_1_TO_2 = "6"
-    CONNECTION_2_TO_3 = "7"
-    CONNECTION_3_TO_4 = "8"
-    CONNECTION_1_TO_4 = "9"
+    PASSAGE_1_2 = "b"  # blue
+    PASSAGE_1_3 = "y"  # yellow
+    PASSAGE_1_4 = "g"  # green
+    PASSAGE_2_3 = "p"  # purple
+    PASSAGE_2_4 = "o"  # orange
+    PASSAGE_3_4 = "r"  # red
 
 
 class MappingEncode(Enum):
