@@ -3,8 +3,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
-# TODO: colocar nos arquivos as que pelo menos por enquanto são usadas só em uma coisa Ex: navegação
-
 DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
 ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DEBUG
 
@@ -24,7 +22,6 @@ MAX_WALL_DISTANCE = 0.030
 EXPECTED_WALL_DISTANCE = 0.019
 WALL_COLLISION_DISTANCE = 0.002
 
-# TODO: adjust these constants
 ORTOGONAL_MAX_DIST_IF_WALL = TILE_SIZE / 2
 DIAGONAL_MAX_DIST_IF_WALL1 = (
     0.078380665  # 0.5*TILE_SIZE*cos 25°*(1+((1-tg 25)/(2*tg 25)))

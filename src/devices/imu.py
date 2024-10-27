@@ -25,7 +25,6 @@ class IMU(Device):
         self.start_rotation_angle = None
 
     def get_rotation_angle(self) -> float:
-        # TODO: maybe guarantee that robot is aligned in tile
         rotation_angle = self._imu.getRollPitchYaw()[2]
         if self.start_rotation_angle is None:
             self.start_rotation_angle = rotation_angle
@@ -35,8 +34,7 @@ class IMU(Device):
                     System.initialization,
                 )
 
-        # TODO: check if imu always increase rotating left or it shouldn't be inverted
-        # OBS: 2*PI - angle is used because it increases rotating left and other devices
+        # ? 2*PI - angle is used because it increases rotating left and other devices
         # decrease in this direction, with this transformation, imu angle is indexed as
         # other devices
         rotation_angle = 2 * PI - cyclic_angle(

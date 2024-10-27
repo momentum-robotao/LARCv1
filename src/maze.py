@@ -16,13 +16,11 @@ from types_and_constants import (
 )
 
 MARK_TILES_OF_WALL_SIDE: dict[Side, list[Coordinate]] = {
-    # TODO: confirar front = cima? ou front é frente tipo do robô quando mapeou, ficou confuso
     "front": [Coordinate(0, 0), Coordinate(1, 0), Coordinate(2, 0)],
     "left": [Coordinate(0, 0), Coordinate(0, 1), Coordinate(0, 2)],
     "right": [Coordinate(2, 0), Coordinate(2, 1), Coordinate(2, 2)],
     "back": [Coordinate(0, 2), Coordinate(1, 2), Coordinate(2, 2)],
 }
-# TODO: reunificar coordenadas padronizando sem ter matrix e plano (x cresce ou decresce pra cima)
 QUADRANT_DELTA: dict[Quadrant, Coordinate] = (
     {  # delta to a quadrant in matrix-based coordinates
         "top_left": Coordinate(0, 0),
@@ -118,7 +116,6 @@ def insert_starting_tile_to_maze(
             Coordinate(3, 3),
         ]:
             answer_pos = tile_pos + mark_in_tile
-            # TODO: colocar tipagem específica de Coordinate[int] e remover type: ignore
             answer_maze[answer_pos.y][  # type: ignore[index]
                 answer_pos.x  # type: ignore[index]
             ] = SpecialTileType.STARTING.value
@@ -245,8 +242,6 @@ class Maze:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
         self.wall_tokens.append((quarter_tile_pos, side))
 
-    # TODO: refatorar talvez com função que adiciona máscaras pra cada tile 5x5
-    # # e aplica tipo starting tile...
     def get_answer_maze(self) -> AnswerMaze:
         """
         Returns a matrix containing the maze in the format required by Erebus.

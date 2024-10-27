@@ -8,6 +8,7 @@ try:
     from datetime import datetime
 
     from controller import Robot as WebotsRobot  # type: ignore
+
     from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
     from devices import GPS, IMU, ColorSensor, Communicator, Lidar, Motor
     from dfs import dfs
@@ -58,8 +59,6 @@ try:
         position = Coordinate(0, 0)
         maze.set_tile_type(position, SpecialTileType.STARTING)
         position = dfs(position, maze, robot, debug_info, area=1, starting=True)
-        # TODO: transition between maps
-        # position = dfs(position, maze, all_robot_info, area=2)
 
     def main() -> None:
         # Initialize DebugInfo instance
@@ -147,7 +146,6 @@ try:
                 raise
 
         # Routine to inform supervisor about the end of play. In the end, we get map bonus
-        # TODO: maybe use a while to keep sending it until it works
         try:
             answer_maze = maze.get_answer_maze()
             communicator.send_maze(answer_maze)

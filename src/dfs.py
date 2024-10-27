@@ -26,16 +26,6 @@ from types_and_constants import (
 def adjust_wall_distance(
     robot: Robot, angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2))
 ) -> None:
-    # TODO: ensure that robot initial angle (that we use as reference to angle 0)
-    # is perpendicular to wall, otherwise multiples of 90 could not be the ones that
-    # indicate that we are perpendicular to the wall and 45 + 90*x could indicate it
-    # perpendicular_to_wall = False
-    # for rotation_angle_perpendicular_to_wall in [0, 90, 180, 270, 360]:
-    #     expected_angle = rotation_angle_perpendicular_to_wall * DEGREE_IN_RAD
-    #     if abs(robot.imu.get_rotation_angle() - expected_angle) <= angle_max_difference:
-    #         perpendicular_to_wall = True
-    # if not perpendicular_to_wall:
-    #     continue
     return
 
 
@@ -187,15 +177,20 @@ def dfs(
                 robot.lidar,
                 robot.color_sensor,
                 new_position_distance,
-            )  # TODO: checar se buraco é de um dos lados apenas
+            )
             if movement_result == MovementResult.left_right_hole:
-                continue  # TODO: mapear e logar
-            elif MovementResult.moved:
+                continue
+            elif movement_result == MovementResult.moved:
                 pass
-            else:
-                continue  # TODO: Logar esse problema
+            elif DEBUG:
+                debug_info.send(
+                    f"Resultado inesperado para movimento: {movement_result}",
+                    System.unknown_error,
+                    "error",
+                )
+                raise Exception(f"Resultado de movimento inesperado: {movement_result}")
         except WallColisionError:
-            continue  # TODO: mapear e logar
+            continue
 
         dfs(new_robot_position, maze, robot, debug_info, area)
 
@@ -209,19 +204,13 @@ def dfs(
             new_position_distance,
         )
 
-        """
-        TODO: use bfs to return to the last tile with unvisited neighbours
-        that you are able to go to it.
-        Return from dfs the actual position so when needed, bfs is called to
-        comeback
-        First version: just comeback from the tile after calling another dfs
-        OBS: rotation angle may be totally different, take care of it
-        """
-
     if DEBUG:
         debug_info.send(
             f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
             System.dfs_decision,
         )
 
+    # ? important to ensure that when last dfs move backward with robot
+    # it is in the same direction and will properly "undo" the movement to
+    # this tile, coming back to the last tile.
     robot.motor.rotate_to_angle(start_angle, robot.imu)
