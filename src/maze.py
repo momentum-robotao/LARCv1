@@ -71,17 +71,6 @@ def reindex_maze(objects: ObjectsMaze, debug_info: DebugInfo) -> ObjectsMaze:
             f"Objetos do mapa antes de reindexar: {objects}", System.maze_answer
         )
 
-    # reflected_objects: ObjectsMaze = dict()
-    # for x in objects:
-    #     for y in objects[x]:
-    #         reflected_objects.setdefault(x, dict())[-y] = objects[x][y]
-    # if DEBUG:
-    #     debug_info.send(
-    #         f"Objetos do mapa após refletir por y: {reflected_objects}",
-    #         System.maze_answer,
-    #     )
-    # objects = reflected_objects.copy()
-
     delta_x = 0
     for x in objects:
         delta_x = max(delta_x, 0 - x)
@@ -102,6 +91,45 @@ def reindex_maze(objects: ObjectsMaze, debug_info: DebugInfo) -> ObjectsMaze:
         )
 
     return reindexed_objects
+
+
+def insert_walls_to_maze(
+    answer_maze: AnswerMaze, tile_pos: Coordinate, tile: Tile
+) -> AnswerMaze:
+    for quadrant in tile.quadrants:
+        quarter_tile_pos = tile_pos + QUADRANT_DELTA[quadrant] * 2
+        for wall_in_side in tile.quadrants[quadrant].walls:
+            for mark_in_tile in MARK_TILES_OF_WALL_SIDE[wall_in_side]:
+                answer_pos = quarter_tile_pos + mark_in_tile
+                answer_maze[answer_pos.y][  # type: ignore[index]
+                    answer_pos.x  # type: ignore[index]
+                ] = MappingEncode.WALL.value
+    return answer_maze
+
+
+def insert_starting_tile_to_maze(
+    answer_maze: AnswerMaze, tile_pos: Coordinate, tile: Tile
+) -> AnswerMaze:
+    if tile.special_type == SpecialTileType.STARTING:
+        for mark_in_tile in [
+            Coordinate(1, 1),
+            Coordinate(1, 3),
+            Coordinate(3, 1),
+            Coordinate(3, 3),
+        ]:
+            answer_pos = tile_pos + mark_in_tile
+            # TODO: colocar tipagem específica de Coordinate[int] e remover type: ignore
+            answer_maze[answer_pos.y][  # type: ignore[index]
+                answer_pos.x  # type: ignore[index]
+            ] = SpecialTileType.STARTING.value
+    return answer_maze
+
+
+ElementInserterToMaze = Callable[[AnswerMaze, Coordinate, Tile], AnswerMaze]
+ELEMENT_INSERTERS: list[ElementInserterToMaze] = [
+    insert_starting_tile_to_maze,
+    insert_walls_to_maze,
+]
 
 
 class Maze:
@@ -237,35 +265,14 @@ class Maze:
             System.maze_answer,
         )
 
-        for x in objects:
-            for y in objects[x]:
-                if objects[x][y].special_type == SpecialTileType.STARTING:
-                    for mark_in_tile in [
-                        Coordinate(1, 1),
-                        Coordinate(1, 3),
-                        Coordinate(3, 1),
-                        Coordinate(3, 3),
-                    ]:
-                        answer_pos = Coordinate(x, y) * 4 + mark_in_tile
-                        # TODO: colocar tipagem específica de Coordinate[int] e remover type: ignore
-                        answer_maze[answer_pos.y][  # type: ignore[index]
-                            answer_pos.x  # type: ignore[index]
-                        ] = SpecialTileType.STARTING.value
-        self.debug_info.send(
-            f"Mapa após tile inicial: {answer_maze}", System.maze_answer
-        )
-
-        for x in objects:
-            for y in objects[x]:
-                tile_pos = Coordinate(x, y) * 4
-                for quadrant in objects[x][y].quadrants:
-                    quarter_tile_pos = tile_pos + QUADRANT_DELTA[quadrant] * 2
-                    for wall_in_side in objects[x][y].quadrants[quadrant].walls:
-                        for mark_in_tile in MARK_TILES_OF_WALL_SIDE[wall_in_side]:
-                            answer_pos = quarter_tile_pos + mark_in_tile
-                            answer_maze[answer_pos.y][  # type: ignore[index]
-                                answer_pos.x  # type: ignore[index]
-                            ] = MappingEncode.WALL.value
-        self.debug_info.send(f"Mapa após paredes: {answer_maze}", System.maze_answer)
+        for inserter in ELEMENT_INSERTERS:
+            for x in objects:
+                for y in objects[x]:
+                    tile_pos = Coordinate(x, y) * 4
+                    tile = objects[x][y]
+                    answer_maze = inserter(answer_maze, tile_pos, tile)
+            self.debug_info.send(
+                f"Mapa após {inserter.__name__}: {answer_maze}", System.maze_answer
+            )
 
         return answer_maze
