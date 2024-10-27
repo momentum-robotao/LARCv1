@@ -67,7 +67,9 @@ def dfs(
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [0, -90, 90, 180]:  # -45, 45] + (
+    for delta_angle_in_degree in [0, -90, 90] + (
+        [180] if starting else []
+    ):  # -45, 45] + (
         #     [135, 180, -135]
         #     if starting
         #     else []

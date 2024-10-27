@@ -257,8 +257,8 @@ class Maze:
         objects = reindex_maze(self.objects, self.debug_info)
         map_size = get_needed_map_size(self.objects)
         answer_maze: AnswerMaze = [
-            [MappingEncode.DEFAULT.value for i in range(map_size[0])]
-            for j in range(map_size[1])
+            [MappingEncode.DEFAULT.value for i in range(map_size[1])]
+            for j in range(map_size[0])
         ]
         self.debug_info.send(
             f"Mapa default: {answer_maze}",
