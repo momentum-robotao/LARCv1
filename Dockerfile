@@ -19,6 +19,7 @@ ENV DEBUG=True
 ENV ON_DOCKER=True
 ENV ENTRIES_BETWEEN_SENDS=100
 COPY ./ngrok.txt ./ngrok.txt
+ENV ANGLE_MAX_DIFFERENCE=0.3
 
 # Run controller (using extern controller helper)
 CMD webots-controller --protocol=tcp --ip-address=$EREBUS_SERVER --port=1234 --robot-name=Erebus_Bot --stdout-redirect --stderr-redirect main.py
