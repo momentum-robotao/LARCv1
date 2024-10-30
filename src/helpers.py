@@ -64,7 +64,6 @@ def cyclic_angle(angle: Numeric) -> Numeric:
     return angle
 
 
-# TODO: merge with `coordinate_after_move` to get for example the most similar rotation angle
 def calculate_wall_position(
     robot_position: Coordinate,
     side_direction: SideDirection,
