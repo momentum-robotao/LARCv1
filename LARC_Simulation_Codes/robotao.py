@@ -45,10 +45,14 @@ cameraE.enable(timeStep)
 cameraD = robot.getDevice("cameraD")
 cameraD.enable(timeStep)
 
-lidar = robot.getDevice("lidar") # Step 2: Retrieve the sensor, named "lidar", from the robot. Note that the sensor name may differ between robots.
-lidar.enable(timeStep) # Step 3: Enable the sensor, using the timestep as the update rate
+lidar = robot.getDevice(
+    "lidar"
+)  # Step 2: Retrieve the sensor, named "lidar", from the robot. Note that the sensor name may differ between robots.
+lidar.enable(
+    timeStep
+)  # Step 3: Enable the sensor, using the timestep as the update rate
 
-''' 
+""" 
 rangeImage = [robot.getDevice("ps_frente"), robot.getDevice("ps_tras")]
 rangeImage = [
     robot.getDevice("ps_esquerda"),
@@ -62,7 +66,7 @@ rangeImage = [
 # Ativar sensores
 for sensor in rangeImage + rangeImage + rangeImage:
     sensor.enable(timeStep)
-'''
+"""
 sensor_de_cor = robot.getDevice("colour_sensor")
 sensor_de_cor.enable(timeStep)
 
@@ -117,9 +121,9 @@ def ajustar_branco(camera):
     global branco_antes
     branco = quant_branco(camera)
     if branco > 600:
-        #print(f"andar{branco}")
+        # print(f"andar{branco}")
         while True:
-            #print(f"ta aumentando mlk {branco}, {branco_antes}")
+            # print(f"ta aumentando mlk {branco}, {branco_antes}")
             branco_antes = branco
             encoder_antes()
             mover_para_frente(0.0068)
@@ -129,7 +133,7 @@ def ajustar_branco(camera):
                 branco_antes = 0
                 break
         parar()
-        #print("parou")
+        # print("parou")
 
 
 def ajustar_vermelho(camera):
@@ -137,9 +141,9 @@ def ajustar_vermelho(camera):
     preto = quant_preto(camera)
     vermelho = quant_vermelho(camera)
     if vermelho > 20 and vermelho > vermelho_antes and preto == 0:
-        #print(f"sisior,{vermelho}")
+        # print(f"sisior,{vermelho}")
         while True:
-            #print(f"ta aumentando mlk {vermelho}, {vermelho_antes}")
+            # print(f"ta aumentando mlk {vermelho}, {vermelho_antes}")
             vermelho_antes = vermelho
             encoder_antes()
             mover_para_frente(0.0068)
@@ -149,18 +153,18 @@ def ajustar_vermelho(camera):
                 vermelho_antes = 0
                 break
         parar()
-        #print("parou")
+        # print("parou")
 
 
 def ajustar_preto(camera):
     global preto_antes
     preto = quant_preto(camera)
     vermelho = quant_vermelho(camera)
-    #print(preto)
+    # print(preto)
     if preto > 20 and preto > preto_antes and vermelho == 0:
-        #print("boraaa,", preto)
+        # print("boraaa,", preto)
         while True:
-            #print(f"ta aumentando mlk {preto}, {preto_antes}")
+            # print(f"ta aumentando mlk {preto}, {preto_antes}")
             preto_antes = preto
             encoder_antes()
             mover_para_frente(0.0068)
@@ -169,7 +173,7 @@ def ajustar_preto(camera):
                 preto_antes = 0
                 break
         parar()
-        #print("parou")
+        # print("parou")
 
 
 def quant_preto(camera):
@@ -312,7 +316,7 @@ def codificar_tipo(tipo):
     message = struct.pack("i i c", x, y, victimType)  # Pack the message.
     delay(1300)  # Delay for 1.3 seconds
     emitter.send(message)  # Send out the message
-    #print("enviou mensagem")
+    # print("enviou mensagem")
 
 
 def delay(ms):
@@ -344,7 +348,6 @@ def ajustar_distancia():
     # elif rangeImage[0] < 0.12 and rangeImage[0] > 0.07:
     #     falta = 0.07 - rangeImage[0]
     #     mover_para_frente(falta)
-        
 
 
 def reconhecer_vitima():
@@ -372,29 +375,29 @@ def reconhecer_vitima():
             ):  # and not tem_amarelo() and not tem_vermelho():
                 delay(1300)
                 codificar_tipo("H")
-                #print("H")
+                # print("H")
             elif (
                 len(approx) >= 27 and len(approx) <= 33
             ):  # and not tem_amarelo() and not tem_vermelho():
-               # print("U")
+                # print("U")
                 delay(1300)
                 codificar_tipo("U")
             elif (
                 len(approx) >= 60 and len(approx) <= 82
             ):  # and not tem_amarelo() and not tem_vermelho():
-                #print("S")
+                # print("S")
                 delay(1300)
                 codificar_tipo("S")
             elif tem_amarelo():  # and len(approx) != 4:
-               # print("O")
+                # print("O")
                 delay(1300)
                 codificar_tipo("O")
             elif tem_vermelho() and len(approx) != 4:
-                #print("F")
+                # print("F")
                 delay(1300)
                 codificar_tipo("F")
             elif tem_preto() and len(approx) != 4:
-               # print("C")
+                # print("C")
                 delay(1300)
                 codificar_tipo("C")
 
@@ -411,30 +414,30 @@ def verificar_vitima(camera):
 
     parar()
     delay(10)
-    #print(preto, branco, vermelho)
+    # print(preto, branco, vermelho)
     if tem_preto(camera) and preto <= 100 and 1 <= branco <= 420:
-        #print("ajustou")
+        # print("ajustou")
         ajustar_preto(camera)
         verificar_vitima(camera)
     elif tem_vermelho(camera) and vermelho <= 55:
-        #print("ajustou")
+        # print("ajustou")
         ajustar_vermelho(camera)
         verificar_vitima(camera)
     # nos dois if, se a vitima estiver cortada, ele ajusta a distancia e chama novamente a func
     if (preto > 100 and branco > 420) and (
         parede_esquerda(rangeImage) or parede_direita(rangeImage)
     ):
-        #print("vitima!")
+        # print("vitima!")
         sleep(0.01)
         return True
     elif (
         vermelho > 55
     ):  # and (parede_esquerda(rangeImage) or parede_direita(rangeImage)):
-        #print("vítima!")
+        # print("vítima!")
         sleep(0.01)
         return True
     else:
-        #print("sem vítima!")
+        # print("sem vítima!")
         return False
     # aqui ele retorna True se a vitima inteira estiver encaixada na imagem
 
@@ -445,13 +448,112 @@ def reconhecer_vitima(camera):
     delay(10)
     if verificar_vitima(camera):
         sleep(0.01)
-        #print("reconhecendo...")
-        possivel_H = ["H","HI","IH","IHI","F","FI","IF","IFI","A","AI","IA","IAI","HH","4",]
-        possivel_U = ["U","UI","IU","IUI","UU","(U)","U)","(U","L","IL","LI","ILI","@",]
-        possivel_S = ["S","SI","IS","ISI","SIS","SS","5","I5","5I","I5I","75","5L","L5","I5L","5LI","I5LI","7C","9","I9","9I","I9I","28","SE","37","AS","M",]
-        possivel_P = ["POISO","POIS","POION","POIS0N","P0IS0N","POI50N","P0I50N","P0ISON","P0IS0","P0I50","POISDN","POI5ON","P0I5ON","P0I5O","POI50M","P0I50M","POI5OM",
-            "P0I5OM","POIS0M","P0IS0M","PO1S0N","P01S0N","PO1S0","P01S0","POI5UN","P0I5UN","POISUN","P0ISUN","POI50UN","P0I50UN","POISOUN","P0ISOUN","POI5OUN",
-            "P0I5OUN","POIS0ON","P0IS0ON","POI5OIN","P0I5OIN","POI5D","P0I5D","POI50D","P0I50D","POIS0N5","P0IS0N5","POI50N5",
+        # print("reconhecendo...")
+        possivel_H = [
+            "H",
+            "HI",
+            "IH",
+            "IHI",
+            "F",
+            "FI",
+            "IF",
+            "IFI",
+            "A",
+            "AI",
+            "IA",
+            "IAI",
+            "HH",
+            "4",
+        ]
+        possivel_U = [
+            "U",
+            "UI",
+            "IU",
+            "IUI",
+            "UU",
+            "(U)",
+            "U)",
+            "(U",
+            "L",
+            "IL",
+            "LI",
+            "ILI",
+            "@",
+        ]
+        possivel_S = [
+            "S",
+            "SI",
+            "IS",
+            "ISI",
+            "SIS",
+            "SS",
+            "5",
+            "I5",
+            "5I",
+            "I5I",
+            "75",
+            "5L",
+            "L5",
+            "I5L",
+            "5LI",
+            "I5LI",
+            "7C",
+            "9",
+            "I9",
+            "9I",
+            "I9I",
+            "28",
+            "SE",
+            "37",
+            "AS",
+            "M",
+        ]
+        possivel_P = [
+            "POISO",
+            "POIS",
+            "POION",
+            "POIS0N",
+            "P0IS0N",
+            "POI50N",
+            "P0I50N",
+            "P0ISON",
+            "P0IS0",
+            "P0I50",
+            "POISDN",
+            "POI5ON",
+            "P0I5ON",
+            "P0I5O",
+            "POI50M",
+            "P0I50M",
+            "POI5OM",
+            "P0I5OM",
+            "POIS0M",
+            "P0IS0M",
+            "PO1S0N",
+            "P01S0N",
+            "PO1S0",
+            "P01S0",
+            "POI5UN",
+            "P0I5UN",
+            "POISUN",
+            "P0ISUN",
+            "POI50UN",
+            "P0I50UN",
+            "POISOUN",
+            "P0ISOUN",
+            "POI5OUN",
+            "P0I5OUN",
+            "POIS0ON",
+            "P0IS0ON",
+            "POI5OIN",
+            "P0I5OIN",
+            "POI5D",
+            "P0I5D",
+            "POI50D",
+            "P0I50D",
+            "POIS0N5",
+            "P0IS0N5",
+            "POI50N5",
             "P0I50N5",
             "POI5ONI",
             "P0I5ONI",
@@ -589,53 +691,53 @@ def reconhecer_vitima(camera):
         result = reader.readtext(rgb_image)
         for item in result:
             text = item[1].upper()
-            #print(text)
+            # print(text)
             if text in possivel_H:
-                #print("H")
+                # print("H")
                 codificar_tipo("H")
                 return 0
             elif text in possivel_U:
-                #print("U")
+                # print("U")
                 codificar_tipo("U")
                 return 0
             elif text in possivel_S:
-                #print("S")
+                # print("S")
                 codificar_tipo("S")
                 return 0
             elif text in possivel_C:
-                #print("C")
+                # print("C")
                 codificar_tipo("C")
                 return 0
             elif text in possivel_P:
-               # print("P")
+                # print("P")
                 codificar_tipo("P")
                 return 0
             elif text in possivel_F:
-              #  print("F")
+                #  print("F")
                 codificar_tipo("F")
                 return 0
             elif text in possivel_O:
-             #   print("O")
+                #   print("O")
                 codificar_tipo("O")
                 return 0
 
         if tem_amarelo(camera):
-            #print("O")
+            # print("O")
             codificar_tipo("O")
         elif tem_vermelho(camera):
-           # print("F")
+            # print("F")
             codificar_tipo("F")
         elif preto > 150:
-          #  print("C")
+            #  print("C")
             codificar_tipo("C")
         elif preto < 150:
-         #   print("P")
+            #   print("P")
             codificar_tipo("P")
 
 
 def tem_buraco():
     cor = sensor_de_cor.getImage()
-    #print(cor)
+    # print(cor)
     if cor == cor_buraco:
         return True
     return False
@@ -680,6 +782,7 @@ def encoder_antes():
     encoder_inicial = float(encoders.getValue())
     return encoder_inicial
 
+
 def mover_para_tras(dist):
     global posicao_atual, posicaoX_atual, posicaoY_atual
     global posicao_anterior, posicaoX_anterior, posicaoY_anterior
@@ -698,23 +801,24 @@ def mover_para_tras(dist):
             maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
         )
 
-        tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-            abs((posicaoY_atual) - abs(posicaoY_anterior))
-        )
+        tot_delta = round_func(
+            abs(abs(posicaoX_atual) - abs(posicaoX_anterior))
+        ) + round_func(abs((posicaoY_atual) - abs(posicaoY_anterior)))
 
         motorEsquerdo.setVelocity(-set_vel(tot_delta))
         motorDireito.setVelocity(-set_vel(tot_delta))
-        #print(set_vel(tot_delta))
+        # print(set_vel(tot_delta))
 
         # print(f"Deveria andar {dist} e andou {tot_delta}")
 
         if tot_delta <= dist:
             parar()
-            #print(f"A posição X atual é {posicaoX_atual}")
-            #print(f"A posição Y atual é {posicaoY_atual}")
-            #print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
-            #print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
+            # print(f"A posição X atual é {posicaoX_atual}")
+            # print(f"A posição Y atual é {posicaoY_atual}")
+            # print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
+            # print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
             break
+
 
 def mover_para_frente(dist):
     global posicao_atual, posicaoX_atual, posicaoY_atual
@@ -732,24 +836,23 @@ def mover_para_frente(dist):
             maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
         )
 
-        tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-            abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
-        )
+        tot_delta = round_func(
+            abs(abs(posicaoX_atual) - abs(posicaoX_anterior))
+        ) + round_func(abs(abs(posicaoY_atual) - abs(posicaoY_anterior)))
 
         motorEsquerdo.setVelocity(set_vel(tot_delta))
         motorDireito.setVelocity(set_vel(tot_delta))
-        #print(set_vel(tot_delta))
+        # print(set_vel(tot_delta))
 
         # print(f"Deveria andar {dist} e andou {tot_delta}")
 
         if tot_delta > dist:
             parar()
-            #print(f"A posição X atual é {posicaoX_atual}")
-            #print(f"A posição Y atual é {posicaoY_atual}")
-            #print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
-            #print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
+            # print(f"A posição X atual é {posicaoX_atual}")
+            # print(f"A posição Y atual é {posicaoY_atual}")
+            # print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
+            # print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
             break
-
 
         if tem_buraco():
             while robot.step(timeStep) != -1:
@@ -762,9 +865,9 @@ def mover_para_frente(dist):
                     maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
                 )
 
-                tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-                    abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
-                )
+                tot_delta = round_func(
+                    abs(abs(posicaoX_atual) - abs(posicaoX_anterior))
+                ) + round_func(abs(abs(posicaoY_atual) - abs(posicaoY_anterior)))
 
                 motorEsquerdo.setVelocity(-set_vel(tot_delta))
                 motorDireito.setVelocity(-set_vel(tot_delta))
@@ -774,6 +877,7 @@ def mover_para_frente(dist):
                     break
             virar_180()
             break
+
 
 def mover_para_frente(dist=tamanho_tile, should_recognize_victim=True):
     global posicao_atual, posicaoX_atual, posicaoY_atual
@@ -791,24 +895,23 @@ def mover_para_frente(dist=tamanho_tile, should_recognize_victim=True):
             maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
         )
 
-        tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-            abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
-        )
+        tot_delta = round_func(
+            abs(abs(posicaoX_atual) - abs(posicaoX_anterior))
+        ) + round_func(abs(abs(posicaoY_atual) - abs(posicaoY_anterior)))
 
         motorEsquerdo.setVelocity(set_vel(tot_delta))
         motorDireito.setVelocity(set_vel(tot_delta))
-        #print(set_vel(tot_delta))
+        # print(set_vel(tot_delta))
 
         # print(f"Deveria andar {dist} e andou {tot_delta}")
 
         if tot_delta > dist:
             parar()
-            #print(f"A posição X atual é {posicaoX_atual}")
-            #print(f"A posição Y atual é {posicaoY_atual}")
-            #print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
-            #print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
+            # print(f"A posição X atual é {posicaoX_atual}")
+            # print(f"A posição Y atual é {posicaoY_atual}")
+            # print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
+            # print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
             break
-
 
         if tem_buraco():
             while robot.step(timeStep) != -1:
@@ -821,9 +924,9 @@ def mover_para_frente(dist=tamanho_tile, should_recognize_victim=True):
                     maxVelocity / 100 if delta >= dist - 0.001 else maxVelocity
                 )
 
-                tot_delta = round_func(abs(abs(posicaoX_atual) - abs(posicaoX_anterior))) + round_func(
-                    abs(abs(posicaoY_atual) - abs(posicaoY_anterior))
-                )
+                tot_delta = round_func(
+                    abs(abs(posicaoX_atual) - abs(posicaoX_anterior))
+                ) + round_func(abs(abs(posicaoY_atual) - abs(posicaoY_anterior)))
 
                 motorEsquerdo.setVelocity(-set_vel(tot_delta))
                 motorDireito.setVelocity(-set_vel(tot_delta))
@@ -898,24 +1001,24 @@ def mudar_direcao():
     global direcao
     if round(deltaX, 2) == 0.12 or round(deltaX, 2) == 0.11 or round(deltaX, 2) == 0.13:
         direcao = "direita"
-        #print(direcao)
+        # print(direcao)
     elif (
         round(deltaX, 2) == -0.12
         or round(deltaX, 2) == -0.11
         or round(deltaX, 2) == -0.13
     ):
         direcao = "esquerda"
-        #print(direcao)
+        # print(direcao)
     if round(deltaY, 2) == 0.12 or round(deltaY, 2) == 0.11 or round(deltaY, 2) == 0.13:
         direcao = "baixo"
-        #print(direcao)
+        # print(direcao)
     elif (
         round(deltaY, 2) == -0.12
         or round(deltaY, 2) == -0.11
         or round(deltaY, 2) == -0.13
     ):
         direcao = "cima"
-        #print(direcao)
+        # print(direcao)
 
 
 def foi_visitado(dir, sentido):
@@ -1007,8 +1110,8 @@ def foi_visitado(dir, sentido):
         ):
             return 1
     else:
-        #print(" A dir é {}".format(dir))
-       # print(" O sentido é {}".format(sentido))
+        # print(" A dir é {}".format(dir))
+        # print(" O sentido é {}".format(sentido))
         return 0
 
 
@@ -1026,7 +1129,7 @@ def seguir_parede():
         encoder_antes()
         mover_para_frente()
         delay(5)
-       # print("estou indo para esquerda")
+    # print("estou indo para esquerda")
 
     elif (
         parede_esquerda(rangeImage)
@@ -1038,7 +1141,7 @@ def seguir_parede():
         encoder_antes()
         mover_para_frente()
         delay(5)
-       # print("estou indo para frente")
+    # print("estou indo para frente")
 
     elif (
         parede_esquerda(rangeImage)
@@ -1053,7 +1156,7 @@ def seguir_parede():
         encoder_antes()
         mover_para_frente()
         delay(5)
-        #print("estou indo para direita")
+        # print("estou indo para direita")
 
     elif (
         parede_esquerda(rangeImage)
@@ -1067,8 +1170,8 @@ def seguir_parede():
 
     else:
         # BFS
-        #print("BFS!!")
-        """ 
+        # print("BFS!!")
+        """
         for li in mapa:
             print(li)
         """
@@ -1104,7 +1207,7 @@ def seguir_parede():
                     caminho.append(path[aux])
                     aux = path[aux]
                 caminho.reverse()
-                #print("O caminho é {}".format(caminho))
+                # print("O caminho é {}".format(caminho))
                 continue
 
             # print(mapa[cl][cc + n])
@@ -1167,7 +1270,7 @@ def seguir_parede():
                         ajustar_distancia()
                 elif direcao == "baixo":
                     encoder_antes()
-                    #mover_para_frente()
+                    # mover_para_frente()
                     delay(5)
                     if parede_frente(rangeImage):
                         ajustar_distancia()
@@ -1314,8 +1417,8 @@ def seguir_parede():
                         ajustar_distancia()
                 elif direcao == "baixo":
                     encoder_antes()
-                    #mover_para_frente()
-                    #delay(5)
+                    # mover_para_frente()
+                    # delay(5)
                     if parede_frente(rangeImage):
                         ajustar_distancia()
 
@@ -1422,6 +1525,7 @@ def seguir_parede():
         except Exception as erro:
             print(erro)
 
+
 def PID():
     rangeImage = lidar.getLayerRangeImage(0).copy()
     global erro_anterior
@@ -1460,13 +1564,13 @@ encoder_antes()
 
     if erro - erro_anterior > 0.2:
         parar()
-        #print("desvio")
+        # print("desvio")
         delay(20)
         encoder_antes()
         mover_para_frente(tamanho_tile / 3 * 2)
         ajustar_distancia()
         # reconhecer_vitima()
-        #print("frente")
+        # print("frente")
         # delay(20)
         # seguir_parede()
         # delay(20)
@@ -1491,7 +1595,7 @@ encoder_antes()
         # ajustar_distancia()
         # seguir_parede()
         # delay(20)
-       # print("parede a frente")
+    # print("parede a frente")
 
 
 """    print(f'dist{rangeImage[0].getValue()}')
@@ -1517,7 +1621,7 @@ def mapeamento():
 
     deltaX = posicaoX_atual - posicaoX_anterior
     deltaY = posicaoY_atual - posicaoY_anterior
-    
+
     rangeImage = lidar.getLayerRangeImage(0).copy()
     """
     Legenda
@@ -1532,7 +1636,7 @@ def mapeamento():
     if round(deltaX, 2) == round(posicaoX_atual, 2) and round(deltaY, 2) == round(
         posicaoY_atual, 2
     ):
-        #print("Eu estou no início")
+        # print("Eu estou no início")
         if not parede_frente(rangeImage):
             mapa[coordenada_centro_mapa][coordenada_centro_mapa + n] = 0
             mapa[coordenada_centro_mapa][coordenada_centro_mapa + k] = 3
@@ -1560,7 +1664,7 @@ def mapeamento():
 
     # DeltaX positivo
     if round(deltaX, 2) == 0.12 or round(deltaX, 2) == 0.11 or round(deltaX, 2) == 0.13:
-        #print("O Delta X é : {}".format(round(deltaX, 2)))
+        # print("O Delta X é : {}".format(round(deltaX, 2)))
         coordenada_coluna_atual = coordenada_coluna_atual + k
         coordenada_linha_atual = coordenada_linha_atual
 
@@ -1639,7 +1743,7 @@ def mapeamento():
         or round(deltaX, 2) == -0.11
         or round(deltaX, 2) == -0.13
     ):
-        #print("O Delta X é : {}".format(round(deltaX, 2)))
+        # print("O Delta X é : {}".format(round(deltaX, 2)))
         coordenada_coluna_atual = coordenada_coluna_atual - k
         coordenada_linha_atual = coordenada_linha_atual
 
@@ -1712,10 +1816,10 @@ def mapeamento():
 
     # DeltaY positivo
     if round(deltaY, 2) == 0.12 or round(deltaY, 2) == 0.11 or round(deltaY, 2) == 0.13:
-        #print("O Delta Y é : {}".format(round(deltaY, 2)))
+        # print("O Delta Y é : {}".format(round(deltaY, 2)))
         coordenada_linha_atual = coordenada_linha_atual + k
         coordenada_coluna_atual = coordenada_coluna_atual
-        #print((coordenada_linha_atual, coordenada_coluna_atual))
+        # print((coordenada_linha_atual, coordenada_coluna_atual))
         # Processo de Remover Tiles Visitados das lista de tiles vistos e marcando eles (adicionando na lista de tiles_marcados)
         if (coordenada_linha_atual, coordenada_coluna_atual) in listas_vistos:
             listas_vistos.pop(
@@ -1790,7 +1894,7 @@ def mapeamento():
         or round(deltaY, 2) == -0.11
         or round(deltaY, 2) == -0.13
     ):
-        #print("O Delta Y é : {}".format(round(deltaY, 2)))
+        # print("O Delta Y é : {}".format(round(deltaY, 2)))
         coordenada_linha_atual = coordenada_linha_atual - k
         coordenada_coluna_atual = coordenada_coluna_atual
 
@@ -1873,8 +1977,9 @@ def mapeamento():
     posicaoY_anterior = posicaoY_atual
     mudar_direcao()
 
+
 while robot.step(timeStep) != -1:
-    '''seguir_parede()
+    """seguir_parede()
     mapeamento()
     ajustar_distancia()
     # PID()
@@ -1884,5 +1989,5 @@ while robot.step(timeStep) != -1:
     # print("A lista de tiles vistos é : {}".format(listas_vistos))
     # print("A lista de tiles marcados é : {}".format(lista_tiles_marcados))
     reconhecer_vitima(cameraE)
-    # sleep(1)'''
+    # sleep(1)"""
     pass

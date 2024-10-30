@@ -1,6 +1,13 @@
+# Uninstall packages from venv: pip uninstall -y -r <(pip freeze)
+# Project-specific requirements
+
 # Erebus requirements
-numpy==1.26.4
-termcolor==2.4.0
-requests==2.31.0
-opencv-python
-easyocr
+# numpy
+# termcolor==2.5.0
+# opencv-python
+# easyocr
+
+# Data receiver (only for logging)
+ngrok
+flask
+requests==2.32.3
