@@ -4,7 +4,7 @@ from typing import Any
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
-from devices import GPS, IMU, ColorSensor, Communicator, Lidar, Motor
+from devices import GPS, IMU, Camera, ColorSensor, Communicator, Lidar, Motor
 from types_and_constants import DEBUG
 
 
@@ -18,6 +18,7 @@ class Robot:
         imu: IMU,
         color_sensor: ColorSensor,
         communicator: Communicator,
+        camera: Camera,
         debug_info: DebugInfo,
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ):
@@ -29,6 +30,7 @@ class Robot:
         self.imu = imu
         self.color_sensor = color_sensor
         self.communicator = communicator
+        self.camera = camera
 
         self.time_step = time_step
         self.debug_info = debug_info

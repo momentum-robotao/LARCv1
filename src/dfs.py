@@ -10,6 +10,7 @@ from helpers import (
     side_angle_from_map_angle,
 )
 from maze import Maze
+from recognize_wall_token import recognize_wall_token
 from robot import Robot
 from types_and_constants import (
     DEBUG,
@@ -47,6 +48,7 @@ def dfs(
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
     adjust_wall_distance(robot)
     maze.mark_visited(position)
+    recognize_wall_token(robot, debug_info)
 
     robot.step()
     start_angle = robot.imu.get_rotation_angle()
@@ -57,12 +59,9 @@ def dfs(
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [0, -90, 90, 45, -45] + (
-        [180, 135, -135] if starting else []
-    ):  # -45, 45] + (
-        #     [135, 180, -135]
-        #     if starting
-        #     else []
+    for delta_angle_in_degree in [0, -90, 90] + (  # TODO: múltiplos de 45
+        [180] if starting else []
+    ):
         #     # ? Only in the start we can't assume that backward empty: important to make sure
         #     # everything was visited and all walls mapped
         # ):

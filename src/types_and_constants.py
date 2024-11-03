@@ -3,6 +3,23 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
+
+class Victim(Enum):
+    HARMED = "H"
+    STABLE = "S"
+    UNHARMED = "U"
+
+
+class HazmatSign(Enum):
+    FLAMMABLE_GAS = "F"
+    POISON = "P"
+    CORROSIVE = "C"
+    ORGANIC_PEROXIDE = "O"
+
+
+WallToken = HazmatSign | Victim
+
+
 DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
 ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DEBUG
 
@@ -72,22 +89,6 @@ class MovementResult(Enum):
     left_hole = "left hole"
     right_hole = "right hole"
     left_right_hole = "left right hole"
-
-
-class Victim(Enum):
-    HARMED = "H"
-    STABLE = "S"
-    UNHARMED = "U"
-
-
-class HazmatSign(Enum):
-    FLAMMABLE_GAS = "F"
-    POISON = "P"
-    CORROSIVE = "C"
-    ORGANIC_PEROXIDE = "O"
-
-
-WallToken = HazmatSign | Victim
 
 
 class SpecialTileType(Enum):

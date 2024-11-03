@@ -10,7 +10,7 @@ try:
     from controller import Robot as WebotsRobot  # type: ignore
 
     from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
-    from devices import GPS, IMU, ColorSensor, Communicator, Lidar, Motor
+    from devices import GPS, IMU, Camera, ColorSensor, Communicator, Lidar, Motor
     from dfs import dfs
     from helpers import delay
     from maze import Maze
@@ -56,17 +56,17 @@ try:
             raise
 
     def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
-        from types_and_constants import DEGREE_IN_RAD
+        # from types_and_constants import DEGREE_IN_RAD
 
-        while robot.step() != -1:
-            print(
-                robot.lidar.get_distances_of_range(
-                    25 * DEGREE_IN_RAD, 65 * DEGREE_IN_RAD
-                )
-            )
-        # position = Coordinate(0, 0)
-        # maze.set_tile_type(position, SpecialTileType.STARTING)
-        # position = dfs(position, maze, robot, debug_info, area=1, starting=True)
+        # while robot.step() != -1:
+        #     print(
+        #         robot.lidar.get_distances_of_range(
+        #             25 * DEGREE_IN_RAD, 65 * DEGREE_IN_RAD
+        #         )
+        #     )
+        position = Coordinate(0, 0)
+        maze.set_tile_type(position, SpecialTileType.STARTING)
+        position = dfs(position, maze, robot, debug_info, area=1, starting=True)
 
     def main() -> None:
         # Initialize DebugInfo instance
@@ -80,12 +80,15 @@ try:
                 System.dfs_verification,
                 # System.maze_visited,
                 System.unknown_error,
+                System.initialization,
                 # System.maze_snapshot,
                 System.maze_changes,
                 System.maze_answer,
                 System.communicator_send_maze,
                 System.communicator_send_end_of_play,
                 System.communicator_send_messages,
+                System.wall_token_recognition,
+                System.wall_token_classification,
             ]
             # want = ALL_SYSTEMS
             debug_info = DebugInfo(
@@ -111,6 +114,7 @@ try:
             imu = IMU(webots_robot, debug_info)
             color_sensor = ColorSensor(webots_robot, debug_info)
             communicator = Communicator(webots_robot, debug_info)
+            camera = Camera(webots_robot, debug_info)
         except Exception:
             if DEBUG:
                 debug_info.send(
@@ -129,6 +133,7 @@ try:
                 imu,
                 color_sensor,
                 communicator,
+                camera,
                 debug_info,
             )
             robot.step()
@@ -173,13 +178,13 @@ try:
         main()
     except Exception:
         pass
-    if ON_DOCKER:
-        http_handler.send_queue_data()
+    http_handler.send_queue_data()
 except Exception as err:
     from controller import Robot as WebotsRobot  # type: ignore
 
     webots_robot = WebotsRobot()
     webots_robot.step(int(os.getenv("TIME_STEP", 32)))
+    print(err)
 
     if (os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]:
         import logging
@@ -220,4 +225,3 @@ except Exception as err:
         logger.addHandler(http_handler)
 
         logger.critical("erro geral", exc_info=True)
-    print(err)

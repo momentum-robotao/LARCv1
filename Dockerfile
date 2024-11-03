@@ -5,11 +5,12 @@ RUN mkdir -p /usr/local/controller
 WORKDIR /usr/local/controller
 
 COPY ./src/ .
-# COPY ./requirements.txt ./requirements.txt
+COPY ./requirements.txt ./requirements.txt
 
 # Install dependencies
-# RUN pip3 install -r requirements.txt
-COPY ./venv/lib64/python3.12/site-packages/ .
+RUN pip3 install -r requirements.txt
+# RUN pip3 install numpy
+# COPY ./venv/lib64/python3.12/site-packages/ .
 
 # Set env vars
 ENV LOG_PATH=/usr/local/controller/.logs/robo.log
