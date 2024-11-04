@@ -1,10 +1,9 @@
-import os
-
 from debugging import DebugInfo, System
 from helpers import (
     calculate_wall_position,
     coordinate_after_move,
     cyclic_angle,
+    cyclic_angle_difference,
     get_blocking_wall,
     get_central_blocking_wall,
     side_angle_from_map_angle,
@@ -15,6 +14,7 @@ from robot import Robot
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
+    EXPECTED_WALL_DISTANCE,
     QUADRANT_OF_DELTA,
     TILE_SIZE,
     AreaDFSMappable,
@@ -25,9 +25,63 @@ from types_and_constants import (
 
 
 def adjust_wall_distance(
-    robot: Robot, angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2))
+    robot: Robot,
+    angle_max_error: float = 10 * DEGREE_IN_RAD,
+    wall_max_y_error: float = EXPECTED_WALL_DISTANCE / 5,
+    wall_max_x_error: float = EXPECTED_WALL_DISTANCE / 3,
 ) -> None:
-    return
+    y_error = 0.0
+    if robot.lidar.has_wall("back"):
+        y_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance("back")
+    elif robot.lidar.has_wall("front"):
+        y_error = robot.lidar.get_side_distance("front") - EXPECTED_WALL_DISTANCE
+
+    x_error = 0.0
+    if robot.lidar.has_wall("right"):
+        x_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance("right")
+    elif robot.lidar.has_wall("left"):
+        x_error = robot.lidar.get_side_distance("left") - EXPECTED_WALL_DISTANCE
+
+    angle_error = cyclic_angle_difference(
+        robot.imu.get_rotation_angle(), robot.motor.expected_angle
+    )
+
+    if (
+        abs(y_error) < wall_max_y_error
+        and abs(x_error) < wall_max_x_error
+        and abs(angle_error) < angle_max_error
+    ):
+        return
+
+    print(
+        f"AJUSTANDOOOOOO x = {abs(x_error) >= wall_max_x_error}; "
+        f"y = {abs(y_error) >= wall_max_y_error}; "
+        f"angle = {abs(angle_error >= angle_max_error)}"
+    )
+    import time
+
+    time.sleep(5)
+
+    if y_error <= -wall_max_y_error:
+        robot.motor.move(
+            "backward", robot.gps, robot.lidar, robot.color_sensor, abs(y_error)
+        )
+    if y_error >= wall_max_y_error:
+        robot.motor.move("forward", robot.gps, robot.lidar, robot.color_sensor, y_error)
+
+    if x_error <= -wall_max_x_error:
+        robot.motor.rotate_90_left(robot.imu)
+        robot.motor.move(
+            "backward", robot.gps, robot.lidar, robot.color_sensor, abs(x_error)
+        )
+    if x_error >= wall_max_x_error:
+        robot.motor.rotate_90_left(robot.imu)
+        robot.motor.move("forward", robot.gps, robot.lidar, robot.color_sensor, x_error)
+
+    if angle_error <= -angle_max_error:
+        robot.motor.rotate("right", abs(angle_max_error), robot.imu)
+    if angle_error >= angle_max_error:
+        robot.motor.rotate("left", angle_max_error, robot.imu)
 
 
 def dfs(

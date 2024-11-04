@@ -5,6 +5,8 @@ from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
 from helpers import cyclic_angle, round_if_almost_0
+
+# from recognize_wall_token import recognize_wall_token
 from types_and_constants import (
     DEBUG,
     EXPECTED_WALL_DISTANCE,
@@ -48,6 +50,8 @@ class Motor(Device):
         self._angle_imprecision = 0.0
         self._move_imprecision = 0.0
 
+        self.expected_angle = 0.0
+
     def _get_angle_imprecision(self, direction: Literal["left", "right"]) -> float:
         return self._angle_imprecision * (-1 if direction == "left" else 1)
 
@@ -84,8 +88,12 @@ class Motor(Device):
         `imu` to check the robot angle to rotate correctly.
         """
 
+        self.expected_angle = cyclic_angle(
+            self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
+        )
         self.stop()
 
+        # recognize_wall_token(robot, debug_info)
         if DEBUG:
             self.debug_info.send(
                 f"=== Começando a girar {turn_angle} rad para {direction}, "
