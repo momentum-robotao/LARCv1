@@ -158,6 +158,7 @@ class Lidar(Device):
         side: Side | Numeric,
         field_of_view: float = 10 * DEGREE_IN_RAD,
         remove_inf_measures: bool = True,
+        use_min: bool = False,
     ) -> float:
         """
         IMPORTANT! Note that angles in `side` must be side angles.
@@ -183,7 +184,15 @@ class Lidar(Device):
         if min(distances) != float("inf") and remove_inf_measures:
             distances = [dist for dist in distances if dist != float("inf")]
 
+        if len(distances) == 0:
+            return float("inf")
+
         average_distance = sum(distances) / len(distances)
+
+        if use_min:
+            average_distance = list(sorted(distances))[0]
+            if len(distances) >= 3:
+                average_distance = list(sorted(distances))[2]
 
         if DEBUG:
             self.debug_info.send(

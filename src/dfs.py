@@ -79,22 +79,50 @@ def adjust_wall_distance(
 
     if y_error <= -wall_max_y_error:
         robot.motor.move(
-            "backward", robot.gps, robot.lidar, robot.color_sensor, abs(y_error)
+            "backward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            dist=abs(y_error),
+            correction_move=True,
         )
         y_error, x_error, angle_error = get_errors(robot)
     if y_error >= wall_max_y_error:
-        robot.motor.move("forward", robot.gps, robot.lidar, robot.color_sensor, y_error)
+        robot.motor.move(
+            "forward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            dist=y_error,
+            correction_move=True,
+        )
         y_error, x_error, angle_error = get_errors(robot)
 
     if x_error <= -wall_max_x_error:
         robot.motor.rotate_90_left(robot.imu)
         robot.motor.move(
-            "backward", robot.gps, robot.lidar, robot.color_sensor, abs(x_error)
+            "backward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            dist=abs(x_error),
+            correction_move=True,
         )
         robot.motor.rotate_90_right(robot.imu)
     if x_error >= wall_max_x_error:
         robot.motor.rotate_90_left(robot.imu)
-        robot.motor.move("forward", robot.gps, robot.lidar, robot.color_sensor, x_error)
+        robot.motor.move(
+            "forward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            dist=x_error,
+            correction_move=True,
+        )
         robot.motor.rotate_90_right(robot.imu)
 
     delay(robot.webots_robot, debug_info, 2000)
@@ -160,7 +188,9 @@ def dfs(
 
         left_wall_distance = robot.lidar.get_side_distance(left_wall_angle)
         right_wall_distance = robot.lidar.get_side_distance(right_wall_angle)
-        central_wall_distance = robot.lidar.get_side_distance(movement_side_angle)
+        central_wall_distance = robot.lidar.get_side_distance(
+            movement_side_angle, field_of_view=20 * DEGREE_IN_RAD, use_min=True
+        )
 
         if DEBUG:
             debug_info.send(
@@ -245,7 +275,8 @@ def dfs(
                 robot.gps,
                 robot.lidar,
                 robot.color_sensor,
-                new_position_distance,
+                robot.imu,
+                dist=new_position_distance,
             )
             if movement_result == MovementResult.left_right_hole:
                 continue
@@ -270,7 +301,8 @@ def dfs(
             robot.gps,
             robot.lidar,
             robot.color_sensor,
-            new_position_distance,
+            robot.imu,
+            dist=new_position_distance,
         )
 
     if DEBUG:

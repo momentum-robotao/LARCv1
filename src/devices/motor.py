@@ -47,26 +47,7 @@ class Motor(Device):
         self._right_motor.setPosition(float("inf"))
         self.stop()
 
-        self._angle_imprecision = 0.0
-        self._move_imprecision = 0.0
-
         self.expected_angle = 0.0
-
-    def _get_angle_imprecision(self, direction: Literal["left", "right"]) -> float:
-        return self._angle_imprecision * (-1 if direction == "left" else 1)
-
-    def _set_angle_imprecision(
-        self, value: float, direction: Literal["left", "right"]
-    ) -> None:
-        self._angle_imprecision = value * (-1 if direction == "left" else 1)
-
-    def _get_move_imprecision(self, direction: Literal["forward", "backward"]) -> float:
-        return self._move_imprecision * (-1 if direction == "backward" else 1)
-
-    def _set_move_imprecision(
-        self, value: float, direction: Literal["forward", "backward"]
-    ) -> None:
-        self._move_imprecision = value * (-1 if direction == "backward" else 1)
 
     def stop(self) -> None:
         if DEBUG:
@@ -94,21 +75,6 @@ class Motor(Device):
                 self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
             )
         self.stop()
-
-        # recognize_wall_token(robot, debug_info)
-        if DEBUG:
-            self.debug_info.send(
-                f"=== Começando a girar {turn_angle} rad para {direction}, "
-                f"com a correção de {self._get_angle_imprecision(direction)} "
-                "rad ===",
-                System.motor_rotation,
-            )
-
-        turn_angle -= self._get_angle_imprecision(direction)
-        self._set_angle_imprecision(0, direction)
-
-        if turn_angle <= 0.00001:
-            return
 
         angle_accumulated_delta = 0
         rotation_angle = imu.get_rotation_angle()
@@ -142,18 +108,12 @@ class Motor(Device):
                 )
 
             if angle_accumulated_delta >= turn_angle:
-                self._set_angle_imprecision(  # TODO: remover?
-                    angle_accumulated_delta - turn_angle, direction
-                )
-
                 self.stop()
 
                 if DEBUG:
                     self.debug_info.send(
                         f"=== Terminou de girar {angle_accumulated_delta} "
-                        f"para {direction}. "
-                        f"Passou em {self._get_angle_imprecision(direction)} "
-                        "como imprecisão a ser corrigida depois ===",
+                        f"para {direction}. ",
                         System.motor_rotation,
                     )
 
@@ -211,6 +171,7 @@ class Motor(Device):
         gps: GPS,
         lidar: Lidar,
         color_sensor: ColorSensor,
+        imu: IMU,
         dist: float = TILE_SIZE,
         slow_down_dist: float = SLOW_DOWN_DIST,
         high_speed: float = MAX_SPEED,
@@ -218,6 +179,7 @@ class Motor(Device):
         kp: float = KP,
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
+        correction_move: bool = False,
     ) -> MovementResult:
         """
         Move the robot by certain distance in meters in some direction, using
@@ -252,17 +214,21 @@ class Motor(Device):
         - Holes are not detected when moving backward.
         """
         initial_position = gps.get_position()
+        # TODO: corrigir enquanto move para cada direção baseado na posição esperada
+        # outra forma de corrigir imprecisão é ajustar dist pra parede quando tem
+        # Isso serve só pra se ficar muito tempo sem parede pra ajustar
+        # if not correction_move:
+        #     movement_angle = cyclic_angle(
+        #         imu.get_rotation_angle() + 180 * PI if direction == "backward" else 0
+        #     )
+        #     # Pega distância para corrigir
+        #     # Salva posição esperada
 
         if DEBUG:
             self.debug_info.send(
-                f"Começando a mover {dist} para {direction}, com imprecisão "
-                f"{self._get_move_imprecision(direction)} a ser corrigida.",
+                f"Começando a mover {dist} para {direction}",
                 System.motor_movement,
             )
-
-        # TODO: usa expected dist + GPS ou talvez tira isso com adjust_wall_dist já
-        dist -= self._get_move_imprecision(direction)
-        self._set_move_imprecision(0, direction)
 
         while self._robot.step(self._time_step) != -1:
             actual_position = gps.get_position()
@@ -302,14 +268,10 @@ class Motor(Device):
             if traversed_dist >= dist:
                 self.stop()
 
-                self._set_move_imprecision(traversed_dist - dist, direction)
-
                 if DEBUG:
                     self.debug_info.send(
                         f"Fim do movimento, andou {traversed_dist} do "
-                        f"objetivo: {dist} para {direction}. Passou em "
-                        f"{self._get_move_imprecision(direction)} como "
-                        "imprecisão para ser corrigida depois.",
+                        f"objetivo: {dist} para {direction}.",
                         System.motor_movement,
                     )
 
@@ -325,6 +287,7 @@ class Motor(Device):
                     gps,
                     lidar,
                     color_sensor,
+                    imu,
                     traversed_dist,
                     slow_down_dist,
                     high_speed,
@@ -350,6 +313,7 @@ class Motor(Device):
                     gps,
                     lidar,
                     color_sensor,
+                    imu,
                     traversed_dist,
                     slow_down_dist,
                     high_speed,
