@@ -4,6 +4,7 @@ from helpers import (
     coordinate_after_move,
     cyclic_angle,
     cyclic_angle_difference,
+    delay,
     get_blocking_wall,
     get_central_blocking_wall,
     side_angle_from_map_angle,
@@ -24,12 +25,7 @@ from types_and_constants import (
 )
 
 
-def adjust_wall_distance(
-    robot: Robot,
-    angle_max_error: float = 10 * DEGREE_IN_RAD,
-    wall_max_y_error: float = EXPECTED_WALL_DISTANCE / 5,
-    wall_max_x_error: float = EXPECTED_WALL_DISTANCE / 3,
-) -> None:
+def get_errors(robot: Robot):
     y_error = 0.0
     if robot.lidar.has_wall("back"):
         y_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance("back")
@@ -45,7 +41,19 @@ def adjust_wall_distance(
     angle_error = cyclic_angle_difference(
         robot.imu.get_rotation_angle(), robot.motor.expected_angle
     )
+    return y_error, x_error, angle_error
 
+
+def adjust_wall_distance(
+    robot: Robot,
+    debug_info: DebugInfo,
+    angle_max_error: float = 2 * DEGREE_IN_RAD,
+    wall_max_y_error: float = EXPECTED_WALL_DISTANCE / 5,
+    wall_max_x_error: float = EXPECTED_WALL_DISTANCE / 3,
+) -> None:
+    y_error, x_error, angle_error = get_errors(robot)
+
+    print(angle_error, angle_error / DEGREE_IN_RAD)
     if (
         abs(y_error) < wall_max_y_error
         and abs(x_error) < wall_max_x_error
@@ -56,32 +64,40 @@ def adjust_wall_distance(
     print(
         f"AJUSTANDOOOOOO x = {abs(x_error) >= wall_max_x_error}; "
         f"y = {abs(y_error) >= wall_max_y_error}; "
-        f"angle = {abs(angle_error >= angle_max_error)}"
+        f"angle = {abs(angle_error) >= angle_max_error}"
     )
-    import time
+    delay(robot.webots_robot, debug_info, 2000)
 
-    time.sleep(5)
+    if angle_error <= -angle_max_error:
+        robot.motor.rotate(
+            "right", abs(angle_error), robot.imu, correction_rotation=True
+        )
+        y_error, x_error, angle_error = get_errors(robot)
+    if angle_error >= angle_max_error:
+        robot.motor.rotate("left", angle_error, robot.imu, correction_rotation=True)
+        y_error, x_error, angle_error = get_errors(robot)
 
     if y_error <= -wall_max_y_error:
         robot.motor.move(
             "backward", robot.gps, robot.lidar, robot.color_sensor, abs(y_error)
         )
+        y_error, x_error, angle_error = get_errors(robot)
     if y_error >= wall_max_y_error:
         robot.motor.move("forward", robot.gps, robot.lidar, robot.color_sensor, y_error)
+        y_error, x_error, angle_error = get_errors(robot)
 
     if x_error <= -wall_max_x_error:
         robot.motor.rotate_90_left(robot.imu)
         robot.motor.move(
             "backward", robot.gps, robot.lidar, robot.color_sensor, abs(x_error)
         )
+        robot.motor.rotate_90_right(robot.imu)
     if x_error >= wall_max_x_error:
         robot.motor.rotate_90_left(robot.imu)
         robot.motor.move("forward", robot.gps, robot.lidar, robot.color_sensor, x_error)
+        robot.motor.rotate_90_right(robot.imu)
 
-    if angle_error <= -angle_max_error:
-        robot.motor.rotate("right", abs(angle_max_error), robot.imu)
-    if angle_error >= angle_max_error:
-        robot.motor.rotate("left", angle_max_error, robot.imu)
+    delay(robot.webots_robot, debug_info, 2000)
 
 
 def dfs(
@@ -100,11 +116,11 @@ def dfs(
     """
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
-    adjust_wall_distance(robot)
-    maze.mark_visited(position)
-    recognize_wall_token(robot, debug_info)
 
     robot.step()
+    adjust_wall_distance(robot, debug_info)
+    maze.mark_visited(position)
+    recognize_wall_token(robot, debug_info)
     start_angle = robot.imu.get_rotation_angle()
     if DEBUG:
         debug_info.send(
@@ -250,7 +266,7 @@ def dfs(
         if DEBUG:
             debug_info.send("Retornando do vizinho", System.dfs_decision)
         robot.motor.move(
-            "backward",
+            "forward",
             robot.gps,
             robot.lidar,
             robot.color_sensor,
@@ -266,4 +282,9 @@ def dfs(
     # ? important to ensure that when last dfs move backward with robot
     # it is in the same direction and will properly "undo" the movement to
     # this tile, coming back to the last tile.
-    robot.motor.rotate_to_angle(start_angle, robot.imu)
+    robot.step()
+    robot.motor.rotate_to_angle(
+        cyclic_angle(start_angle + 180 * DEGREE_IN_RAD), robot.imu
+    )
+    adjust_wall_distance(robot, debug_info)
+    recognize_wall_token(robot, debug_info)

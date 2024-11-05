@@ -79,6 +79,7 @@ class Motor(Device):
         direction: Literal["left", "right"],
         turn_angle: float,
         imu: IMU,
+        correction_rotation: bool = False,
         slow_down_angle: float = 0.1,
         high_speed: float = MAX_SPEED,
         low_speed: float = MAX_SPEED / 100,
@@ -88,9 +89,10 @@ class Motor(Device):
         `imu` to check the robot angle to rotate correctly.
         """
 
-        self.expected_angle = cyclic_angle(
-            self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
-        )
+        if not correction_rotation:
+            self.expected_angle = cyclic_angle(
+                self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
+            )
         self.stop()
 
         # recognize_wall_token(robot, debug_info)
@@ -140,7 +142,7 @@ class Motor(Device):
                 )
 
             if angle_accumulated_delta >= turn_angle:
-                self._set_angle_imprecision(
+                self._set_angle_imprecision(  # TODO: remover?
                     angle_accumulated_delta - turn_angle, direction
                 )
 
@@ -189,18 +191,18 @@ class Motor(Device):
                 "right",
                 angle_rotating_right,
                 imu,
-                slow_down_angle,
-                high_speed,
-                low_speed,
+                slow_down_angle=slow_down_angle,
+                high_speed=high_speed,
+                low_speed=low_speed,
             )
         else:
             self.rotate(
                 "left",
                 angle_rotating_left,
                 imu,
-                slow_down_angle,
-                high_speed,
-                low_speed,
+                slow_down_angle=slow_down_angle,
+                high_speed=high_speed,
+                low_speed=low_speed,
             )
 
     def move(
@@ -258,6 +260,7 @@ class Motor(Device):
                 System.motor_movement,
             )
 
+        # TODO: usa expected dist + GPS ou talvez tira isso com adjust_wall_dist já
         dist -= self._get_move_imprecision(direction)
         self._set_move_imprecision(0, direction)
 
