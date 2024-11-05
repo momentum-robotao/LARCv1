@@ -27,16 +27,25 @@ from types_and_constants import (
 
 def get_errors(robot: Robot):
     y_error = 0.0
-    if robot.lidar.has_wall("back"):
-        y_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance("back")
-    elif robot.lidar.has_wall("front"):
-        y_error = robot.lidar.get_side_distance("front") - EXPECTED_WALL_DISTANCE
+    if robot.lidar.has_wall("back", use_min=True):
+        y_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance(
+            "back", use_min=True
+        )
+    elif robot.lidar.has_wall("front", use_min=True):
+        y_error = (
+            robot.lidar.get_side_distance("front", use_min=True)
+            - EXPECTED_WALL_DISTANCE
+        )
 
     x_error = 0.0
-    if robot.lidar.has_wall("right"):
-        x_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance("right")
-    elif robot.lidar.has_wall("left"):
-        x_error = robot.lidar.get_side_distance("left") - EXPECTED_WALL_DISTANCE
+    if robot.lidar.has_wall("right", use_min=True):
+        x_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance(
+            "right", use_min=True
+        )
+    elif robot.lidar.has_wall("left", use_min=True):
+        x_error = (
+            robot.lidar.get_side_distance("left", use_min=True) - EXPECTED_WALL_DISTANCE
+        )
 
     angle_error = cyclic_angle_difference(
         robot.imu.get_rotation_angle(), robot.motor.expected_angle
@@ -52,21 +61,6 @@ def adjust_wall_distance(
     wall_max_x_error: float = EXPECTED_WALL_DISTANCE / 3,
 ) -> None:
     y_error, x_error, angle_error = get_errors(robot)
-
-    print(angle_error, angle_error / DEGREE_IN_RAD)
-    if (
-        abs(y_error) < wall_max_y_error
-        and abs(x_error) < wall_max_x_error
-        and abs(angle_error) < angle_max_error
-    ):
-        return
-
-    print(
-        f"AJUSTANDOOOOOO x = {abs(x_error) >= wall_max_x_error}; "
-        f"y = {abs(y_error) >= wall_max_y_error}; "
-        f"angle = {abs(angle_error) >= angle_max_error}"
-    )
-    delay(robot.webots_robot, debug_info, 2000)
 
     if angle_error <= -angle_max_error:
         robot.motor.rotate(
@@ -124,8 +118,6 @@ def adjust_wall_distance(
             correction_move=True,
         )
         robot.motor.rotate_90_right(robot.imu)
-
-    delay(robot.webots_robot, debug_info, 2000)
 
 
 def dfs(

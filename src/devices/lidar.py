@@ -208,12 +208,13 @@ class Lidar(Device):
         self,
         side: Literal["front", "back", "left", "right"],
         max_wall_distance: float = MAX_WALL_DISTANCE,
+        use_min: bool = False,
     ) -> bool:
         """
         :return: If there is a wall in the actual tile, assuming that
         the robot is on the center of the tile on the corresponding axis.
         """
-        side_distance = self.get_side_distance(side)
+        side_distance = self.get_side_distance(side, use_min=use_min)
         has_wall = side_distance <= max_wall_distance
 
         if DEBUG:

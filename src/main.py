@@ -57,7 +57,6 @@ try:
 
     def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
         robot.imu.get_rotation_angle()
-        delay(robot.webots_robot, debug_info, 7000)
         position = Coordinate(0, 0)
         maze.set_tile_type(position, SpecialTileType.STARTING)
         position = dfs(position, maze, robot, debug_info, area=1, starting=True)
