@@ -4,7 +4,6 @@ from helpers import (
     coordinate_after_move,
     cyclic_angle,
     cyclic_angle_difference,
-    delay,
     get_blocking_wall,
     get_central_blocking_wall,
     side_angle_from_map_angle,
@@ -17,6 +16,7 @@ from types_and_constants import (
     DEGREE_IN_RAD,
     EXPECTED_WALL_DISTANCE,
     QUADRANT_OF_DELTA,
+    SLOW_DOWN_DIST,
     TILE_SIZE,
     AreaDFSMappable,
     Coordinate,
@@ -269,6 +269,7 @@ def dfs(
                 robot.color_sensor,
                 robot.imu,
                 dist=new_position_distance,
+                slow_down_dist=SLOW_DOWN_DIST / 3,
             )
             if movement_result == MovementResult.left_right_hole:
                 continue
@@ -295,6 +296,7 @@ def dfs(
             robot.color_sensor,
             robot.imu,
             dist=new_position_distance,
+            slow_down_dist=SLOW_DOWN_DIST / 3,
         )
 
     if DEBUG:
