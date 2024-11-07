@@ -38,6 +38,7 @@ ROBOT_RADIUS = 0.0355
 MAX_WALL_DISTANCE = 0.030
 EXPECTED_WALL_DISTANCE = 0.0198
 WALL_COLLISION_DISTANCE = 0.002
+DIST_BEFORE_HOLE = 0.02
 
 ORTOGONAL_MAX_DIST_IF_WALL = TILE_SIZE / 2
 DIAGONAL_MAX_DIST_IF_WALL1 = (
@@ -88,7 +89,7 @@ class MovementResult(Enum):
     moved = "moved"
     left_hole = "left hole"
     right_hole = "right hole"
-    left_right_hole = "left right hole"
+    central_hole = "central hole"
 
 
 class SpecialTileType(Enum):
@@ -232,3 +233,5 @@ QUADRANT_OF_DELTA: dict[Coordinate, Quadrant] = {
     Coordinate(0, -1): "top_left",
     Coordinate(1, -1): "top_right",
 }
+
+ALL_QUADRANTS: list[Quadrant] = ["bottom_left", "bottom_right", "top_left", "top_right"]

@@ -4,6 +4,7 @@ from typing import Any, Callable
 from debugging import DebugInfo, System
 from helpers import quarter_tile_quadrant, tile_pos_with_quarter_tile
 from types_and_constants import (
+    ALL_QUADRANTS,
     DEBUG,
     QUADRANT_OF_DELTA,
     Coordinate,
@@ -105,10 +106,10 @@ def insert_walls_to_maze(
     return answer_maze
 
 
-def insert_starting_tile_to_maze(
+def insert_special_tile_to_maze(
     answer_maze: AnswerMaze, tile_pos: Coordinate, tile: Tile
 ) -> AnswerMaze:
-    if tile.special_type == SpecialTileType.STARTING:
+    if tile.special_type in [SpecialTileType.STARTING, SpecialTileType.HOLE]:
         for mark_in_tile in [
             Coordinate(1, 1),
             Coordinate(1, 3),
@@ -118,13 +119,13 @@ def insert_starting_tile_to_maze(
             answer_pos = tile_pos + mark_in_tile
             answer_maze[answer_pos.y][  # type: ignore[index]
                 answer_pos.x  # type: ignore[index]
-            ] = SpecialTileType.STARTING.value
+            ] = tile.special_type.value
     return answer_maze
 
 
 ElementInserterToMaze = Callable[[AnswerMaze, Coordinate, Tile], AnswerMaze]
 ELEMENT_INSERTERS: list[ElementInserterToMaze] = [
-    insert_starting_tile_to_maze,
+    insert_special_tile_to_maze,
     insert_walls_to_maze,
 ]
 
@@ -175,9 +176,19 @@ class Maze:
             quarter_tile_quadrant(quarter_tile_pos), QuarterTile()
         )
 
-    def mark_visited(self, quarter_tile_pos: Coordinate) -> None:
+    def mark_visited_tile(self, tile_pos: Coordinate) -> None:
+        tile_pos = Maze.check_position(tile_pos)
+        for quadrant in ALL_QUADRANTS:
+            self.objects[tile_pos.x][tile_pos.y].quadrants.setdefault(  # type: ignore[index]
+                quadrant, QuarterTile()
+            )
+
+    def mark_visited(self, robot_position: Coordinate) -> None:
+        """
+        :param robot_position: Quarter tile corresponding to robot position.
+        """
         for delta, _ in QUADRANT_OF_DELTA.items():
-            self._mark_quarter_tile(quarter_tile_pos + delta)
+            self._mark_quarter_tile(robot_position + delta)
 
     def is_visited(self, quarter_tile_pos: Coordinate) -> bool:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
@@ -269,5 +280,40 @@ class Maze:
             self.debug_info.send(
                 f"Mapa após {inserter.__name__}: {answer_maze}", System.maze_answer
             )
+
+        all_quarter_tiles = set()
+        for x in objects:
+            for y in objects[x]:
+                tile = objects[x][y]
+                tile_pos = Coordinate(x, y)
+                for quadrant in tile.quadrants:
+                    quarter_tile_pos = tile_pos * 2 + QUADRANT_DELTA[quadrant]
+                    all_quarter_tiles.add(quarter_tile_pos)
+        for x in objects:
+            for y in objects[x]:
+                tile_pos = Coordinate(x, y) * 4
+                tile = objects[x][y]
+                for quadrant in tile.quadrants:
+                    quarter_tile_pos = tile_pos + QUADRANT_DELTA[quadrant] * 2
+
+                    for delta, wall in [
+                        (Coordinate(0, -1), "front"),
+                        (Coordinate(0, 1), "back"),
+                        (Coordinate(-1, 0), "left"),
+                        (Coordinate(1, 0), "right"),
+                    ]:
+                        if (
+                            Coordinate(x, y) * 2 + QUADRANT_DELTA[quadrant] + delta
+                            in all_quarter_tiles
+                        ):
+                            continue
+                        for mark_in_tile in MARK_TILES_OF_WALL_SIDE[wall]:  # type: ignore[index]
+                            answer_pos = quarter_tile_pos + mark_in_tile
+                            answer_maze[answer_pos.y][  # type: ignore[index]
+                                answer_pos.x  # type: ignore[index]
+                            ] = MappingEncode.WALL.value
+        self.debug_info.send(
+            f"Mapa após paredes externas: {answer_maze}", System.maze_answer
+        )
 
         return answer_maze

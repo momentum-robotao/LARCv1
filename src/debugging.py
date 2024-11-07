@@ -41,6 +41,7 @@ class System(Enum):
     communicator_send_maze = "communicator send maze"
     wall_token_classification = "wall token classification"
     wall_token_recognition = "wall token recognition"
+    hole_detection = "hole detection"
 
 
 ALL_SYSTEMS = [system for system in System]

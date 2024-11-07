@@ -10,7 +10,16 @@ try:
     from controller import Robot as WebotsRobot  # type: ignore
 
     from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
-    from devices import GPS, IMU, Camera, ColorSensor, Communicator, Lidar, Motor
+    from devices import (
+        GPS,
+        IMU,
+        Camera,
+        ColorSensor,
+        Communicator,
+        DistanceSensor,
+        Lidar,
+        Motor,
+    )
     from dfs import dfs
     from helpers import delay
     from maze import Maze
@@ -71,17 +80,17 @@ try:
                 System.dfs_state,
                 System.dfs_decision,
                 System.dfs_verification,
-                # System.maze_visited,
                 System.unknown_error,
                 System.initialization,
-                # System.maze_snapshot,
                 System.maze_changes,
                 System.maze_answer,
+                System.maze_visited,
                 System.communicator_send_maze,
                 System.communicator_send_end_of_play,
                 System.communicator_send_messages,
                 System.wall_token_recognition,
                 System.wall_token_classification,
+                System.hole_detection,
             ]
             # want = ALL_SYSTEMS
             debug_info = DebugInfo(
@@ -108,6 +117,7 @@ try:
             color_sensor = ColorSensor(webots_robot, debug_info)
             communicator = Communicator(webots_robot, debug_info)
             camera = Camera(webots_robot, debug_info)
+            distance_sensor = DistanceSensor(webots_robot, debug_info)
         except Exception:
             if DEBUG:
                 debug_info.send(
@@ -127,7 +137,8 @@ try:
                 color_sensor,
                 communicator,
                 camera,
-                debug_info,
+                distance_sensor,
+                debug_info=debug_info,
             )
             robot.step()
         except Exception:

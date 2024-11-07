@@ -7,6 +7,7 @@ from helpers import (
     get_blocking_wall,
     get_central_blocking_wall,
     side_angle_from_map_angle,
+    tile_pos_with_quarter_tile,
 )
 from maze import Maze
 from recognize_wall_token import recognize_wall_token
@@ -21,6 +22,7 @@ from types_and_constants import (
     AreaDFSMappable,
     Coordinate,
     MovementResult,
+    SpecialTileType,
     WallColisionError,
 )
 
@@ -78,6 +80,7 @@ def adjust_wall_distance(
             robot.lidar,
             robot.color_sensor,
             robot.imu,
+            robot.distance_sensor,
             dist=abs(y_error),
             correction_move=True,
         )
@@ -89,6 +92,7 @@ def adjust_wall_distance(
             robot.lidar,
             robot.color_sensor,
             robot.imu,
+            robot.distance_sensor,
             dist=y_error,
             correction_move=True,
         )
@@ -102,6 +106,7 @@ def adjust_wall_distance(
             robot.lidar,
             robot.color_sensor,
             robot.imu,
+            robot.distance_sensor,
             dist=abs(x_error),
             correction_move=True,
         )
@@ -114,6 +119,7 @@ def adjust_wall_distance(
             robot.lidar,
             robot.color_sensor,
             robot.imu,
+            robot.distance_sensor,
             dist=x_error,
             correction_move=True,
         )
@@ -268,10 +274,26 @@ def dfs(
                 robot.lidar,
                 robot.color_sensor,
                 robot.imu,
+                robot.distance_sensor,
                 dist=new_position_distance,
                 slow_down_dist=SLOW_DOWN_DIST / 3,
             )
-            if movement_result == MovementResult.left_right_hole:
+
+            angle_to_hole = None
+            if movement_result == MovementResult.central_hole:
+                angle_to_hole = movement_angle
+            elif movement_result == MovementResult.left_hole:
+                angle_to_hole = cyclic_angle(movement_angle - 45)
+            elif movement_result == MovementResult.right_hole:
+                angle_to_hole = cyclic_angle(movement_angle + 45)
+
+            if angle_to_hole:
+                robot_position_on_hole = coordinate_after_move(
+                    coordinate_after_move(position, angle_to_hole), movement_angle
+                )
+                maze.set_tile_type(robot_position_on_hole, SpecialTileType.HOLE)
+                hole_tile_position = tile_pos_with_quarter_tile(robot_position_on_hole)
+                maze.mark_visited_tile(hole_tile_position)
                 continue
             elif movement_result == MovementResult.moved:
                 pass
@@ -295,6 +317,7 @@ def dfs(
             robot.lidar,
             robot.color_sensor,
             robot.imu,
+            robot.distance_sensor,
             dist=new_position_distance,
             slow_down_dist=SLOW_DOWN_DIST / 3,
         )

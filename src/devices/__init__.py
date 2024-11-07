@@ -2,6 +2,7 @@ from .camera import Camera
 from .color_sensor import ColorSensor
 from .communicator import Communicator
 from .device import Device
+from .distance_sensor import DistanceSensor
 from .gps import GPS
 from .imu import IMU
 from .lidar import Lidar
@@ -16,4 +17,5 @@ __all__ = [
     "Communicator",
     "Camera",
     "Device",
+    "DistanceSensor",
 ]

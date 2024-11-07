@@ -7,8 +7,6 @@ from types_and_constants import DEBUG, RGB
 
 from .device import Device
 
-HOLE_COLOR = b"...\xff"
-
 
 class ColorSensor(Device):
     def __init__(
@@ -43,13 +41,3 @@ class ColorSensor(Device):
                 f"Cor RGB reconhecida: {color}", System.color_sensor_measures
             )
         return color
-
-    def has_hole(self, hole_color: bytes = HOLE_COLOR) -> bool:
-        color = self.get_color()
-        has_hole = color == hole_color
-        if DEBUG:
-            self.debug_info.send(
-                f"Buraco {'' if has_hole else 'não '}reconhecido.",
-                System.color_sensor_detections,
-            )
-        return has_hole

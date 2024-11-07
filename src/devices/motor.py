@@ -9,6 +9,7 @@ from helpers import cyclic_angle, round_if_almost_0
 # from recognize_wall_token import recognize_wall_token
 from types_and_constants import (
     DEBUG,
+    DIST_BEFORE_HOLE,
     EXPECTED_WALL_DISTANCE,
     KP,
     MAX_SPEED,
@@ -22,6 +23,7 @@ from types_and_constants import (
 
 from .color_sensor import ColorSensor
 from .device import Device
+from .distance_sensor import DistanceSensor
 from .gps import GPS
 from .imu import IMU
 from .lidar import Lidar
@@ -172,6 +174,7 @@ class Motor(Device):
         lidar: Lidar,
         color_sensor: ColorSensor,
         imu: IMU,
+        distance_sensor: DistanceSensor,
         dist: float = TILE_SIZE,
         slow_down_dist: float = SLOW_DOWN_DIST,
         high_speed: float = MAX_SPEED,
@@ -288,6 +291,7 @@ class Motor(Device):
                     lidar,
                     color_sensor,
                     imu,
+                    distance_sensor,
                     traversed_dist,
                     slow_down_dist,
                     high_speed,
@@ -305,7 +309,14 @@ class Motor(Device):
 
                 raise WallColisionError()
 
-            if color_sensor.has_hole() and not returning_to_safe_position:
+            hole = distance_sensor.detect_hole()
+            if (
+                hole
+                and not returning_to_safe_position
+                and (
+                    dist - traversed_dist > DIST_BEFORE_HOLE or dist <= DIST_BEFORE_HOLE
+                )
+            ):
                 self.stop()
 
                 self.move(
@@ -314,6 +325,7 @@ class Motor(Device):
                     lidar,
                     color_sensor,
                     imu,
+                    distance_sensor,
                     traversed_dist,
                     slow_down_dist,
                     high_speed,
@@ -326,10 +338,15 @@ class Motor(Device):
                 if DEBUG:
                     self.debug_info.send(
                         "Retornou à posição antiga após achar buraco.",
-                        System.lidar_wall_detection,
+                        System.hole_detection,
                     )
 
-                return MovementResult.left_right_hole
+                if hole == "central":
+                    return MovementResult.central_hole
+                elif hole == "left":
+                    return MovementResult.left_hole
+                else:
+                    return MovementResult.right_hole
         return MovementResult.moved
 
     @staticmethod
