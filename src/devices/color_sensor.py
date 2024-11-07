@@ -49,13 +49,16 @@ class ColorSensor(Device):
 
     def check_colored_special_tile(self) -> ColoredSpecialTile | None:
         color = self.get_RGB_color()
-        print(color)
         if DEBUG:
             self.debug_info.send(f"Cor do chão: {color}", System.check_tile_color)
 
         for test_color, special_tile_type in SPECIAL_TILE_COLOR_MAPPER.items():
             if test_color == color:
-                print(f"É {special_tile_type}")
+                if DEBUG:
+                    self.debug_info.send(
+                        f"É {special_tile_type}", System.check_tile_color
+                    )
                 return special_tile_type
-        print("Não é nada\n")
+        if DEBUG:
+            self.debug_info.send("Não é nada", System.check_tile_color)
         return None

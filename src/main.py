@@ -29,6 +29,7 @@ try:
         NGROK_URL,
         ON_DOCKER,
         Coordinate,
+        EndOfTimeError,
         SpecialTileType,
     )
 
@@ -154,6 +155,8 @@ try:
         # Solve map
         try:
             solve_map(robot, debug_info, maze)
+        except EndOfTimeError:
+            pass
         except Exception:
             if DEBUG:
                 debug_info.send(

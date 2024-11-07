@@ -37,7 +37,6 @@ class DistanceSensor(Device):
         # while webots_robot.step(32) != -1 and len(right_distances) < 5:
         #     left_distances.append(self.get_distance("left"))
         #     right_distances.append(self.get_distance("right"))
-        # print(self.get_distance("left"), self.get_distance("right"))
         if self.get_distance("left") > 0.2 and self.get_distance("right") > 0.2:
             self.debug_info.send("Buraco central", System.hole_detection)
             return "central"

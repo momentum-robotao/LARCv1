@@ -11,7 +11,7 @@ from helpers import (
 )
 from maze import Maze
 from recognize_wall_token import recognize_wall_token
-from robot import Robot
+from robot import Robot, check_time
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -147,15 +147,18 @@ def dfs(
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 
-    robot.step()
-    adjust_wall_distance(robot, debug_info)
-    maze.mark_visited(position)
-    recognize_wall_token(robot, debug_info)
     start_angle = robot.imu.get_rotation_angle()
     if DEBUG:
         debug_info.send(
             f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
         )
+
+    check_time(robot)
+    maze.mark_visited(position)
+    robot.step()
+    adjust_wall_distance(robot, debug_info)
+    recognize_wall_token(robot, debug_info)
+
     # TODO: swamp etc podem estar acessíveis apenas em certo quarter tile
     colored_tile = None
     if position.x % 2 == 0 and position.y % 2 == 0:  # centered in tile
@@ -351,8 +354,9 @@ def dfs(
     # it is in the same direction and will properly "undo" the movement to
     # this tile, coming back to the last tile.
     robot.step()
+    adjust_wall_distance(robot, debug_info)
+    recognize_wall_token(robot, debug_info)
     robot.motor.rotate_to_angle(
         cyclic_angle(start_angle + 180 * DEGREE_IN_RAD), robot.imu
     )
-    adjust_wall_distance(robot, debug_info)
-    recognize_wall_token(robot, debug_info)
+    check_time(robot)

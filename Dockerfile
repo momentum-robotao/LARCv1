@@ -15,6 +15,9 @@ RUN pip3 install -r requirements.txt
 # Set env vars
 ENV LOG_PATH=/usr/local/controller/.logs/robo.log
 ENV TIME_STEP=32
+# Configure
+# TIME_TOLERANCE: se tempo restante (real ou simulado) for inferior a isso, o mapa é enviado 
+ENV TIME_TOLERANCE=3
 # IMPORTANT! Remove these DEBUG env vars during competition
 ENV DEBUG=True
 ENV ON_DOCKER=True

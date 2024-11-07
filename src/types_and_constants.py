@@ -67,6 +67,12 @@ CENTRAL_SIDE_ANGLE_OF_SIDE: dict[Side, Numeric] = {
 }
 
 
+class EndOfTimeError(Exception):
+    """
+    Exception raised when time is going to end.
+    """
+
+
 class WallColisionError(Exception):
     """
     Exception raised when the robot colides with a wall and it

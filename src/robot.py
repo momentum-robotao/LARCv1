@@ -14,7 +14,7 @@ from devices import (
     Lidar,
     Motor,
 )
-from types_and_constants import DEBUG
+from types_and_constants import DEBUG, EndOfTimeError
 
 
 class Robot:
@@ -64,3 +64,14 @@ class Robot:
 
     def step(self) -> Any:
         return self.webots_robot.step(self.time_step)
+
+
+def check_time(
+    robot: Robot, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
+) -> None:
+    game_information = robot.communicator.get_game_information()
+    if (
+        game_information.remaining_real_world_time < time_tolerance
+        or game_information.remaining_simulation_time < time_tolerance
+    ):
+        raise EndOfTimeError()
