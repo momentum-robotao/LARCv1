@@ -154,11 +154,18 @@ class Coordinate:
         return Coordinate(self.x * multiplier, self.y * multiplier)
 
 
-@dataclass
+@dataclass(frozen=True)
 class RGB:
     red: float
     green: float
     blue: float
+
+    def __eq__(self, other) -> bool:
+        return (
+            abs(self.red - other.red) <= 2
+            and abs(self.green - other.green) <= 2
+            and abs(self.blue - other.blue) <= 2
+        )
 
 
 # For each wall, sorted by distance, that robot may collide after moving with some rotation angle:
@@ -235,3 +242,26 @@ QUADRANT_OF_DELTA: dict[Coordinate, Quadrant] = {
 }
 
 ALL_QUADRANTS: list[Quadrant] = ["bottom_left", "bottom_right", "top_left", "top_right"]
+
+ColoredSpecialTile = Literal[
+    SpecialTileType.PASSAGE_1_2,
+    SpecialTileType.PASSAGE_1_3,
+    SpecialTileType.PASSAGE_1_4,
+    SpecialTileType.PASSAGE_2_3,
+    SpecialTileType.PASSAGE_2_4,
+    SpecialTileType.PASSAGE_3_4,
+    SpecialTileType.SWAMP,
+    SpecialTileType.CHECKPOINT,
+]
+
+
+SPECIAL_TILE_COLOR_MAPPER: dict[RGB, ColoredSpecialTile] = {
+    RGB(255, 255, 255): SpecialTileType.CHECKPOINT,
+    RGB(80, 80, 255): SpecialTileType.PASSAGE_1_2,
+    RGB(255, 255, 80): SpecialTileType.PASSAGE_1_3,
+    RGB(255, 245, 80): SpecialTileType.PASSAGE_2_4,
+    RGB(42, 254, 42): SpecialTileType.PASSAGE_1_4,
+    RGB(175, 80, 245): SpecialTileType.PASSAGE_2_3,
+    RGB(255, 79, 79): SpecialTileType.PASSAGE_3_4,
+    RGB(235, 206, 126): SpecialTileType.SWAMP,
+}

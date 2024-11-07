@@ -91,6 +91,7 @@ try:
                 System.wall_token_recognition,
                 System.wall_token_classification,
                 System.hole_detection,
+                System.check_tile_color,
             ]
             # want = ALL_SYSTEMS
             debug_info = DebugInfo(

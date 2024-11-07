@@ -42,6 +42,7 @@ class System(Enum):
     wall_token_classification = "wall token classification"
     wall_token_recognition = "wall token recognition"
     hole_detection = "hole detection"
+    check_tile_color = "check tile color"
 
 
 ALL_SYSTEMS = [system for system in System]

@@ -3,7 +3,12 @@ import os
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
-from types_and_constants import DEBUG, RGB
+from types_and_constants import (
+    DEBUG,
+    RGB,
+    SPECIAL_TILE_COLOR_MAPPER,
+    ColoredSpecialTile,
+)
 
 from .device import Device
 
@@ -41,3 +46,16 @@ class ColorSensor(Device):
                 f"Cor RGB reconhecida: {color}", System.color_sensor_measures
             )
         return color
+
+    def check_colored_special_tile(self) -> ColoredSpecialTile | None:
+        color = self.get_RGB_color()
+        print(color)
+        if DEBUG:
+            self.debug_info.send(f"Cor do chão: {color}", System.check_tile_color)
+
+        for test_color, special_tile_type in SPECIAL_TILE_COLOR_MAPPER.items():
+            if test_color == color:
+                print(f"É {special_tile_type}")
+                return special_tile_type
+        print("Não é nada\n")
+        return None

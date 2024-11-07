@@ -81,6 +81,7 @@ def adjust_wall_distance(
             robot.color_sensor,
             robot.imu,
             robot.distance_sensor,
+            robot.webots_robot,
             dist=abs(y_error),
             correction_move=True,
         )
@@ -93,6 +94,7 @@ def adjust_wall_distance(
             robot.color_sensor,
             robot.imu,
             robot.distance_sensor,
+            robot.webots_robot,
             dist=y_error,
             correction_move=True,
         )
@@ -107,6 +109,7 @@ def adjust_wall_distance(
             robot.color_sensor,
             robot.imu,
             robot.distance_sensor,
+            robot.webots_robot,
             dist=abs(x_error),
             correction_move=True,
         )
@@ -120,6 +123,7 @@ def adjust_wall_distance(
             robot.color_sensor,
             robot.imu,
             robot.distance_sensor,
+            robot.webots_robot,
             dist=x_error,
             correction_move=True,
         )
@@ -152,6 +156,19 @@ def dfs(
         debug_info.send(
             f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
         )
+    # TODO: swamp etc podem estar acessíveis apenas em certo quarter tile
+    colored_tile = None
+    if position.x % 2 == 0 and position.y % 2 == 0:  # centered in tile
+        colored_tile = robot.color_sensor.check_colored_special_tile()
+    if colored_tile:
+        if DEBUG:
+            debug_info.send(
+                f"Cor do chão detectou {colored_tile}", System.check_tile_color
+            )
+        maze.set_tile_type(position, colored_tile)
+    else:
+        if DEBUG:
+            debug_info.send(f"Não detectou cor em {position}", System.check_tile_color)
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
@@ -275,6 +292,7 @@ def dfs(
                 robot.color_sensor,
                 robot.imu,
                 robot.distance_sensor,
+                robot.webots_robot,
                 dist=new_position_distance,
                 slow_down_dist=SLOW_DOWN_DIST / 3,
             )
@@ -318,6 +336,7 @@ def dfs(
             robot.color_sensor,
             robot.imu,
             robot.distance_sensor,
+            robot.webots_robot,
             dist=new_position_distance,
             slow_down_dist=SLOW_DOWN_DIST / 3,
         )

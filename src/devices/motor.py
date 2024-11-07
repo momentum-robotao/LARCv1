@@ -169,12 +169,15 @@ class Motor(Device):
 
     def move(
         self,
+        /,
         direction: Literal["forward", "backward"],
         gps: GPS,
         lidar: Lidar,
         color_sensor: ColorSensor,
         imu: IMU,
         distance_sensor: DistanceSensor,
+        webots_robot: WebotsRobot,
+        *,
         dist: float = TILE_SIZE,
         slow_down_dist: float = SLOW_DOWN_DIST,
         high_speed: float = MAX_SPEED,
@@ -292,12 +295,13 @@ class Motor(Device):
                     color_sensor,
                     imu,
                     distance_sensor,
-                    traversed_dist,
-                    slow_down_dist,
-                    high_speed,
-                    slow_down_speed,
-                    kp,
-                    expected_wall_distance,
+                    webots_robot,
+                    dist=traversed_dist,
+                    slow_down_dist=slow_down_dist,
+                    high_speed=high_speed,
+                    slow_down_speed=slow_down_speed,
+                    kp=kp,
+                    expected_wall_distance=expected_wall_distance,
                     returning_to_safe_position=True,
                 )
 
@@ -309,7 +313,7 @@ class Motor(Device):
 
                 raise WallColisionError()
 
-            hole = distance_sensor.detect_hole()
+            hole = distance_sensor.detect_hole(webots_robot)
             if (
                 hole
                 and not returning_to_safe_position
@@ -326,12 +330,13 @@ class Motor(Device):
                     color_sensor,
                     imu,
                     distance_sensor,
-                    traversed_dist,
-                    slow_down_dist,
-                    high_speed,
-                    slow_down_speed,
-                    kp,
-                    expected_wall_distance,
+                    webots_robot,
+                    dist=traversed_dist,
+                    slow_down_dist=slow_down_dist,
+                    high_speed=high_speed,
+                    slow_down_speed=slow_down_speed,
+                    kp=kp,
+                    expected_wall_distance=expected_wall_distance,
                     returning_to_safe_position=True,
                 )
 

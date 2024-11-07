@@ -109,7 +109,18 @@ def insert_walls_to_maze(
 def insert_special_tile_to_maze(
     answer_maze: AnswerMaze, tile_pos: Coordinate, tile: Tile
 ) -> AnswerMaze:
-    if tile.special_type in [SpecialTileType.STARTING, SpecialTileType.HOLE]:
+    if tile.special_type in [
+        SpecialTileType.STARTING,
+        SpecialTileType.HOLE,
+        SpecialTileType.PASSAGE_1_2,
+        SpecialTileType.PASSAGE_1_3,
+        SpecialTileType.PASSAGE_1_4,
+        SpecialTileType.PASSAGE_2_3,
+        SpecialTileType.PASSAGE_2_4,
+        SpecialTileType.PASSAGE_3_4,
+        SpecialTileType.SWAMP,
+        SpecialTileType.CHECKPOINT,
+    ]:
         for mark_in_tile in [
             Coordinate(1, 1),
             Coordinate(1, 3),
@@ -271,16 +282,6 @@ class Maze:
             System.maze_answer,
         )
 
-        for inserter in ELEMENT_INSERTERS:
-            for x in objects:
-                for y in objects[x]:
-                    tile_pos = Coordinate(x, y) * 4
-                    tile = objects[x][y]
-                    answer_maze = inserter(answer_maze, tile_pos, tile)
-            self.debug_info.send(
-                f"Mapa após {inserter.__name__}: {answer_maze}", System.maze_answer
-            )
-
         all_quarter_tiles = set()
         for x in objects:
             for y in objects[x]:
@@ -289,6 +290,7 @@ class Maze:
                 for quadrant in tile.quadrants:
                     quarter_tile_pos = tile_pos * 2 + QUADRANT_DELTA[quadrant]
                     all_quarter_tiles.add(quarter_tile_pos)
+
         for x in objects:
             for y in objects[x]:
                 tile_pos = Coordinate(x, y) * 4
@@ -315,5 +317,15 @@ class Maze:
         self.debug_info.send(
             f"Mapa após paredes externas: {answer_maze}", System.maze_answer
         )
+
+        for inserter in ELEMENT_INSERTERS:
+            for x in objects:
+                for y in objects[x]:
+                    tile_pos = Coordinate(x, y) * 4
+                    tile = objects[x][y]
+                    answer_maze = inserter(answer_maze, tile_pos, tile)
+            self.debug_info.send(
+                f"Mapa após {inserter.__name__}: {answer_maze}", System.maze_answer
+            )
 
         return answer_maze
