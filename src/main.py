@@ -126,7 +126,6 @@ try:
         robot.motor.rotate(
             "left", 45 * DEGREE_IN_RAD, robot.imu, correction_rotation=True
         )
-        print(delta_0, delta_45)
         set_dist_change_mapper(delta_0, delta_45)
 
         # for ang in [0, 45, 90, 135, 180, 225, 270, 315, 360]:

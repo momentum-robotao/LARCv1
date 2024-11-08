@@ -5,8 +5,6 @@ from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
 from helpers import cyclic_angle, round_if_almost_0
-
-# from recognize_wall_token import recognize_wall_token
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -63,7 +61,6 @@ def set_dist_change_mapper(
     delta_0 = get_signal_delta(delta_0_raw)
     delta_45 = get_signal_delta(delta_45_raw)
 
-    print(delta_0, delta_45)
     pivot = 0
     reindexed_deltas = []
     for i in range(len(ordered_deltas)):
@@ -314,18 +311,15 @@ class Motor(Device):
                 self.expected_angle
                 + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
             )
-            print(imu_expected_angle)
 
             rounded_angle = round_angle(imu_expected_angle)
             delta = DIST_CHANGE_MAPPER[rounded_angle]
             if not returning_to_safe_position:
-                print("esperada antes", self.expected_position)
                 self.expected_position = expected_gps_after_move(
                     self.expected_position,
                     imu_expected_angle,
                     dist,
                 )
-                print("esperada depois", self.expected_position)
 
         if DEBUG:
             self.debug_info.send(
@@ -335,7 +329,6 @@ class Motor(Device):
 
         while self._robot.step(self._time_step) != -1:
             actual_position = gps.get_position()
-            print("\t", actual_position)
 
             rotation_angle_error = lidar.get_rotation_angle_error(
                 expected_wall_distance, kp
@@ -385,7 +378,6 @@ class Motor(Device):
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
 
-            print(x_traversed, y_traversed, traversed_dist)
             if (
                 (x_traversed and y_traversed)
                 if not correction_move

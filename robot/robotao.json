@@ -41,23 +41,6 @@
 		"a": 2.09,
 		"custom": []
 	},
-	"camera3": {
-		"dictName": "camera3",
-		"name": "Camera",
-		"customName": "cameraE",
-		"type": "add",
-		"x": -370,
-		"y": 108,
-		"z": 0,
-		"rx": -0.02,
-		"ry": -0.71,
-		"rz": -0.7,
-		"a": 3.1,
-		"custom": [
-			40,
-			32
-		]
-	},
 	"lidar": {
 		"dictName": "lidar",
 		"name": "Lidar",
@@ -92,15 +75,15 @@
 		"customName": "cameraD",
 		"type": "add",
 		"x": 370,
-		"y": 108,
+		"y": 120,
 		"z": 0,
 		"rx": -1,
-		"ry": 0.05,
-		"rz": 0.04,
-		"a": 1.51,
+		"ry": 0,
+		"rz": 0,
+		"a": 1.58,
 		"custom": [
 			40,
-			40
+			32
 		]
 	},
 	"Distance Sensor 1": {
@@ -144,5 +127,22 @@
 		"rz": -0.71,
 		"a": 3.03,
 		"custom": []
+	},
+	"camera3": {
+		"dictName": "camera3",
+		"name": "Camera",
+		"customName": "cameraE",
+		"type": "add",
+		"x": -370,
+		"y": 120,
+		"z": 0,
+		"rx": -0.02,
+		"ry": -0.71,
+		"rz": -0.7,
+		"a": 3.1,
+		"custom": [
+			40,
+			32
+		]
 	}
 }
