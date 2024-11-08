@@ -9,6 +9,7 @@ from helpers import cyclic_angle, round_if_almost_0
 # from recognize_wall_token import recognize_wall_token
 from types_and_constants import (
     DEBUG,
+    DEGREE_IN_RAD,
     DIST_BEFORE_HOLE,
     EXPECTED_WALL_DISTANCE,
     KP,
@@ -17,6 +18,7 @@ from types_and_constants import (
     SLOW_DOWN_DIST,
     SLOW_DOWN_SPEED,
     TILE_SIZE,
+    Coordinate,
     MovementResult,
     WallColisionError,
 )
@@ -28,11 +30,87 @@ from .gps import GPS
 from .imu import IMU
 from .lidar import Lidar
 
+POSSIBLE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315, 360]
+SQRT_2 = 1.414213562373
+
+DIST_CHANGE_MAPPER: dict[int, tuple[float, float]] = {}
+
+ordered_deltas: list[tuple[float, float]] = [
+    (0, 1),  # 0°
+    (-1.0 / SQRT_2, 1.0 / SQRT_2),  # 45°
+    (-1, 0),  # 90°
+    (-1.0 / SQRT_2, -1.0 / SQRT_2),
+    (0, -1),
+    (1.0 / SQRT_2, -1.0 / SQRT_2),
+    (1, 0),
+    (1.0 / SQRT_2, 1.0 / SQRT_2),
+]
+
+
+def get_signal(val: float) -> int:
+    if round_if_almost_0(val) == 0:
+        return 0
+    return 1 if val > 0 else -1
+
+
+def get_signal_delta(delta: tuple[float, float]) -> tuple[int, int]:
+    return (get_signal(delta[0]), get_signal(delta[1]))
+
+
+def set_dist_change_mapper(
+    delta_0_raw: tuple[float, float], delta_45_raw: tuple[float, float]
+) -> None:
+    delta_0 = get_signal_delta(delta_0_raw)
+    delta_45 = get_signal_delta(delta_45_raw)
+
+    print(delta_0, delta_45)
+    pivot = 0
+    reindexed_deltas = []
+    for i in range(len(ordered_deltas)):
+        if get_signal_delta(ordered_deltas[i]) == delta_0:
+            pivot = i
+    if (
+        get_signal_delta(ordered_deltas[(pivot + 1) % (len(ordered_deltas))])
+        == delta_45
+    ):
+        for j in range(pivot, len(ordered_deltas)):
+            reindexed_deltas.append(ordered_deltas[j])
+        for j in range(pivot):
+            reindexed_deltas.append(ordered_deltas[j])
+    else:
+        for j in range(pivot, -1, -1):  # j, j-1, j-2...0
+            reindexed_deltas.append(ordered_deltas[j])
+        for j in range(len(ordered_deltas) - 1, pivot, -1):  # n-1, n-2...pivot+1
+            reindexed_deltas.append(ordered_deltas[j])
+    for ang in range(0, 360, 45):
+        DIST_CHANGE_MAPPER[ang] = reindexed_deltas[int(ang / 45)]
+    DIST_CHANGE_MAPPER[360] = DIST_CHANGE_MAPPER[0]
+
+
+def round_angle(angle: float) -> int:
+    angle_degree = angle / DEGREE_IN_RAD
+    most_similar = (0, angle_degree)
+    for test_angle in POSSIBLE_ANGLES:
+        if most_similar[1] > abs(angle_degree - test_angle):
+            most_similar = (test_angle, abs(angle_degree - test_angle))
+    return most_similar[0]
+
+
+def expected_gps_after_move(
+    initial_position: Coordinate, angle: float, dist: float
+) -> Coordinate:
+    rounded_angle = round_angle(angle)
+    delta = DIST_CHANGE_MAPPER[rounded_angle]
+    return Coordinate(
+        initial_position.x + dist * delta[0], initial_position.y + dist * delta[1]
+    )
+
 
 class Motor(Device):
     def __init__(
         self,
         robot: WebotsRobot,
+        gps: GPS,
         debug_info: DebugInfo,
         left_motor_name: str = "left motor",
         right_motor_name: str = "right motor",
@@ -50,6 +128,9 @@ class Motor(Device):
         self.stop()
 
         self.expected_angle = 0.0
+        # self.expected_raw_angle: float | None = None
+        robot.step(32)
+        self.expected_position = gps.get_position()
 
     def stop(self) -> None:
         if DEBUG:
@@ -72,10 +153,16 @@ class Motor(Device):
         `imu` to check the robot angle to rotate correctly.
         """
 
+        # if self.expected_raw_angle is None:
+        #     self.expected_raw_angle = imu.get_rotation_angle(raw=True)
         if not correction_rotation:
             self.expected_angle = cyclic_angle(
                 self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
             )
+            # self.expected_raw_angle = cyclic_angle(
+            #     self.expected_raw_angle
+            #     + (-1 if direction == "left" else 1) * turn_angle
+            # )
         self.stop()
 
         angle_accumulated_delta = 0
@@ -169,7 +256,6 @@ class Motor(Device):
 
     def move(
         self,
-        /,
         direction: Literal["forward", "backward"],
         gps: GPS,
         lidar: Lidar,
@@ -220,41 +306,52 @@ class Motor(Device):
         - Holes are not detected when moving backward.
         """
         initial_position = gps.get_position()
-        # TODO: corrigir enquanto move para cada direção baseado na posição esperada
-        # outra forma de corrigir imprecisão é ajustar dist pra parede quando tem
-        # Isso serve só pra se ficar muito tempo sem parede pra ajustar
-        # if not correction_move:
-        #     movement_angle = cyclic_angle(
-        #         imu.get_rotation_angle() + 180 * PI if direction == "backward" else 0
-        #     )
-        #     # Pega distância para corrigir
-        #     # Salva posição esperada
+        # if self.expected_raw_angle is None:
+        #     self.expected_raw_angle = imu.get_rotation_angle(raw=True)
+        if not correction_move:
+            initial_expected_position = self.expected_position
+            imu_expected_angle = cyclic_angle(
+                self.expected_angle
+                + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+            )
+            print(imu_expected_angle)
+
+            rounded_angle = round_angle(imu_expected_angle)
+            delta = DIST_CHANGE_MAPPER[rounded_angle]
+            if not returning_to_safe_position:
+                print("esperada antes", self.expected_position)
+                self.expected_position = expected_gps_after_move(
+                    self.expected_position,
+                    imu_expected_angle,
+                    dist,
+                )
+                print("esperada depois", self.expected_position)
 
         if DEBUG:
             self.debug_info.send(
-                f"Começando a mover {dist} para {direction}",
+                f"Começando a mover {dist} para {direction}. Chegará: {self.expected_position}",
                 System.motor_movement,
             )
 
         while self._robot.step(self._time_step) != -1:
             actual_position = gps.get_position()
+            print("\t", actual_position)
 
             rotation_angle_error = lidar.get_rotation_angle_error(
                 expected_wall_distance, kp
             )
 
-            x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
-            y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
-            traversed_dist = x_delta + y_delta
-
             if DEBUG:
                 self.debug_info.send(
-                    f"Já moveu {traversed_dist}, sendo {x_delta=} e {y_delta=}.",
+                    f"Já moveu até {actual_position}.",
                     System.motor_movement,
                 )
 
             left_velocity, right_velocity = self.movement_velocity_controller(
-                dist - traversed_dist,
+                max(
+                    abs(self.expected_position.x - actual_position.x),
+                    abs(self.expected_position.y - actual_position.y),
+                ),
                 direction,
                 rotation_angle_error,
                 slow_down_dist,
@@ -271,13 +368,34 @@ class Motor(Device):
                     System.motor_velocity,
                 )
 
-            if traversed_dist >= dist:
+            x_traversed, y_traversed = False, False
+            if not correction_move:
+                x_traversed = (
+                    self.expected_position.x < actual_position.x
+                    if self.expected_position.x > initial_position.x
+                    else self.expected_position.x > actual_position.x
+                ) or delta[0] == 0
+                y_traversed = (
+                    self.expected_position.y < actual_position.y
+                    if self.expected_position.y > initial_position.y
+                    else self.expected_position.y > actual_position.y
+                ) or delta[1] == 0
+
+            x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
+            y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
+            traversed_dist = x_delta + y_delta
+
+            print(x_traversed, y_traversed, traversed_dist)
+            if (
+                (x_traversed and y_traversed)
+                if not correction_move
+                else traversed_dist >= dist
+            ):
                 self.stop()
 
                 if DEBUG:
                     self.debug_info.send(
-                        f"Fim do movimento, andou {traversed_dist} do "
-                        f"objetivo: {dist} para {direction}.",
+                        f"Fim do movimento, andou para {actual_position}",
                         System.motor_movement,
                     )
 
@@ -288,6 +406,7 @@ class Motor(Device):
                 and not returning_to_safe_position
             ):
                 self.stop()
+                self.expected_position = initial_expected_position
                 self.move(
                     "backward" if direction == "forward" else "forward",
                     gps,
@@ -322,6 +441,7 @@ class Motor(Device):
                 )
             ):
                 self.stop()
+                self.expected_position = initial_expected_position
 
                 self.move(
                     "backward" if direction == "forward" else "forward",

@@ -24,7 +24,7 @@ class IMU(Device):
 
         self.start_rotation_angle = None
 
-    def get_rotation_angle(self) -> float:
+    def get_rotation_angle(self, raw: bool = False) -> float:
         rotation_angle = self._imu.getRollPitchYaw()[2]
         if self.start_rotation_angle is None:
             self.start_rotation_angle = rotation_angle
@@ -33,12 +33,14 @@ class IMU(Device):
                     f"Ângulo de rotação inicial do robô, que virará o ângulo 0: {rotation_angle}",
                     System.initialization,
                 )
+        if raw:
+            return rotation_angle - self.start_rotation_angle
 
         # ? 2*PI - angle is used because it increases rotating left and other devices
         # decrease in this direction, with this transformation, imu angle is indexed as
         # other devices
-        rotation_angle = 2 * PI - cyclic_angle(
-            rotation_angle - self.start_rotation_angle
+        rotation_angle = cyclic_angle(
+            2 * PI - (rotation_angle - self.start_rotation_angle)
         )
         if DEBUG:
             self.debug_info.send(
