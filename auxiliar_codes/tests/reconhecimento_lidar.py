@@ -3,6 +3,7 @@ import struct
 import numpy as np
 import cv2
 from controller import Robot
+from controller import Camera
 
 img_height, img_width = 256, 320
 
@@ -17,6 +18,14 @@ cameraE = robot.getDevice("cameraE")
 cameraE.enable(timeStep)
 cameraD = robot.getDevice("cameraD")
 cameraD.enable(timeStep)
+#fov_atual = cameraE.getFov()
+#fov_atual = math.degrees(fov_atual)
+
+#isso aqui não funciona ^^, ele sempre printa que tem 1 radiano
+#de fov mesmo que seja uma camera muito grande ou pequena
+#eu testei na mao e descobri q o FOV da camera no robo q eu vou colocar no
+#git eh 20 graus, entao eu vou usar isso pra fazer o calculo de distancia ate a vitima
+
 
 lidar = robot.getDevice("lidar") 
 lidar.enable(timeStep) 
@@ -51,14 +60,131 @@ victimType = bytes(
     "H", "utf-8"
 ) 
 
+def dist_branco(camera):
+    
+    camera_name = camera.getName()
+    if camera_name == 'cameraE':
+        lidar_angle_base = 270
+    else:
+        lidar_angle_base = 90
+
+    image = camera.getImage()
+    image = np.frombuffer(image, np.uint8).reshape(
+        (camera.getHeight(), camera.getWidth(), 4)
+    )
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_white = np.array([0, 0, 200], dtype=np.uint8)
+    upper_white = np.array([180, 55, 255], dtype=np.uint8)
+
+    mask = cv2.inRange(hsv_image, lower_white, upper_white)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest_contour)
+
+        central_x = x + w // 2
+
+        # calculo do angulo relativo ao ponto central da mascara, nta extamente cert, mas ta bom osuficiente
+        fov = 20  
+        angle_offset = (central_x / 320.0) * fov - (fov / 2)
+        lidar_angle = lidar_angle_base + angle_offset
+
+        lidar_index = int(round(lidar_angle))
+
+        distance_to_central_point = get_distance(lidar_index, lidar)
+
+        return distance_to_central_point
+    else :
+        return 0
+
+def organic_peroxide(camera):
+    #essencialmente a mesma coisa da outra função, só muda a cor
+
+    camera_name = camera.getName()
+    if camera_name == 'cameraE':
+        lidar_angle_base = 270
+    else:
+        lidar_angle_base = 90
+
+    image = camera.getImage()
+    image = np.frombuffer(image, np.uint8).reshape(
+        (camera.getHeight(), camera.getWidth(), 4)
+    )
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_yellow = np.array([20, 100, 100], dtype=np.uint8)
+    upper_yellow = np.array([30, 255, 255], dtype=np.uint8)
+
+    mask = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest_contour)
+
+        central_x = x + w // 2
+
+
+        fov = 20  
+        angle_offset = (central_x / 320.0) * fov - (fov / 2)
+        lidar_angle = lidar_angle_base + angle_offset
+
+        lidar_index = int(round(lidar_angle))
+
+        distance_to_central_point = get_distance(lidar_index, lidar)
+
+        if distance_to_central_point < 0.07:
+            return 1
+
+    else:    
+        return 0
+
+
+def flamable_gas(camera):
+    #essesncialemnte a mesma coisa das outras funções, só muda a cor
+    camera_name = camera.getName()
+    if camera_name == 'cameraE':
+        lidar_angle_base = 270
+    else:
+        lidar_angle_base = 90
+    image = camera.getImage()
+    image = np.frombuffer(image, np.uint8).reshape(
+        (camera.getHeight(), camera.getWidth(), 4)
+    )
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_red1 = np.array([0, 70, 50], dtype=np.uint8)
+    upper_red1 = np.array([10, 255, 255], dtype=np.uint8)
+    lower_red2 = np.array([170, 70, 50], dtype=np.uint8)
+    upper_red2 = np.array([180, 255, 255], dtype=np.uint8)
+
+    mask1 = cv2.inRange(hsv_image, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv_image, lower_red2, upper_red2)
+    mask = cv2.bitwise_or(mask1, mask2)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest_contour = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(largest_contour)
+
+        central_x = x + w // 2
+        fov = 20  
+        angle_offset = (central_x / 320.0) * fov - (fov / 2)
+        lidar_angle = lidar_angle_base + angle_offset
+
+        lidar_index = int(round(lidar_angle))
+
+        distance_to_central_point = get_distance(lidar_index, lidar)
+        if distance_to_central_point < 0.07:
+            return 1
 
 
 def H_S_U(camera, target_width=320, target_height=256):
-
-    if camera == 'cameraE':
-        dist = get_distance(270,lidar)   
-    else:
-        dist = get_distance(90,lidar)
 
     image = camera.getImage()
     image = np.frombuffer(image, np.uint8).reshape(
@@ -98,7 +224,7 @@ def H_S_U(camera, target_width=320, target_height=256):
         total_pixels_mid = mid_half.size
         preto_meio = total_pixels_mid - non_black_pixels_mid
 
-        upper_half = black_white_image[55:75, :] 
+        upper_half = black_white_image[55:75, :]
         non_black_pixels_upper = cv2.countNonZero(upper_half)
         total_pixels_upper = upper_half.size
         preto_cima = total_pixels_upper - non_black_pixels_upper
@@ -108,9 +234,6 @@ def H_S_U(camera, target_width=320, target_height=256):
         total_pixels_vertical = vertical_slice.size
         preto_vertical = (total_pixels_vertical - non_black_pixels_vertical) * 1.52
         preto_vertical = int(preto_vertical)
-
-        
-
 
         if (1 - margem) <= quadrado <= (1 + margem):
             if preto_vertical == min(preto_cima, preto_meio, preto_baixo, preto_vertical) and preto_baixo == max(preto_cima, preto_meio, preto_baixo, preto_vertical):
@@ -167,15 +290,18 @@ def get_distance(angle, lidar) -> float:
     return dist
 
 def parede_esquerda():
-
-    if get_distance(270,lidar) < 0.08:
-        return True
+    # mudei isso aqui pra pegar o quarter tile, ent so de ter parede na camera ele ja vai reconhecer
+    for angle in range(260, 281):
+        if get_distance(angle, lidar) < 0.08:
+            return True
     return False
 
-def parede_direita():
 
-    if get_distance(90,lidar) < 0.08:
-        return True
+def parede_direita():
+    # mesma coisa do de cima, so mudei o range (+-10)
+    for angle in range(80, 101):
+        if get_distance(angle, lidar) < 0.08:
+            return True
     return False
 
 def quant_branco(camera):
@@ -235,55 +361,26 @@ def verificar_HSU_ou_hazmat(camera):
   
 def reconhece_esquerda():
     delay(10)
-    dist = get_distance(270,lidar)
+
     preto = quant_preto(cameraE)
-    branco = quant_branco(cameraE)
-    polygon_count = 0
+
     hazmat = verificar_HSU_ou_hazmat(cameraE)
 
-    image = cameraE.getImage()
-    image = np.frombuffer(image, dtype=np.uint8).reshape((cameraE.getHeight(), cameraE.getWidth(), 4))
-    image = image[:, :, :3]
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    res = cv2.resize(gray, (img_width, img_height))
-    blurred_image = cv2.GaussianBlur(res, (5, 5), 0)
+    branco = dist_branco(cameraE)
 
 
-    edges = cv2.Canny(blurred_image, 50, 150)
-
-    contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    for contour in contours:
-        epsilon = 0.02 * cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, epsilon, True)
-        if len(approx) >= 3:
-            polygon_count += 1
-            
-
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([30, 255, 255])
-    mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
-
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 100, 100])
-    upper_red2 = np.array([179, 255, 255])
-    mask_red1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask_red2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask_red = cv2.bitwise_or(mask_red1, mask_red2)
     if parede_esquerda():
-        if np.any(mask_yellow > 0):
+        if organic_peroxide(cameraE):
+            #esse range pode ser mais suave, pq a cor eh facil de reconhecer
             print('O')
             delay(1300)
             #codificar_tipo("O")
-        elif np.any(mask_red > 0):
+        elif flamable_gas(cameraE):
             print('F')
             delay(1300)
             #codificar_tipo("F")
-        elif hazmat >= 4:
-            if preto < 10:
+        elif hazmat >= 4 and branco < 0.07:
+            if preto < 50:
                 print('P')
                 delay(1300)
                 #codificar_tipo('P')
@@ -291,7 +388,7 @@ def reconhece_esquerda():
                 print('C')
                 delay(1300)
                 #codificar_tipo('C')
-        elif branco > 0 and preto > 0 and dist > 0.043 and dist < 0.068:
+        elif branco < 0.068 and branco > 0.05:
             if H_S_U(cameraE) == 'H':
                 print('H')
                 delay(1300)
@@ -308,64 +405,38 @@ def reconhece_esquerda():
                 #tem vitima, mas para reconhecer corretamente ela deve estar inteira na imagem  
                 #faria uma estrategia para "encaixar" a vitima inteira
                 pass
-        elif branco > 0 and preto > 0 and dist < 0.043:
+        elif branco < 0.05:
+            #nota importanto, com a nova camera com FOV mais alto, menor do que 0,5 nao pega a parte de baixo e de cima da vitima
+            #entao eu vou fazer um metodo pra ele reconhecer de perto tbm
             print('perto')  
         else: 
             #nao tem vitima nenhuma na imagem
+            print('N')
             pass
 
 
 def reconhece_direita():
     delay(10)
-    dist = get_distance(90,lidar)
+
     preto = quant_preto(cameraD)
-    branco = quant_branco(cameraD)
-    polygon_count = 0
+
     hazmat = verificar_HSU_ou_hazmat(cameraD)
 
-    image = cameraD.getImage()
-    image = np.frombuffer(image, dtype=np.uint8).reshape((cameraD.getHeight(), cameraD.getWidth(), 4))
-    image = image[:, :, :3]
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    res = cv2.resize(gray, (img_width, img_height))
-    blurred_image = cv2.GaussianBlur(res, (5, 5), 0)
+    branco = dist_branco(cameraD)
 
 
-    edges = cv2.Canny(blurred_image, 50, 150)
-
-    contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    for contour in contours:
-        epsilon = 0.02 * cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, epsilon, True)
-        if len(approx) >= 3:
-            polygon_count += 1
-            
-
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    
-    lower_yellow = np.array([20, 100, 100])
-    upper_yellow = np.array([30, 255, 255])
-    mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
-
-    lower_red1 = np.array([0, 100, 100])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 100, 100])
-    upper_red2 = np.array([179, 255, 255])
-    mask_red1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask_red2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask_red = cv2.bitwise_or(mask_red1, mask_red2)
-    if parede_direita():
-        if np.any(mask_yellow > 0):
+    if parede_esquerda():
+        if organic_peroxide(cameraD):
+            #esse range pode ser mais suave, pq a cor eh facil de reconhecer
             print('O')
             delay(1300)
             #codificar_tipo("O")
-        elif np.any(mask_red > 0):
+        elif flamable_gas(cameraD):
             print('F')
             delay(1300)
             #codificar_tipo("F")
-        elif hazmat >= 4:
-            if preto < 10:
+        elif hazmat >= 4 and branco < 0.07:
+            if preto < 50:
                 print('P')
                 delay(1300)
                 #codificar_tipo('P')
@@ -373,7 +444,7 @@ def reconhece_direita():
                 print('C')
                 delay(1300)
                 #codificar_tipo('C')
-        elif branco > 0 and preto > 0 and dist > 0.047 and dist < 0.068:
+        elif branco < 0.068 and branco > 0.05:
             if H_S_U(cameraD) == 'H':
                 print('H')
                 delay(1300)
@@ -388,14 +459,21 @@ def reconhece_direita():
                 #codificar_tipo('U')  
             else: 
                 #tem vitima, mas para reconhecer corretamente ela deve estar inteira na imagem  
-                #faria uma estratefia para ajustar o robo ate a vitima ficar inteira
+                #faria uma estrategia para "encaixar" a vitima inteira
                 pass
-        elif branco > 0 and preto > 0 and dist < 0.047:
+        elif branco < 0.05:
+            #nota importanto, com a nova camera com FOV mais alto, menor do que 0,5 nao pega a parte de baixo e de cima da vitima
+            #entao eu vou fazer um metodo pra ele reconhecer de perto tbm
             print('perto')  
-
+        else: 
+            #nao tem vitima nenhuma na imagem
+            print('N')
+            pass
 
 
 
 while robot.step(timeStep) != -1:
     reconhece_esquerda()
     reconhece_direita()
+
+
