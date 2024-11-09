@@ -61,7 +61,6 @@ victimType = bytes(
 ) 
 
 def dist_branco(camera):
-    
     camera_name = camera.getName()
     if camera_name == 'cameraE':
         lidar_angle_base = 270
@@ -83,26 +82,36 @@ def dist_branco(camera):
 
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(largest_contour)
+        center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
 
-        central_x = x + w // 2
+        # Encontrar o ponto mais distante do centro
+        max_distance = 0
+        farthest_point = None
+        for point in largest_contour:
+            x, y = point[0]
+            distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+            if distance > max_distance:
+                max_distance = distance
+                farthest_point = (x, y)
 
-        # calculo do angulo relativo ao ponto central da mascara, nta extamente cert, mas ta bom osuficiente
-        fov = 20  
-        angle_offset = (central_x / 320.0) * fov - (fov / 2)
-        lidar_angle = lidar_angle_base + angle_offset
+        if farthest_point:
+            farthest_x, farthest_y = farthest_point
+            print(f"Coordenada do ponto mais distante do centro: ({farthest_x}, {farthest_y})")
 
-        lidar_index = int(round(lidar_angle))
+            # Calcular o ângulo relativo ao ponto mais distante do centro
+            fov = 20
+            angle_offset = (farthest_x / 320.0) * fov - (fov / 2)
+            lidar_angle = lidar_angle_base + angle_offset
 
-        distance_to_central_point = get_distance(lidar_index, lidar)
+            lidar_index = int(round(lidar_angle))
 
-        return distance_to_central_point
-    else :
-        return 0
+            distance_to_farthest_point = get_distance(lidar_index, lidar)
+            print(f"Distância até o ponto mais distante do centro: {distance_to_farthest_point} no ângulo {lidar_index} graus")
+
+            return distance_to_farthest_point
+    return 0
 
 def organic_peroxide(camera):
-    #essencialmente a mesma coisa da outra função, só muda a cor
-
     camera_name = camera.getName()
     if camera_name == 'cameraE':
         lidar_angle_base = 270
@@ -124,33 +133,43 @@ def organic_peroxide(camera):
 
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(largest_contour)
+        center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
 
-        central_x = x + w // 2
+        # Encontrar o ponto mais distante do centro
+        max_distance = 0
+        farthest_point = None
+        for point in largest_contour:
+            x, y = point[0]
+            distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+            if distance > max_distance:
+                max_distance = distance
+                farthest_point = (x, y)
 
+        if farthest_point:
+            farthest_x, farthest_y = farthest_point
+            print(f"Coordenada do ponto mais distante do centro: ({farthest_x}, {farthest_y})")
 
-        fov = 20  
-        angle_offset = (central_x / 320.0) * fov - (fov / 2)
-        lidar_angle = lidar_angle_base + angle_offset
+            # Calcular o ângulo relativo ao ponto mais distante do centro
+            fov = 20
+            angle_offset = (farthest_x / 320.0) * fov - (fov / 2)
+            lidar_angle = lidar_angle_base + angle_offset
 
-        lidar_index = int(round(lidar_angle))
+            lidar_index = int(round(lidar_angle))
 
-        distance_to_central_point = get_distance(lidar_index, lidar)
+            distance_to_farthest_point = get_distance(lidar_index, lidar)
+            print(f"Distância até o ponto mais distante do centro: {distance_to_farthest_point} no ângulo {lidar_index} graus")
 
-        if distance_to_central_point < 0.07:
-            return 1
-
-    else:    
-        return 0
-
+            if distance_to_farthest_point < 0.08:
+                return 1
+    return 0
 
 def flamable_gas(camera):
-    #essesncialemnte a mesma coisa das outras funções, só muda a cor
     camera_name = camera.getName()
     if camera_name == 'cameraE':
         lidar_angle_base = 270
     else:
         lidar_angle_base = 90
+
     image = camera.getImage()
     image = np.frombuffer(image, np.uint8).reshape(
         (camera.getHeight(), camera.getWidth(), 4)
@@ -170,19 +189,35 @@ def flamable_gas(camera):
 
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(largest_contour)
+        center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
 
-        central_x = x + w // 2
-        fov = 20  
-        angle_offset = (central_x / 320.0) * fov - (fov / 2)
-        lidar_angle = lidar_angle_base + angle_offset
+        # Encontrar o ponto mais distante do centro
+        max_distance = 0
+        farthest_point = None
+        for point in largest_contour:
+            x, y = point[0]
+            distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+            if distance > max_distance:
+                max_distance = distance
+                farthest_point = (x, y)
 
-        lidar_index = int(round(lidar_angle))
+        if farthest_point:
+            farthest_x, farthest_y = farthest_point
+            print(f"Coordenada do ponto mais distante do centro: ({farthest_x}, {farthest_y})")
 
-        distance_to_central_point = get_distance(lidar_index, lidar)
-        if distance_to_central_point < 0.07:
-            return 1
+            # Calcular o ângulo relativo ao ponto mais distante do centro
+            fov = 20
+            angle_offset = (farthest_x / 320.0) * fov - (fov / 2)
+            lidar_angle = lidar_angle_base + angle_offset
 
+            lidar_index = int(round(lidar_angle))
+
+            distance_to_farthest_point = get_distance(lidar_index, lidar)
+            print(f"Distância até o ponto mais distante do centro: {distance_to_farthest_point} no ângulo {lidar_index} graus")
+
+            if distance_to_farthest_point < 0.08:
+                return 1
+    return 0
 
 def H_S_U(camera, target_width=320, target_height=256):
 
@@ -475,5 +510,3 @@ def reconhece_direita():
 while robot.step(timeStep) != -1:
     reconhece_esquerda()
     reconhece_direita()
-
-
