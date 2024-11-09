@@ -130,6 +130,14 @@ def adjust_wall_distance(
         robot.motor.rotate_90_right(robot.imu)
 
 
+def alley(robot: Robot) -> bool:
+    return (
+        robot.lidar.has_wall("front")
+        and robot.lidar.has_wall("left")
+        and robot.lidar.has_wall("right")
+    )
+
+
 def dfs(
     position: Coordinate,
     maze: Maze,
@@ -173,9 +181,17 @@ def dfs(
         if DEBUG:
             debug_info.send(f"Não detectou cor em {position}", System.check_tile_color)
 
+    if alley(robot):
+        robot.motor.rotate_90_left(robot.imu)
+        adjust_wall_distance(
+            robot, debug_info, wall_max_x_error=0.1, wall_max_y_error=0.1
+        )
+        recognize_wall_token(robot, debug_info)
+        robot.motor.rotate_90_right(robot.imu)
+
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [0, -90, 90] + (  # TODO: múltiplos de 45
+    for delta_angle_in_degree in [0, 90, -90] + (  # TODO: múltiplos de 45
         [180] if starting else []
     ):
         #     # ? Only in the start we can't assume that backward empty: important to make sure
@@ -287,6 +303,7 @@ def dfs(
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
         robot.motor.rotate_to_angle(movement_angle, robot.imu)
+        recognize_wall_token(robot, debug_info)
         try:
             movement_result = robot.motor.move(
                 "forward",
@@ -333,7 +350,7 @@ def dfs(
         if DEBUG:
             debug_info.send("Retornando do vizinho", System.dfs_decision)
         robot.motor.move(
-            "forward",
+            "backward",
             robot.gps,
             robot.lidar,
             robot.color_sensor,
@@ -356,7 +373,5 @@ def dfs(
     robot.step()
     adjust_wall_distance(robot, debug_info)
     recognize_wall_token(robot, debug_info)
-    robot.motor.rotate_to_angle(
-        cyclic_angle(start_angle + 180 * DEGREE_IN_RAD), robot.imu
-    )
+    robot.motor.rotate_to_angle(start_angle, robot.imu)
     check_time(robot)
