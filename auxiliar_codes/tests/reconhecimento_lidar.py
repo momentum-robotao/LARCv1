@@ -60,7 +60,31 @@ victimType = bytes(
     "H", "utf-8"
 ) 
 
+def get_distance(angle, lidar) -> float:
+    rangeImage = lidar.getRangeImage()
+    if rangeImage is None:
+        raise ValueError("LIDAR range image is None")
+
+    n = (angle * 512) // 360
+
+    dist = 0
+    count = 0
+    for i in range(4):
+        index = n + i * 512
+        if index < len(rangeImage) and rangeImage[index] != float('inf'):
+            dist += rangeImage[index]
+            count += 1
+
+    dist = dist / count if count > 0 else float('inf')
+    return dist
+
 def dist_branco(camera):
+    #logica: pega o maior contorno branco da imagem, e divide a imagem no meio
+    #se maior parte dos pixels brancos estiverem para a direita, por exemplo
+    #ele envia um sinal do lidar para o ponto DENTRO contorno mais distante do centro da imagem
+    #e retorna a distancia, no caso das outras 2 cores, se for menor que 0.08, ele retorna true
+    # se tiver qualquer duvida em como integrar essas funções no seu codigo manda msg
+
     camera_name = camera.getName()
     if camera_name == 'cameraE':
         lidar_angle_base = 270
@@ -82,33 +106,31 @@ def dist_branco(camera):
 
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
+        center_x = image.shape[1] // 2 #centro da imagem ('linha imaginaria')
 
-        # Encontrar o ponto mais distante do centro
         max_distance = 0
         farthest_point = None
         for point in largest_contour:
             x, y = point[0]
-            distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+            distance = abs(x - center_x)
             if distance > max_distance:
                 max_distance = distance
                 farthest_point = (x, y)
 
         if farthest_point:
             farthest_x, farthest_y = farthest_point
-            print(f"Coordenada do ponto mais distante do centro: ({farthest_x}, {farthest_y})")
 
-            # Calcular o ângulo relativo ao ponto mais distante do centro
-            fov = 20
-            angle_offset = (farthest_x / 320.0) * fov - (fov / 2)
-            lidar_angle = lidar_angle_base + angle_offset
+
+            angle_offset = (farthest_x / image.shape[1]) * 20 - 10 #angulo relativo da camera
+            lidar_angle = lidar_angle_base + angle_offset# angulo para o lidar
 
             lidar_index = int(round(lidar_angle))
 
             distance_to_farthest_point = get_distance(lidar_index, lidar)
-            print(f"Distância até o ponto mais distante do centro: {distance_to_farthest_point} no ângulo {lidar_index} graus")
+
 
             return distance_to_farthest_point
+
     return 0
 
 def organic_peroxide(camera):
@@ -129,38 +151,40 @@ def organic_peroxide(camera):
 
     mask = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
 
+    # Contar a quantidade de pixels na máscara
+    non_black_pixels = cv2.countNonZero(mask)
+
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
+        center_x = image.shape[1] // 2
 
-        # Encontrar o ponto mais distante do centro
+        # Encontrar o ponto mais distante do centro no eixo x
         max_distance = 0
         farthest_point = None
         for point in largest_contour:
             x, y = point[0]
-            distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+            distance = abs(x - center_x)
             if distance > max_distance:
                 max_distance = distance
                 farthest_point = (x, y)
 
         if farthest_point:
             farthest_x, farthest_y = farthest_point
-            print(f"Coordenada do ponto mais distante do centro: ({farthest_x}, {farthest_y})")
 
             # Calcular o ângulo relativo ao ponto mais distante do centro
-            fov = 20
-            angle_offset = (farthest_x / 320.0) * fov - (fov / 2)
+            angle_offset = (farthest_x / image.shape[1]) * 20 - 10
             lidar_angle = lidar_angle_base + angle_offset
 
             lidar_index = int(round(lidar_angle))
 
             distance_to_farthest_point = get_distance(lidar_index, lidar)
-            print(f"Distância até o ponto mais distante do centro: {distance_to_farthest_point} no ângulo {lidar_index} graus")
 
-            if distance_to_farthest_point < 0.08:
+
+            if distance_to_farthest_point < 0.08 and non_black_pixels > 60:
                 return 1
+
     return 0
 
 def flamable_gas(camera):
@@ -185,39 +209,73 @@ def flamable_gas(camera):
     mask2 = cv2.inRange(hsv_image, lower_red2, upper_red2)
     mask = cv2.bitwise_or(mask1, mask2)
 
+    # Contar a quantidade de pixels na máscara
+    non_black_pixels = cv2.countNonZero(mask)
+
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if contours:
         largest_contour = max(contours, key=cv2.contourArea)
-        center_x, center_y = image.shape[1] // 2, image.shape[0] // 2
+        center_x = image.shape[1] // 2
 
-        # Encontrar o ponto mais distante do centro
+        # Encontrar o ponto mais distante do centro no eixo x
         max_distance = 0
         farthest_point = None
         for point in largest_contour:
             x, y = point[0]
-            distance = np.sqrt((x - center_x) ** 2 + (y - center_y) ** 2)
+            distance = abs(x - center_x)
             if distance > max_distance:
                 max_distance = distance
                 farthest_point = (x, y)
 
         if farthest_point:
             farthest_x, farthest_y = farthest_point
-            print(f"Coordenada do ponto mais distante do centro: ({farthest_x}, {farthest_y})")
-
             # Calcular o ângulo relativo ao ponto mais distante do centro
-            fov = 20
-            angle_offset = (farthest_x / 320.0) * fov - (fov / 2)
+            angle_offset = (farthest_x / image.shape[1]) * 20 - 10
             lidar_angle = lidar_angle_base + angle_offset
 
             lidar_index = int(round(lidar_angle))
 
             distance_to_farthest_point = get_distance(lidar_index, lidar)
-            print(f"Distância até o ponto mais distante do centro: {distance_to_farthest_point} no ângulo {lidar_index} graus")
 
-            if distance_to_farthest_point < 0.08:
+            if distance_to_farthest_point < 0.08 and non_black_pixels > 60:
                 return 1
+
     return 0
+
+
+def robo_torto(lidar, camera):
+    #coloquei camera so pra conseguir pegar o lado certo de maneira facil
+    step = 20
+
+    camera_name = camera.getName()
+    if camera_name == 'cameraE':
+        start_angle = 250
+        end_angle = 290
+    else:
+        start_angle=70
+        end_angle=110
+
+    distancias = []
+    min_distance = float('inf')
+    min_angle = -1
+
+    for angle in range(start_angle, end_angle + 1, step):
+        distance = get_distance(angle, lidar)
+        distancias.append(distance) 
+
+        if distance < min_distance:
+            min_distance = distance
+            min_angle = angle
+    print(min_angle)
+    print(min_distance)
+    if min_angle == 90 or min_angle == 270:
+        #robo ta certinho, mantem a margem
+        return 0
+    else:
+        #aumenta a margem do quadrado
+        return 1
+
 
 def H_S_U(camera, target_width=320, target_height=256):
 
@@ -240,7 +298,17 @@ def H_S_U(camera, target_width=320, target_height=256):
         altura = shape[0]
         largura = shape[1]
         quadrado = altura / largura
-        margem = 0.45
+        if robo_torto(lidar, camera) == 1:
+            margem = 0.5
+            print('margem aumentada')
+        else:
+            print('margem normal')
+            margem = 0.2
+
+        # se a vitima (cropped image) estiver inteira na imagem, a imagem vai ser um quadrado, mas
+        # quando o robo ta angulado em relação a parede, a imagem da vitima vai ser tipo um trapezio (ponto de fuga no fundo
+        # da imagem), entao eu fiz um metodo pra aumentar a margem do quadrado, se o robo estiver angulado
+        # como eu não tenho o docker pra rodar o codigo, tem que ir mudando essa marge, mas deve ta meio bom
 
 
         resized_image = cv2.resize(cropped_image, (target_width, target_height))
@@ -278,8 +346,85 @@ def H_S_U(camera, target_width=320, target_height=256):
             elif preto_vertical == max(preto_cima, preto_baixo, preto_meio, preto_vertical):
                 return 'S'
             else:
-                return 0
+                return 0 
 
+def H_S_U_perto(camera, target_width=320, target_height=256):
+#basicamente igal ao outro reconhecedor de HSU,unica diferença eh e ele não usa o contorno branco, pega direto a imagem
+#e cria um quadrado, de modo a encaixar a maior quantidade de pixels brancos na imagem (ai isso tira as bordas pretas, que nao sao vitima)
+
+    image = camera.getImage()
+    image = np.frombuffer(image, np.uint8).reshape(
+        (camera.getHeight(), camera.getWidth(), 4)
+    )
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    lower_white = np.array([0, 0, 200], dtype=np.uint8)
+    upper_white = np.array([180, 55, 255], dtype=np.uint8)
+
+    mask = cv2.inRange(hsv_image, lower_white, upper_white)
+
+
+    # Encontrar a caixa ao redor da região branca
+    x, y, w, h = cv2.boundingRect(mask)
+
+    # Ajustar a caixa para ser um quadrado
+    if w > h:
+        y = max(0, y - (w - h) // 2)
+        h = w
+    else:
+        x = max(0, x - (h - w) // 2)
+        w = h
+
+    # Verificar se a caixa delimitadora tem dimensões válidas
+    if w > 0 and h > 0:
+        # Recortar a imagem para a caixa ajustada
+        cropped_image = image[y:y+h, x:x+w]
+
+        # Mostrar a imagem recortada para verificação
+
+
+        # Redimensionar a imagem recortada
+        resized_image = cv2.resize(cropped_image, (target_width, target_height))
+
+        gray_resized = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+
+        _, black_white_image = cv2.threshold(gray_resized, 127, 255, cv2.THRESH_BINARY)
+
+        branco = cv2.countNonZero(black_white_image)
+        print(branco)
+
+        lower_half = black_white_image[210:230, :]  
+        non_black_pixels_lower = cv2.countNonZero(lower_half)
+        total_pixels_lower = lower_half.size
+        preto_baixo = total_pixels_lower - non_black_pixels_lower 
+
+        mid_half = black_white_image[110:130, :] 
+        non_black_pixels_mid = cv2.countNonZero(mid_half)
+        total_pixels_mid = mid_half.size
+        preto_meio = total_pixels_mid - non_black_pixels_mid
+
+        upper_half = black_white_image[55:75, :]
+        non_black_pixels_upper = cv2.countNonZero(upper_half)
+        total_pixels_upper = upper_half.size
+        preto_cima = total_pixels_upper - non_black_pixels_upper
+
+        vertical_slice = black_white_image[20:230, 118:138]
+        non_black_pixels_vertical = cv2.countNonZero(vertical_slice)
+        total_pixels_vertical = vertical_slice.size
+        preto_vertical = (total_pixels_vertical - non_black_pixels_vertical) * 1.52
+        preto_vertical = int(preto_vertical)
+        if branco > 50000:
+            #garantir que a vitima ta inteira na image, sujeit a mudanças
+            if preto_vertical == min(preto_cima, preto_baixo, preto_vertical) and preto_baixo == max(preto_cima, preto_meio, preto_baixo):
+                return 'U'
+            elif preto_meio == max(preto_cima, preto_baixo, preto_meio) and preto_vertical == min(preto_cima, preto_baixo, preto_vertical):
+                return 'H'
+            elif preto_vertical == max(preto_cima, preto_baixo, preto_vertical):
+                return 'S'
+            else:
+                return 0
+    else:
+        return 0
 def valores_gps():
     position = gps.getValues()
     x = int(
@@ -308,21 +453,6 @@ def codificar_tipo(tipo):
     emitter.send(message)  
 
 
-
-def get_distance(angle, lidar) -> float:
-    rangeImage = lidar.getRangeImage() 
-    n = (angle*512)//360
- 
-    dist = 0
-    count = 0
-    for i in range(4):
-        if rangeImage[n+ i*512] != float('inf') : 
-            dist += rangeImage[n+ i*512]
-            count +=1
-
-    dist = dist/count
-
-    return dist
 
 def parede_esquerda():
     # mudei isso aqui pra pegar o quarter tile, ent so de ter parede na camera ele ja vai reconhecer
@@ -424,6 +554,7 @@ def reconhece_esquerda():
                 delay(1300)
                 #codificar_tipo('C')
         elif branco < 0.068 and branco > 0.05:
+            #distancia ideal para reconhecimento + ou - 0.06
             if H_S_U(cameraE) == 'H':
                 print('H')
                 delay(1300)
@@ -441,9 +572,18 @@ def reconhece_esquerda():
                 #faria uma estrategia para "encaixar" a vitima inteira
                 pass
         elif branco < 0.05:
-            #nota importanto, com a nova camera com FOV mais alto, menor do que 0,5 nao pega a parte de baixo e de cima da vitima
-            #entao eu vou fazer um metodo pra ele reconhecer de perto tbm
-            print('perto')  
+            if H_S_U_perto(cameraE) == 'H':
+                print('H')
+                delay(1300)
+                #codificar_tipo('H')
+            if H_S_U_perto(cameraE) == 'S':
+                print('S')
+                delay(1300)
+                #codificar_tipo('S')
+            if H_S_U_perto(cameraE) == 'U':
+                print('U')
+                delay(1300)
+                #codificar_tipo('U')  
         else: 
             #nao tem vitima nenhuma na imagem
             print('N')
@@ -460,7 +600,7 @@ def reconhece_direita():
     branco = dist_branco(cameraD)
 
 
-    if parede_esquerda():
+    if parede_direita():
         if organic_peroxide(cameraD):
             #esse range pode ser mais suave, pq a cor eh facil de reconhecer
             print('O')
@@ -497,15 +637,27 @@ def reconhece_direita():
                 #faria uma estrategia para "encaixar" a vitima inteira
                 pass
         elif branco < 0.05:
-            #nota importanto, com a nova camera com FOV mais alto, menor do que 0,5 nao pega a parte de baixo e de cima da vitima
-            #entao eu vou fazer um metodo pra ele reconhecer de perto tbm
-            print('perto')  
+            if H_S_U_perto(cameraE) == 'H':
+                print('H')
+                delay(1300)
+                #codificar_tipo('H')
+            if H_S_U_perto(cameraE) == 'S':
+                print('S')
+                delay(1300)
+                #codificar_tipo('S')
+            if H_S_U_perto(cameraE) == 'U':
+                print('U')
+                delay(1300)
+                #codificar_tipo('U')   
         else: 
             #nao tem vitima nenhuma na imagem
             print('N')
             pass
 
 
+
+#qualquer duvida me chama no whats, eu fiz o codigo meio correndo, ent pode ter uns bugs
+#qualquer duvida no reconehcimento de HSU, me chama q eu te explico como funciona
 
 while robot.step(timeStep) != -1:
     reconhece_esquerda()
