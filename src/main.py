@@ -78,6 +78,7 @@ try:
             robot.imu,
             robot.distance_sensor,
             robot.webots_robot,
+            maze,
             dist=0.01,
             correction_move=True,
         )
@@ -91,6 +92,7 @@ try:
             robot.imu,
             robot.distance_sensor,
             robot.webots_robot,
+            maze,
             dist=0.01,
             correction_move=True,
         )
@@ -107,6 +109,7 @@ try:
             robot.imu,
             robot.distance_sensor,
             robot.webots_robot,
+            maze,
             dist=0.01,
             correction_move=True,
         )
@@ -120,6 +123,7 @@ try:
             robot.imu,
             robot.distance_sensor,
             robot.webots_robot,
+            maze,
             dist=0.01,
             correction_move=True,
         )

@@ -5,6 +5,7 @@ from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
 from helpers import cyclic_angle, round_if_almost_0
+from maze import Maze
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -260,6 +261,7 @@ class Motor(Device):
         imu: IMU,
         distance_sensor: DistanceSensor,
         webots_robot: WebotsRobot,
+        maze: Maze,
         *,
         dist: float = TILE_SIZE,
         slow_down_dist: float = SLOW_DOWN_DIST,
@@ -327,6 +329,8 @@ class Motor(Device):
                 System.motor_movement,
             )
 
+        found_obstacle = False
+
         while self._robot.step(self._time_step) != -1:
             actual_position = gps.get_position()
 
@@ -374,13 +378,106 @@ class Motor(Device):
                     else self.expected_position.y > actual_position.y
                 ) or delta[1] == 0
 
+            left_diagonal_distance = lidar.get_side_distance(
+                cyclic_angle(
+                    315 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            right_diagonal_distance = lidar.get_side_distance(
+                cyclic_angle(
+                    45 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            print("diagonais", left_diagonal_distance, right_diagonal_distance)
+            left_diagonal = left_diagonal_distance <= 0.005
+            right_diagonal = right_diagonal_distance <= 0.005
+
+            left_side_distance = lidar.get_side_distance(
+                cyclic_angle(
+                    285 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            right_side_distance = lidar.get_side_distance(
+                cyclic_angle(
+                    75 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            print("laterais", left_side_distance, right_side_distance)
+            left_side = left_side_distance <= 0.01
+            right_side = right_side_distance <= 0.01
+
+            if (left_diagonal or left_side) and (right_side or right_diagonal):
+                # TODO: retornar para posição livre e desfazer movimento obstáculo
+                raise WallColisionError()
+
+            if left_diagonal or left_side:
+                self.stop()
+                self.rotate_90_right(imu)
+                self.move(
+                    direction,
+                    gps,
+                    lidar,
+                    color_sensor,
+                    imu,
+                    distance_sensor,
+                    webots_robot,
+                    maze,
+                    dist=0.005,
+                    correction_move=True,
+                )
+                self.rotate_90_left(imu)
+                found_obstacle = True
+
+            if right_diagonal or right_side:
+                self.stop()
+                self.rotate_90_left(imu)
+                self.move(
+                    direction,
+                    gps,
+                    lidar,
+                    color_sensor,
+                    imu,
+                    distance_sensor,
+                    webots_robot,
+                    maze,
+                    dist=0.005,
+                    correction_move=True,
+                )
+                self.rotate_90_right(imu)
+                found_obstacle = True
+
+            front_distance = lidar.get_side_distance(
+                180 * DEGREE_IN_RAD if direction == "backward" else 0,
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            if front_distance < 0.01:
+                self.stop()
+                found_obstacle = True
+                return MovementResult.moved
+
+            if found_obstacle:
+                print("TODO: deixar 'branco' no mapa")
+
             x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
 
             if (
                 (x_traversed and y_traversed)
-                if not correction_move
+                if not correction_move and not found_obstacle
                 else traversed_dist >= dist
             ):
                 self.stop()
@@ -407,13 +504,14 @@ class Motor(Device):
                     imu,
                     distance_sensor,
                     webots_robot,
+                    maze,
                     dist=traversed_dist,
                     slow_down_dist=slow_down_dist,
                     high_speed=high_speed,
                     slow_down_speed=slow_down_speed,
                     kp=kp,
                     expected_wall_distance=expected_wall_distance,
-                    returning_to_safe_position=True,
+                    returning_to_safe_position=True,  # TODO: lidar com esse caso na dfs como parede e returning_to_safe_position desfazer movimento que é feito para obstáculo
                 )
 
                 if DEBUG:
@@ -443,6 +541,7 @@ class Motor(Device):
                     imu,
                     distance_sensor,
                     webots_robot,
+                    maze,
                     dist=traversed_dist,
                     slow_down_dist=slow_down_dist,
                     high_speed=high_speed,
