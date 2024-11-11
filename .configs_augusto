@@ -1,0 +1,4 @@
+Rodar logger:
+cd C:\Users\goten\LARC\LARCv1\
+python .\auxiliar_codes\log_client\data_receiver.py
+
