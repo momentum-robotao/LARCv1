@@ -242,9 +242,10 @@ def classify_wall_token(
 
 def reconhece_lado(dist, camera, debug_info):
     if dist > MIN_DIST_TO_RECOGNIZE_WALL_TOKEN:
-        debug_info.send(
-            "No wall to recognize wall token", System.wall_token_recognition
-        )
+        if DEBUG:
+            debug_info.send(
+                "No wall to recognize wall token", System.wall_token_recognition
+            )
         return
 
     raw_image = camera.getImage()

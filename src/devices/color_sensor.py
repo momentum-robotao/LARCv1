@@ -3,11 +3,14 @@ import os
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
-from types_and_constants import DEBUG, RGB
+from types_and_constants import (
+    DEBUG,
+    RGB,
+    SPECIAL_TILE_COLOR_MAPPER,
+    ColoredSpecialTile,
+)
 
 from .device import Device
-
-HOLE_COLOR = b"...\xff"
 
 
 class ColorSensor(Device):
@@ -44,12 +47,18 @@ class ColorSensor(Device):
             )
         return color
 
-    def has_hole(self, hole_color: bytes = HOLE_COLOR) -> bool:
-        color = self.get_color()
-        has_hole = color == hole_color
+    def check_colored_special_tile(self) -> ColoredSpecialTile | None:
+        color = self.get_RGB_color()
         if DEBUG:
-            self.debug_info.send(
-                f"Buraco {'' if has_hole else 'não '}reconhecido.",
-                System.color_sensor_detections,
-            )
-        return has_hole
+            self.debug_info.send(f"Cor do chão: {color}", System.check_tile_color)
+
+        for test_color, special_tile_type in SPECIAL_TILE_COLOR_MAPPER.items():
+            if test_color == color:
+                if DEBUG:
+                    self.debug_info.send(
+                        f"É {special_tile_type}", System.check_tile_color
+                    )
+                return special_tile_type
+        if DEBUG:
+            self.debug_info.send("Não é nada", System.check_tile_color)
+        return None

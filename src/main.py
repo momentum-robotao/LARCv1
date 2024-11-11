@@ -10,16 +10,28 @@ try:
     from controller import Robot as WebotsRobot  # type: ignore
 
     from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
-    from devices import GPS, IMU, ColorSensor, Communicator, Lidar, Motor
-    from dfs import dfs
+    from devices import (
+        GPS,
+        IMU,
+        Camera,
+        ColorSensor,
+        Communicator,
+        DistanceSensor,
+        Lidar,
+        Motor,
+    )
+    from devices.motor import set_dist_change_mapper
+    from dfs import adjust_wall_distance, dfs
     from helpers import delay
     from maze import Maze
     from robot import Robot
     from types_and_constants import (
         DEBUG,
+        DEGREE_IN_RAD,
         NGROK_URL,
         ON_DOCKER,
         Coordinate,
+        EndOfTimeError,
         SpecialTileType,
     )
 
@@ -56,17 +68,100 @@ try:
             raise
 
     def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
-        from types_and_constants import DEGREE_IN_RAD
+        robot.imu.get_rotation_angle()
+        initial_position = robot.gps.get_position()
+        robot.motor.move(
+            "forward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            robot.distance_sensor,
+            robot.webots_robot,
+            maze,
+            dist=0.01,
+            correction_move=True,
+        )
+        delta_0_cord = robot.gps.get_position() - initial_position
+        delta_0 = (delta_0_cord.x, delta_0_cord.y)
+        robot.motor.move(
+            "backward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            robot.distance_sensor,
+            robot.webots_robot,
+            maze,
+            dist=0.01,
+            correction_move=True,
+        )
+        # TODO: troca para orientação do meu âng (right aumenta) em vez do imu default
+        robot.motor.rotate(
+            "right", 45 * DEGREE_IN_RAD, robot.imu, correction_rotation=True
+        )
+        initial_position = robot.gps.get_position()
+        robot.motor.move(
+            "forward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            robot.distance_sensor,
+            robot.webots_robot,
+            maze,
+            dist=0.01,
+            correction_move=True,
+        )
+        delta_45_cord = robot.gps.get_position() - initial_position
+        delta_45 = (delta_45_cord.x, delta_45_cord.y)
+        robot.motor.move(
+            "backward",
+            robot.gps,
+            robot.lidar,
+            robot.color_sensor,
+            robot.imu,
+            robot.distance_sensor,
+            robot.webots_robot,
+            maze,
+            dist=0.01,
+            correction_move=True,
+        )
+        robot.motor.rotate(
+            "left", 45 * DEGREE_IN_RAD, robot.imu, correction_rotation=True
+        )
+        set_dist_change_mapper(delta_0, delta_45)
 
-        while robot.step() != -1:
-            print(
-                robot.lidar.get_distances_of_range(
-                    25 * DEGREE_IN_RAD, 65 * DEGREE_IN_RAD
-                )
-            )
-        # position = Coordinate(0, 0)
-        # maze.set_tile_type(position, SpecialTileType.STARTING)
-        # position = dfs(position, maze, robot, debug_info, area=1, starting=True)
+        # for ang in [0, 45, 90, 135, 180, 225, 270, 315, 360]:
+        #     robot.motor.expected_angle = robot.imu.get_rotation_angle()
+        #     robot.motor.expected_position = robot.gps.get_position()
+        #     robot.motor.rotate("right", ang * DEGREE_IN_RAD, robot.imu)
+        #     cnt = 0
+        #     while robot.webots_robot.step(32) != -1:
+        #         print("começa", robot.gps.get_position())
+        #         robot.motor.move(
+        #             "frontward",  # TODO: testa backward
+        #             robot.gps,
+        #             robot.lidar,
+        #             robot.color_sensor,
+        #             robot.imu,
+        #             robot.distance_sensor,
+        #             robot.webots_robot,
+        #         )
+        #         print("termina", robot.gps.get_position())
+        #         print("================")
+        #         cnt += 1
+        #         if cnt == 2:
+        #             break
+        #     print("------------------")
+        #     robot.communicator.send_lack_of_progress()
+        #     import time
+
+        #     time.sleep(1)
+
+        position = Coordinate(0, 0)
+        maze.set_tile_type(position, SpecialTileType.STARTING)
+        position = dfs(position, maze, robot, debug_info, area=1, starting=True)
 
     def main() -> None:
         # Initialize DebugInfo instance
@@ -78,14 +173,18 @@ try:
                 System.dfs_state,
                 System.dfs_decision,
                 System.dfs_verification,
-                # System.maze_visited,
                 System.unknown_error,
-                # System.maze_snapshot,
+                System.initialization,
                 System.maze_changes,
                 System.maze_answer,
+                System.maze_visited,
                 System.communicator_send_maze,
                 System.communicator_send_end_of_play,
                 System.communicator_send_messages,
+                System.wall_token_recognition,
+                System.wall_token_classification,
+                System.hole_detection,
+                System.check_tile_color,
             ]
             # want = ALL_SYSTEMS
             debug_info = DebugInfo(
@@ -104,13 +203,14 @@ try:
         try:
             webots_robot = WebotsRobot()
             webots_robot.step(int(os.getenv("TIME_STEP", 32)))
-
-            motor = Motor(webots_robot, debug_info)
             lidar = Lidar(webots_robot, debug_info)
             gps = GPS(webots_robot, debug_info)
+            motor = Motor(webots_robot, gps, debug_info)
             imu = IMU(webots_robot, debug_info)
             color_sensor = ColorSensor(webots_robot, debug_info)
             communicator = Communicator(webots_robot, debug_info)
+            camera = Camera(webots_robot, debug_info)
+            distance_sensor = DistanceSensor(webots_robot, debug_info)
         except Exception:
             if DEBUG:
                 debug_info.send(
@@ -129,7 +229,9 @@ try:
                 imu,
                 color_sensor,
                 communicator,
-                debug_info,
+                camera,
+                distance_sensor,
+                debug_info=debug_info,
             )
             robot.step()
         except Exception:
@@ -144,6 +246,8 @@ try:
         # Solve map
         try:
             solve_map(robot, debug_info, maze)
+        except EndOfTimeError:
+            pass
         except Exception:
             if DEBUG:
                 debug_info.send(
@@ -173,13 +277,13 @@ try:
         main()
     except Exception:
         pass
-    if ON_DOCKER:
-        http_handler.send_queue_data()
+    http_handler.send_queue_data()
 except Exception as err:
     from controller import Robot as WebotsRobot  # type: ignore
 
     webots_robot = WebotsRobot()
     webots_robot.step(int(os.getenv("TIME_STEP", 32)))
+    print(err)
 
     if (os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]:
         import logging
@@ -220,4 +324,3 @@ except Exception as err:
         logger.addHandler(http_handler)
 
         logger.critical("erro geral", exc_info=True)
-    print(err)

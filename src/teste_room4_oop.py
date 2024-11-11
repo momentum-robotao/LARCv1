@@ -152,9 +152,9 @@ try:
             webots_robot.step(int(os.getenv("TIME_STEP", 32)))
             
             global motor, lidar, gps, imu, color_sensor, communicator, distancesensor
-            motor = Motor(webots_robot, debug_info)
-            lidar = Lidar(webots_robot, debug_info)
             gps = GPS(webots_robot, debug_info)
+            motor = Motor(webots_robot, gps, debug_info)
+            lidar = Lidar(webots_robot, debug_info)
             imu = IMU(webots_robot, debug_info)
             color_sensor = ColorSensor(webots_robot, debug_info)
             communicator = Communicator(webots_robot, debug_info)
@@ -387,7 +387,7 @@ try:
                         
                         motor.set_left_motor_power(Pot0)
                         motor.set_right_motor_power(Pot0)
-                        delay(webots_robot, debug_info, 200)
+                        delay(webots_robot, debug_info, 50)
                         motor.stop()
                     #print(f"d1 = {d1} ; d2 = {d2} ; d3 : {d3} ; d4: {d4}; d5:{d5}")
                     last_error = erro - last_error

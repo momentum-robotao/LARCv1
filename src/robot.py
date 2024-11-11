@@ -4,8 +4,17 @@ from typing import Any
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
-from devices import GPS, IMU, ColorSensor, Communicator, Lidar, Motor
-from types_and_constants import DEBUG
+from devices import (
+    GPS,
+    IMU,
+    Camera,
+    ColorSensor,
+    Communicator,
+    DistanceSensor,
+    Lidar,
+    Motor,
+)
+from types_and_constants import DEBUG, EndOfTimeError
 
 
 class Robot:
@@ -18,6 +27,8 @@ class Robot:
         imu: IMU,
         color_sensor: ColorSensor,
         communicator: Communicator,
+        camera: Camera,
+        distance_sensor: DistanceSensor,
         debug_info: DebugInfo,
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ):
@@ -29,6 +40,8 @@ class Robot:
         self.imu = imu
         self.color_sensor = color_sensor
         self.communicator = communicator
+        self.camera = camera
+        self.distance_sensor = distance_sensor
 
         self.time_step = time_step
         self.debug_info = debug_info
@@ -51,3 +64,14 @@ class Robot:
 
     def step(self) -> Any:
         return self.webots_robot.step(self.time_step)
+
+
+def check_time(
+    robot: Robot, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
+) -> None:
+    game_information = robot.communicator.get_game_information()
+    if (
+        game_information.remaining_real_world_time < time_tolerance
+        or game_information.remaining_simulation_time < time_tolerance
+    ):
+        raise EndOfTimeError()

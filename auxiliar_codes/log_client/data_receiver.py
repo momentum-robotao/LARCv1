@@ -26,7 +26,7 @@ def send_data():
 
 
 if __name__ == "__main__":
-    listener = ngrok.forward(PORT, authtoken_from_env=True)
+    listener = ngrok.forward(PORT, authtoken="2nRY8dp1IQp7JqwtZJuvbVcW90K_3P1eoms4QKsX7K4wCtajm")
     print(f"Listening at {listener.url()}")
 
     with open("./ngrok.txt", "w+") as file:

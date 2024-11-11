@@ -5,11 +5,11 @@ RUN mkdir -p /usr/local/controller
 WORKDIR /usr/local/controller
 
 COPY ./src/ .
-# COPY ./requirements.txt ./requirements.txt
+COPY ./requirements.txt ./requirements.txt
 
 # Install dependencies
-# RUN pip3 install -r requirements.txt
-COPY ./venv/lib64/python3.12/site-packages/ .
+RUN pip3 install -r requirements.txt
+#COPY ./venv/lib64/python3.12/site-packages/ .
 
 # Set env vars
 ENV LOG_PATH=/usr/local/controller/.logs/robo.log
@@ -19,7 +19,7 @@ ENV DEBUG=True
 ENV ON_DOCKER=True
 ENV ENTRIES_BETWEEN_SENDS=100
 COPY ./ngrok.txt ./ngrok.txt
-ENV ANGLE_MAX_DIFFERENCE=0.3
+
 
 # Run controller (using extern controller helper)
-CMD webots-controller --protocol=tcp --ip-address=$EREBUS_SERVER --port=1234 --robot-name=Erebus_Bot --stdout-redirect --stderr-redirect main.py
+CMD webots-controller --protocol=tcp --ip-address=$EREBUS_SERVER --port=1234 --robot-name=Erebus_Bot --stdout-redirect --stderr-redirect teste_room4_oop.py

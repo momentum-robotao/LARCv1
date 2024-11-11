@@ -3,6 +3,23 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
+
+class Victim(Enum):
+    HARMED = "H"
+    STABLE = "S"
+    UNHARMED = "U"
+
+
+class HazmatSign(Enum):
+    FLAMMABLE_GAS = "F"
+    POISON = "P"
+    CORROSIVE = "C"
+    ORGANIC_PEROXIDE = "O"
+
+
+WallToken = HazmatSign | Victim
+
+
 DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
 ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DEBUG
 
@@ -14,13 +31,14 @@ METER_TO_CM = 100
 SLOW_DOWN_SPEED = 0.1
 SLOW_DOWN_DIST = 0.001
 MAX_SPEED = 6.28
-KP = 5.0
+KP = 0.0
 TILE_SIZE = 0.12
 WALL_TICKNESS = 0.01
 ROBOT_RADIUS = 0.0355
 MAX_WALL_DISTANCE = 0.030
-EXPECTED_WALL_DISTANCE = 0.019
+EXPECTED_WALL_DISTANCE = 0.0198
 WALL_COLLISION_DISTANCE = 0.002
+DIST_BEFORE_HOLE = 0.02
 
 ORTOGONAL_MAX_DIST_IF_WALL = TILE_SIZE / 2
 DIAGONAL_MAX_DIST_IF_WALL1 = (
@@ -49,6 +67,12 @@ CENTRAL_SIDE_ANGLE_OF_SIDE: dict[Side, Numeric] = {
 }
 
 
+class EndOfTimeError(Exception):
+    """
+    Exception raised when time is going to end.
+    """
+
+
 class WallColisionError(Exception):
     """
     Exception raised when the robot colides with a wall and it
@@ -71,23 +95,7 @@ class MovementResult(Enum):
     moved = "moved"
     left_hole = "left hole"
     right_hole = "right hole"
-    left_right_hole = "left right hole"
-
-
-class Victim(Enum):
-    HARMED = "H"
-    STABLE = "S"
-    UNHARMED = "U"
-
-
-class HazmatSign(Enum):
-    FLAMMABLE_GAS = "F"
-    POISON = "P"
-    CORROSIVE = "C"
-    ORGANIC_PEROXIDE = "O"
-
-
-WallToken = HazmatSign | Victim
+    central_hole = "central hole"
 
 
 class SpecialTileType(Enum):
@@ -152,11 +160,18 @@ class Coordinate:
         return Coordinate(self.x * multiplier, self.y * multiplier)
 
 
-@dataclass
+@dataclass(frozen=True)
 class RGB:
     red: float
     green: float
     blue: float
+
+    def __eq__(self, other) -> bool:
+        return (
+            abs(self.red - other.red) <= 2
+            and abs(self.green - other.green) <= 2
+            and abs(self.blue - other.blue) <= 2
+        )
 
 
 # For each wall, sorted by distance, that robot may collide after moving with some rotation angle:
@@ -230,4 +245,29 @@ QUADRANT_OF_DELTA: dict[Coordinate, Quadrant] = {
     Coordinate(1, 0): "bottom_right",
     Coordinate(0, -1): "top_left",
     Coordinate(1, -1): "top_right",
+}
+
+ALL_QUADRANTS: list[Quadrant] = ["bottom_left", "bottom_right", "top_left", "top_right"]
+
+ColoredSpecialTile = Literal[
+    SpecialTileType.PASSAGE_1_2,
+    SpecialTileType.PASSAGE_1_3,
+    SpecialTileType.PASSAGE_1_4,
+    SpecialTileType.PASSAGE_2_3,
+    SpecialTileType.PASSAGE_2_4,
+    SpecialTileType.PASSAGE_3_4,
+    SpecialTileType.SWAMP,
+    SpecialTileType.CHECKPOINT,
+]
+
+
+SPECIAL_TILE_COLOR_MAPPER: dict[RGB, ColoredSpecialTile] = {
+    RGB(255, 255, 255): SpecialTileType.CHECKPOINT,
+    RGB(80, 80, 255): SpecialTileType.PASSAGE_1_2,
+    RGB(255, 255, 80): SpecialTileType.PASSAGE_1_3,
+    RGB(255, 245, 80): SpecialTileType.PASSAGE_2_4,
+    RGB(42, 254, 42): SpecialTileType.PASSAGE_1_4,
+    RGB(175, 80, 245): SpecialTileType.PASSAGE_2_3,
+    RGB(255, 79, 79): SpecialTileType.PASSAGE_3_4,
+    RGB(235, 206, 126): SpecialTileType.SWAMP,
 }

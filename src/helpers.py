@@ -1,11 +1,11 @@
 import logging
 import os
-
-from controller import Robot as WebotsRobot  # type: ignore
+from typing import Any
 
 from debugging import DebugInfo, System
 from types_and_constants import (
     DEBUG,
+    DEGREE_IN_RAD,
     DIAGONAL_MAX_DIST_IF_WALL1,
     DIAGONAL_MAX_DIST_IF_WALL2,
     ORTOGONAL_MAX_DIST_IF_WALL,
@@ -19,6 +19,8 @@ from types_and_constants import (
     Side,
     SideDirection,
 )
+
+WebotsRobot = Any
 
 
 def delay(
@@ -62,6 +64,24 @@ def cyclic_angle(angle: Numeric) -> Numeric:
         angle -= 2 * PI
 
     return angle
+
+
+def cyclic_angle_difference(
+    measured_angle: Numeric, expected_angle: Numeric
+) -> Numeric:
+    """How much should be added to `measured_angle` to reach `expected_angle`,
+    considering they are cyclic.
+
+    Note that it may be negative.
+    """
+    angle_difference = measured_angle - expected_angle
+    if abs(angle_difference) >= 180 * DEGREE_IN_RAD:
+        if measured_angle < expected_angle:
+            measured_angle += 360 * DEGREE_IN_RAD
+        else:
+            expected_angle += 360 * DEGREE_IN_RAD
+        angle_difference = measured_angle - expected_angle
+    return angle_difference
 
 
 def calculate_wall_position(

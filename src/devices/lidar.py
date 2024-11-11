@@ -51,7 +51,10 @@ class Lidar(Device):
     def _get_measure_side_angle(self, measure_idx: int) -> float:
         angle = measure_idx * (self.field_of_view / self.horizontal_resolution)
         return angle
-
+    
+    def _get_range_image_(self):
+        return self._lidar.getRangeImage()
+    
     def show_initialization_information(self) -> None:
         if DEBUG:
             self.debug_info.send("\nSobre o LIDAR", System.initialization)
@@ -158,6 +161,7 @@ class Lidar(Device):
         side: Side | Numeric,
         field_of_view: float = 10 * DEGREE_IN_RAD,
         remove_inf_measures: bool = True,
+        use_min: bool = False,
     ) -> float:
         """
         IMPORTANT! Note that angles in `side` must be side angles.
@@ -183,7 +187,15 @@ class Lidar(Device):
         if min(distances) != float("inf") and remove_inf_measures:
             distances = [dist for dist in distances if dist != float("inf")]
 
+        if len(distances) == 0:
+            return float("inf")
+
         average_distance = sum(distances) / len(distances)
+
+        if use_min:
+            average_distance = list(sorted(distances))[0]
+            if len(distances) >= 3:
+                average_distance = list(sorted(distances))[2]
 
         if DEBUG:
             self.debug_info.send(
@@ -199,12 +211,16 @@ class Lidar(Device):
         self,
         side: Literal["front", "back", "left", "right"],
         max_wall_distance: float = MAX_WALL_DISTANCE,
+        use_min: bool = False,
+        field_of_view: float = 10 * DEGREE_IN_RAD,
     ) -> bool:
         """
         :return: If there is a wall in the actual tile, assuming that
         the robot is on the center of the tile on the corresponding axis.
         """
-        side_distance = self.get_side_distance(side)
+        side_distance = self.get_side_distance(
+            side, field_of_view=field_of_view, use_min=use_min
+        )
         has_wall = side_distance <= max_wall_distance
 
         if DEBUG:

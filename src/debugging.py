@@ -39,6 +39,10 @@ class System(Enum):
     communicator_receive_data = "communicator receive data"
     communicator_get_game_information = "communicator get game information"
     communicator_send_maze = "communicator send maze"
+    wall_token_classification = "wall token classification"
+    wall_token_recognition = "wall token recognition"
+    hole_detection = "hole detection"
+    check_tile_color = "check tile color"
 
 
 ALL_SYSTEMS = [system for system in System]
