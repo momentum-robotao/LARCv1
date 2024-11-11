@@ -234,6 +234,7 @@ class Robot:
         return self.webots_robot.step(self.time_step)
 
     def recognize_wall_token(self) -> bool:
+        print("reconhece")
         found = False
         for wall_token in [
             reconhece_lado(
@@ -267,6 +268,7 @@ class Robot:
         """
         print(f"rotacionando {correction_rotation=}")
 
+        recognized_wall_token = False
         if not correction_rotation:
             self.expected_angle = cyclic_angle(
                 self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
@@ -281,6 +283,9 @@ class Robot:
         rotation_angle = self.imu.get_rotation_angle()
 
         while self.step() != -1:
+            if not recognized_wall_token and self.recognize_wall_token():
+                recognized_wall_token = True
+
             new_robot_angle = self.imu.get_rotation_angle()
             angle_accumulated_delta += IMU.get_delta_rotation(
                 rotation_angle, new_robot_angle
@@ -507,8 +512,8 @@ class Robot:
                 use_min=True,
             )
             # print("laterais", left_side_distance, right_side_distance)
-            left_side = left_side_distance <= 0.008
-            right_side = right_side_distance <= 0.008
+            left_side = left_side_distance <= 0.005
+            right_side = right_side_distance <= 0.005
 
             if (left_diagonal or left_side) and (right_side or right_diagonal):
                 # TODO: retornar para posição livre e desfazer movimento obstáculo

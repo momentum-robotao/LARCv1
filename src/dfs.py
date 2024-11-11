@@ -203,12 +203,10 @@ def dfs(
 
     if alley(robot, maze, position, start_angle):
         print("rodada alley")
-        robot.rotate_90_left()
         adjust_wall_distance(
             robot, debug_info, maze, wall_max_x_error=0.1, wall_max_y_error=0.1
         )
-        robot.recognize_wall_token()
-        robot.rotate_90_right()
+        robot.rotate_180()
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals

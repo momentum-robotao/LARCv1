@@ -18,17 +18,27 @@ import numpy as np
 
 from debugging import DebugInfo, System
 from devices import Lidar
-from types_and_constants import DEBUG, DEGREE_IN_RAD, HazmatSign, Victim, WallToken
+from types_and_constants import (
+    DEBUG,
+    DEGREE_IN_RAD,
+    ROBOT_RADIUS,
+    HazmatSign,
+    Victim,
+    WallToken,
+)
 
-MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.06  # TODO: ajustar, Nicolas colocou 0.08
+MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.08  # TODO: ajustar, Nicolas colocou 0.08
 
 
 img_height, img_width = 256, 320
 
 
 def get_distance(angle_degree: int, lidar: Lidar) -> float:
-    return lidar.get_side_distance(
-        angle_degree * DEGREE_IN_RAD, field_of_view=3 * DEGREE_IN_RAD
+    return (
+        lidar.get_side_distance(
+            angle_degree * DEGREE_IN_RAD, field_of_view=3 * DEGREE_IN_RAD
+        )
+        + ROBOT_RADIUS
     )
 
 
@@ -324,6 +334,7 @@ def get_image_metrics(raw_image, target_width=320, target_height=256):
 
 
 def classify_H_S_U(margem, metrics):
+    print("HSU normal")
     if not metrics:
         return None
 
@@ -383,6 +394,7 @@ def H_S_U_perto(raw_image, target_width=320, target_height=256):
     Pega direto a imagem e cria um quadrado, de modo a encaixar a maior quantidade de
     pixels brancos. Isso tira as bordas pretas, que não são vítimas.
     """
+    print("HSU perto")
     if (bounding_box_around_white := find_bounding_box_around_white(raw_image)) is None:
         return 0
     x, y, w, h = bounding_box_around_white
@@ -406,7 +418,7 @@ def H_S_U_perto(raw_image, target_width=320, target_height=256):
     total_pixels_mid = mid_half.size
     preto_meio = total_pixels_mid - non_black_pixels_mid
 
-    upper_half = black_white_image[55:75, :]
+    upper_half = black_white_image[26:46, :]
     non_black_pixels_upper = cv2.countNonZero(upper_half)
     total_pixels_upper = upper_half.size
     preto_cima = total_pixels_upper - non_black_pixels_upper
@@ -417,6 +429,7 @@ def H_S_U_perto(raw_image, target_width=320, target_height=256):
     preto_vertical = (total_pixels_vertical - non_black_pixels_vertical) * 1.52
     preto_vertical = int(preto_vertical)
 
+    print(preto_cima, preto_meio, preto_baixo, preto_vertical)
     if branco > 50000:
         # garantir que a vitima ta inteira na image, sujeito a mudanças
         if preto_vertical == min(
@@ -445,6 +458,7 @@ def classify_wall_token(
     image_metrics = get_image_metrics(raw_image)
     (dist_branco, qty_preto, hazmat) = image_information
     wall_token: WallToken | None = None
+    print(f"{dist_branco=}")
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
         wall_token = HazmatSign.ORGANIC_PEROXIDE
@@ -455,7 +469,7 @@ def classify_wall_token(
             wall_token = HazmatSign.POISON
         else:
             wall_token = HazmatSign.CORROSIVE
-    elif dist_branco < 0.068 and dist_branco > 0.05 and qty_preto > 0:
+    elif dist_branco < 0.068 and dist_branco > 0.06 and qty_preto > 0:
         # distancia ideal para reconhecimento + ou - 0.06
         if classify_H_S_U(margem, image_metrics) == "H":
             wall_token = Victim.HARMED
@@ -465,7 +479,7 @@ def classify_wall_token(
             wall_token = Victim.UNHARMED
         else:
             print("TODO: há vítima, fazer estratégia pra 'encaixá-la'")
-    elif dist_branco < 0.05 and qty_preto > 0:
+    elif dist_branco < 0.06 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":
             wall_token = Victim.HARMED
         if H_S_U_perto(raw_image) == "S":
@@ -485,7 +499,10 @@ def classify_wall_token(
 def reconhece_lado(camera, debug_info, side: Literal["left", "right"], lidar: Lidar):
     # ? FOV=20: mudei isso aqui pra pegar o quarter tile, ent so de ter parede na camera
     # ele ja vai reconhecer
-    dist = lidar.get_side_distance(side, field_of_view=20 * DEGREE_IN_RAD, use_min=True)
+    dist = (
+        lidar.get_side_distance(side, field_of_view=20 * DEGREE_IN_RAD, use_min=True)
+        + ROBOT_RADIUS
+    )
     if dist >= MIN_DIST_TO_RECOGNIZE_WALL_TOKEN:
         if DEBUG:
             debug_info.send(
