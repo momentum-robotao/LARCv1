@@ -395,8 +395,8 @@ class Motor(Device):
                 use_min=True,
             )
             print("diagonais", left_diagonal_distance, right_diagonal_distance)
-            left_diagonal = left_diagonal_distance <= 0.005
-            right_diagonal = right_diagonal_distance <= 0.005
+            left_diagonal = left_diagonal_distance <= 0.004
+            right_diagonal = right_diagonal_distance <= 0.004
 
             left_side_distance = lidar.get_side_distance(
                 cyclic_angle(
@@ -415,8 +415,8 @@ class Motor(Device):
                 use_min=True,
             )
             print("laterais", left_side_distance, right_side_distance)
-            left_side = left_side_distance <= 0.01
-            right_side = right_side_distance <= 0.01
+            left_side = left_side_distance <= 0.008
+            right_side = right_side_distance <= 0.008
 
             if (left_diagonal or left_side) and (right_side or right_diagonal):
                 # TODO: retornar para posição livre e desfazer movimento obstáculo
@@ -434,7 +434,7 @@ class Motor(Device):
                     distance_sensor,
                     webots_robot,
                     maze,
-                    dist=0.005,
+                    dist=0.001,
                     correction_move=True,
                 )
                 self.rotate_90_left(imu)
@@ -452,7 +452,7 @@ class Motor(Device):
                     distance_sensor,
                     webots_robot,
                     maze,
-                    dist=0.005,
+                    dist=0.001,  # TODO: proporcional a quao perto está
                     correction_move=True,
                 )
                 self.rotate_90_right(imu)
