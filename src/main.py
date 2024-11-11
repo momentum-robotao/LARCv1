@@ -21,7 +21,7 @@ try:
         Motor,
     )
     from devices.motor import set_dist_change_mapper
-    from dfs import adjust_wall_distance, dfs
+    from dfs import dfs
     from helpers import delay
     from maze import Maze
     from robot import Robot
@@ -79,6 +79,8 @@ try:
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=0.01,
             correction_move=True,
         )
@@ -93,6 +95,8 @@ try:
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=0.01,
             correction_move=True,
         )
@@ -110,6 +114,8 @@ try:
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=0.01,
             correction_move=True,
         )
@@ -124,6 +130,8 @@ try:
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=0.01,
             correction_move=True,
         )

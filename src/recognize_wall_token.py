@@ -19,7 +19,6 @@ import numpy as np
 from debugging import DebugInfo, System
 from devices import Lidar
 from helpers import delay
-from robot import Robot
 from types_and_constants import DEBUG, DEGREE_IN_RAD, HazmatSign, Victim, WallToken
 
 MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.06  # TODO: ajustar, Nicolas colocou 0.08
@@ -524,7 +523,7 @@ def reconhece_lado(camera, debug_info, side: Literal["left", "right"], lidar: Li
     )
 
 
-def recognize_wall_token(robot: Robot, debug_info: DebugInfo) -> None:
+def recognize_wall_token(robot, debug_info: DebugInfo) -> None:
     for wall_token in [
         reconhece_lado(
             robot.camera._left_camera,

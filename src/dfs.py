@@ -110,6 +110,8 @@ def adjust_wall_distance(
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=abs(y_error),
             correction_move=True,
         )
@@ -124,6 +126,8 @@ def adjust_wall_distance(
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=y_error,
             correction_move=True,
         )
@@ -140,6 +144,8 @@ def adjust_wall_distance(
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=abs(x_error),
             correction_move=True,
         )
@@ -155,6 +161,8 @@ def adjust_wall_distance(
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=x_error,
             correction_move=True,
         )
@@ -354,6 +362,8 @@ def dfs(
                 robot.distance_sensor,
                 robot.webots_robot,
                 maze,
+                robot,
+                debug_info,
                 dist=new_position_distance,
                 slow_down_dist=SLOW_DOWN_DIST / 3,
             )
@@ -399,6 +409,8 @@ def dfs(
             robot.distance_sensor,
             robot.webots_robot,
             maze,
+            robot,
+            debug_info,
             dist=new_position_distance,
             slow_down_dist=SLOW_DOWN_DIST / 3,
         )

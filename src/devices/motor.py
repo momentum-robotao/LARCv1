@@ -6,6 +6,7 @@ from controller import Robot as WebotsRobot  # type: ignore
 from debugging import DebugInfo, System
 from helpers import cyclic_angle, round_if_almost_0
 from maze import Maze
+from recognize_wall_token import recognize_wall_token
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -262,6 +263,8 @@ class Motor(Device):
         distance_sensor: DistanceSensor,
         webots_robot: WebotsRobot,
         maze: Maze,
+        robot,
+        debug_info: DebugInfo,
         *,
         dist: float = TILE_SIZE,
         slow_down_dist: float = SLOW_DOWN_DIST,
@@ -434,6 +437,8 @@ class Motor(Device):
                     distance_sensor,
                     webots_robot,
                     maze,
+                    robot,
+                    debug_info,
                     dist=0.001,
                     correction_move=True,
                 )
@@ -452,6 +457,8 @@ class Motor(Device):
                     distance_sensor,
                     webots_robot,
                     maze,
+                    robot,
+                    debug_info,
                     dist=0.001,  # TODO: proporcional a quao perto está
                     correction_move=True,
                 )
@@ -505,6 +512,8 @@ class Motor(Device):
                     distance_sensor,
                     webots_robot,
                     maze,
+                    robot,
+                    debug_info,
                     dist=traversed_dist,
                     slow_down_dist=slow_down_dist,
                     high_speed=high_speed,
@@ -542,6 +551,8 @@ class Motor(Device):
                     distance_sensor,
                     webots_robot,
                     maze,
+                    robot,
+                    debug_info,
                     dist=traversed_dist,
                     slow_down_dist=slow_down_dist,
                     high_speed=high_speed,
@@ -563,6 +574,8 @@ class Motor(Device):
                     return MovementResult.left_hole
                 else:
                     return MovementResult.right_hole
+
+            recognize_wall_token(robot, debug_info)
         return MovementResult.moved
 
     @staticmethod
