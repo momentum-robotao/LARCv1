@@ -18,7 +18,6 @@ import numpy as np
 
 from debugging import DebugInfo, System
 from devices import Lidar
-from helpers import delay
 from types_and_constants import DEBUG, DEGREE_IN_RAD, HazmatSign, Victim, WallToken
 
 MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.06  # TODO: ajustar, Nicolas colocou 0.08
@@ -209,8 +208,6 @@ def check_robo_torto(lidar: Lidar, side: Literal["left", "right"]) -> bool:
         if distance < min_distance:
             min_distance = distance
             min_angle = angle
-    print(min_angle)
-    print(min_distance)
     if min_angle == 90 or min_angle == 270:
         # ? robo ta certinho, mantem a margem
         return False
@@ -398,7 +395,6 @@ def H_S_U_perto(raw_image, target_width=320, target_height=256):
     _, black_white_image = cv2.threshold(gray_resized, 127, 255, cv2.THRESH_BINARY)
 
     branco = cv2.countNonZero(black_white_image)
-    print(branco)
 
     lower_half = black_white_image[210:230, :]
     non_black_pixels_lower = cv2.countNonZero(lower_half)
@@ -448,7 +444,6 @@ def classify_wall_token(
 ) -> WallToken | None:
     image_metrics = get_image_metrics(raw_image)
     (dist_branco, qty_preto, hazmat) = image_information
-    print(dist)
     wall_token: WallToken | None = None
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
@@ -514,28 +509,8 @@ def reconhece_lado(camera, debug_info, side: Literal["left", "right"], lidar: Li
         ir mudando essa marge, mas deve ta meio bom <= TODO
         """
         margem = 0.5
-        print("margem aumentada")
     else:
-        print("margem normal")
         margem = 0.2
     return classify_wall_token(
         image_information, raw_image, dist, debug_info, margem, side, lidar
     )
-
-
-def recognize_wall_token(robot, debug_info: DebugInfo) -> None:
-    for wall_token in [
-        reconhece_lado(
-            robot.camera._left_camera,
-            debug_info,
-            "left",
-            robot.lidar,
-        ),
-        reconhece_lado(robot.camera._right_camera, debug_info, "right", robot.lidar),
-    ]:
-        if wall_token:
-            robot.motor.stop()
-            delay(robot.webots_robot, debug_info, 1300)
-            robot.communicator.send_wall_token_information(
-                robot.gps.get_position(), wall_token
-            )
