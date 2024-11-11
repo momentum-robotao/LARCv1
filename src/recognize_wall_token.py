@@ -450,12 +450,12 @@ def classify_wall_token(
         wall_token = HazmatSign.ORGANIC_PEROXIDE
     elif check_flamable_gas(raw_image, side, lidar):
         wall_token = HazmatSign.FLAMMABLE_GAS
-    elif hazmat >= 4 and dist_branco < 0.07:
+    elif hazmat >= 4 and dist_branco < 0.07 and qty_preto > 0:
         if qty_preto < 50:
             wall_token = HazmatSign.POISON
         else:
             wall_token = HazmatSign.CORROSIVE
-    elif dist_branco < 0.068 and dist_branco > 0.05:
+    elif dist_branco < 0.068 and dist_branco > 0.05 and qty_preto > 0:
         # distancia ideal para reconhecimento + ou - 0.06
         if classify_H_S_U(margem, image_metrics) == "H":
             wall_token = Victim.HARMED
@@ -465,7 +465,7 @@ def classify_wall_token(
             wall_token = Victim.UNHARMED
         else:
             print("TODO: há vítima, fazer estratégia pra 'encaixá-la'")
-    elif dist_branco < 0.05:
+    elif dist_branco < 0.05 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":
             wall_token = Victim.HARMED
         if H_S_U_perto(raw_image) == "S":

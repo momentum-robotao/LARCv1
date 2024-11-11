@@ -233,7 +233,8 @@ class Robot:
     def step(self) -> Any:
         return self.webots_robot.step(self.time_step)
 
-    def recognize_wall_token(self) -> None:
+    def recognize_wall_token(self) -> bool:
+        found = False
         for wall_token in [
             reconhece_lado(
                 self.camera._left_camera, self.debug_info, "left", self.lidar
@@ -248,6 +249,8 @@ class Robot:
                 self.communicator.send_wall_token_information(
                     self.gps.get_position(), wall_token
                 )
+                found = True
+        return found
 
     def rotate(
         self,
@@ -262,11 +265,16 @@ class Robot:
         Rotate the robot in a direction by an angle, using the motors. Uses
         `imu` to check the robot angle to rotate correctly.
         """
+        print(f"rotacionando {correction_rotation=}")
 
         if not correction_rotation:
             self.expected_angle = cyclic_angle(
                 self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
             )
+            for test_angle_degree in [0, 45, 90, 135, 180, 225, 270, 315, 360]:
+                test_angle = test_angle_degree * DEGREE_IN_RAD
+                if abs(test_angle - self.expected_angle) <= 0.05:
+                    self.expected_angle = test_angle
         self.motor.stop()
 
         angle_accumulated_delta = 0
@@ -278,7 +286,6 @@ class Robot:
                 rotation_angle, new_robot_angle
             )
             angle_to_rotate = turn_angle - angle_accumulated_delta
-            print("Já girou: ", angle_accumulated_delta)
 
             if DEBUG:
                 self.debug_info.send(
@@ -395,6 +402,7 @@ class Robot:
         slower in the end of the movement.
         - Holes are not detected when moving backward.
         """
+        found_wall_token = False
         initial_position = self.gps.get_position()
         # if self.expected_raw_angle is None:
         #     self.expected_raw_angle = imu.get_rotation_angle(raw=True)
@@ -478,7 +486,7 @@ class Robot:
                 field_of_view=30 * DEGREE_IN_RAD,
                 use_min=True,
             )
-            print("diagonais", left_diagonal_distance, right_diagonal_distance)
+            # print("diagonais", left_diagonal_distance, right_diagonal_distance)
             left_diagonal = left_diagonal_distance <= 0.004
             right_diagonal = right_diagonal_distance <= 0.004
 
@@ -498,7 +506,7 @@ class Robot:
                 field_of_view=30 * DEGREE_IN_RAD,
                 use_min=True,
             )
-            print("laterais", left_side_distance, right_side_distance)
+            # print("laterais", left_side_distance, right_side_distance)
             left_side = left_side_distance <= 0.008
             right_side = right_side_distance <= 0.008
 
@@ -624,7 +632,8 @@ class Robot:
                 else:
                     return MovementResult.right_hole
 
-            self.recognize_wall_token()
+            if not found_wall_token and self.recognize_wall_token():
+                found_wall_token = True
         return MovementResult.moved
 
 

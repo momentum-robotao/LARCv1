@@ -77,14 +77,12 @@ try:
         )
         delta_0_cord = robot.gps.get_position() - initial_position
         delta_0 = (delta_0_cord.x, delta_0_cord.y)
-        print("avançou")
         robot.move(
             "backward",
             maze,
             dist=0.01,
             correction_move=True,
         )
-        print("voltou")
         # TODO: troca para orientação do meu âng (right aumenta) em vez do imu default
         robot.rotate("right", 45 * DEGREE_IN_RAD, correction_rotation=True)
         initial_position = robot.gps.get_position()
@@ -178,7 +176,7 @@ try:
             webots_robot.step(int(os.getenv("TIME_STEP", 32)))
             lidar = Lidar(webots_robot, debug_info)
             gps = GPS(webots_robot, debug_info)
-            motor = Motor(webots_robot, gps, debug_info)
+            motor = Motor(webots_robot, debug_info)
             imu = IMU(webots_robot, debug_info)
             color_sensor = ColorSensor(webots_robot, debug_info)
             communicator = Communicator(webots_robot, debug_info)

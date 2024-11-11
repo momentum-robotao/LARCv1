@@ -6,14 +6,12 @@ from debugging import DebugInfo, System
 from types_and_constants import DEBUG
 
 from .device import Device
-from .gps import GPS
 
 
 class Motor(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        gps: GPS,
         debug_info: DebugInfo,
         left_motor_name: str = "left motor",
         right_motor_name: str = "right motor",
