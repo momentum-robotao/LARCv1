@@ -7,6 +7,7 @@ from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import DebugInfo, System
 from helpers import delay
+from maze import AnswerMaze
 from types_and_constants import (
     DEBUG,
     METER_TO_CM,
@@ -20,11 +21,13 @@ from .device import Device
 LACK_OF_PROGRESS_CODE = "L"
 END_OF_PLAY_CODE = "E"
 GAME_INFORMATION_CODE = "G"
+MAP_EVALUATE_REQUEST_CODE = "M"
 
 
 class GameInformation(NamedTuple):
-    score: int  # TODO: confirmar tipo
-    remaining_time: float  # TODO: confirmar tipo
+    score: float
+    remaining_simulation_time: int  # in seconds
+    remaining_real_world_time: int  # in seconds
 
 
 class Communicator(Device):
@@ -40,8 +43,9 @@ class Communicator(Device):
         receiver_name: str = "receiver",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
         lack_of_progress_code: str = LACK_OF_PROGRESS_CODE,
-        end_of_play: str = END_OF_PLAY_CODE,
-        game_information: str = GAME_INFORMATION_CODE,
+        end_of_play_code: str = END_OF_PLAY_CODE,
+        game_information_code: str = GAME_INFORMATION_CODE,
+        map_evaluate_request_code: str = MAP_EVALUATE_REQUEST_CODE,
     ) -> None:
         self._emitter = robot.getDevice(emitter_name)
         self._receiver = robot.getDevice(receiver_name)
@@ -50,8 +54,9 @@ class Communicator(Device):
         self.robot_delay = partial(delay, robot, debug_info)
 
         self.LACK_OF_PROGRESS_CODE = lack_of_progress_code
-        self.END_OF_PLAY_CODE = end_of_play
-        self.GAME_INFORMATION = game_information
+        self.END_OF_PLAY_CODE = end_of_play_code
+        self.GAME_INFORMATION = game_information_code
+        self.MAP_EVALUATE_REQUEST_CODE = map_evaluate_request_code
 
     def send_message(self, message: bytes) -> None:
         if DEBUG:
@@ -129,9 +134,31 @@ class Communicator(Device):
         message = bytes(self.END_OF_PLAY_CODE, "utf-8")
         self.send_message(message)
 
+    def send_maze(self, maze: AnswerMaze) -> None:
+        if DEBUG:
+            self.debug_info.send(
+                "Convertendo mapa para enviá-lo", System.communicator_send_maze
+            )
+        maze_shape = (len(maze), 0 if len(maze) == 0 else len(maze[0]))
+        flat_maze = ",".join([elm for line in maze for elm in line])
+
+        parsed_shape = struct.pack("2i", *maze_shape)
+        parsed_maze = flat_maze.encode("utf-8")
+
+        all_bytes = parsed_shape + parsed_maze
+        self.send_message(all_bytes)
+
+        if DEBUG:
+            self.debug_info.send(
+                "Enviando pedido de análise do mapa enviado",
+                System.communicator_send_maze,
+            )
+        map_evaluate_request = struct.pack("c", self.MAP_EVALUATE_REQUEST_CODE.encode())
+        self.send_message(map_evaluate_request)
+
     def occured_lack_of_progress(self) -> bool:
         received_data = self.get_received_data()
-        if received_data:
+        if received_data and len(received_data) == 1:
             first_data_received, *_args = struct.unpack("c", received_data)
             event_code = first_data_received.decode("utf-8")
             if event_code == self.LACK_OF_PROGRESS_CODE:
@@ -167,10 +194,10 @@ class Communicator(Device):
         while not game_information:
             received_data = self.get_received_data()
 
-            if not received_data:
+            if not received_data or len(received_data) != 16:
                 if DEBUG:
                     self.debug_info.send(
-                        "Dados não recebidos",
+                        f"Dados inválidos ou não recebidos: {received_data!r}",
                         System.communicator_get_game_information,
                     )
                 self.robot_delay(time_ms=100)
@@ -188,14 +215,12 @@ class Communicator(Device):
                 continue
 
             first_data_received, *other_data_received = struct.unpack(
-                "c f i", received_data
+                "c f i i", received_data
             )
             event_code = first_data_received.decode("utf-8")
 
             if event_code == self.GAME_INFORMATION:
-                game_information = GameInformation(
-                    score=other_data_received[0], remaining_time=other_data_received[1]
-                )
+                game_information = GameInformation(*other_data_received)
 
         if DEBUG:
             self.debug_info.send(

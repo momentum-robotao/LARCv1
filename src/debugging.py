@@ -31,12 +31,14 @@ class System(Enum):
     dfs_decision = "dfs decision"
     debug_info = "debug info"
     maze_visited = "maze visited"
+    maze_answer = "maze answer"
     communicator_send_messages = "communicator send messages"
     communicator_send_wall_token = "communicator send wall token"
     communicator_send_lack_of_progress = "communicator send lack of progress"
     communicator_send_end_of_play = "communicator send end of play"
     communicator_receive_data = "communicator receive data"
     communicator_get_game_information = "communicator get game information"
+    communicator_send_maze = "communicator send maze"
 
 
 ALL_SYSTEMS = [system for system in System]
@@ -76,8 +78,6 @@ class DebugInfo:
             )
         else:
             getattr(self.logger, level)(f"{system_being_debugged} => {message}")
-        # TODO: entender porque o robô estava travando com esse print
-        # print(f"{level.upper()} {system_being_debugged} => {message}")
 
 
 if ON_DOCKER:

@@ -22,7 +22,6 @@ MAX_WALL_DISTANCE = 0.030
 EXPECTED_WALL_DISTANCE = 0.019
 WALL_COLLISION_DISTANCE = 0.002
 
-# TODO: adjust these constants
 ORTOGONAL_MAX_DIST_IF_WALL = TILE_SIZE / 2
 DIAGONAL_MAX_DIST_IF_WALL1 = (
     0.078380665  # 0.5*TILE_SIZE*cos 25°*(1+((1-tg 25)/(2*tg 25)))
@@ -30,9 +29,6 @@ DIAGONAL_MAX_DIST_IF_WALL1 = (
 DIAGONAL_MAX_DIST_IF_WALL2 = (
     0.135481996  # 0.5*TILE_SIZE*cos 25°*(1+3*((1-tg 25)/(2*tg 25)))
 )
-
-
-HOLE_COLOR = b"...\xff"
 
 if ON_DOCKER:
     NGROK_URL = ""
@@ -42,12 +38,10 @@ if ON_DOCKER:
 AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]
 Quadrant = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
-RobotQuadrant = Literal[
-    "front_left", "front_right", "back_left", "back_right", "front_center"
-]
+SideDirection = Literal["front_left", "front_right", "front_center"]
 Numeric = float | int
 
-CENTRAL_ANGLE_OF_SIDE: dict[Side, Numeric] = {
+CENTRAL_SIDE_ANGLE_OF_SIDE: dict[Side, Numeric] = {
     "front": 0,
     "right": 90,
     "back": 180,
@@ -72,6 +66,7 @@ class LackOfProgressError(Exception):
     pass
 
 
+# Related to mapping
 class MovementResult(Enum):
     moved = "moved"
     left_hole = "left hole"
@@ -96,16 +91,24 @@ WallToken = HazmatSign | Victim
 
 
 class SpecialTileType(Enum):
-    AREA_4 = -1
-    EMPTY = 0
-    HOLE = 2
-    SWAMP = 3
-    CHECKPOINT = 4
-    STARTING = 5
-    CONNECTION_1_TO_2 = 6
-    CONNECTION_2_TO_3 = 7
-    CONNECTION_3_TO_4 = 8
-    CONNECTION_1_TO_4 = 9
+    AREA_4 = "*"
+    HOLE = "2"
+    SWAMP = "3"
+    CHECKPOINT = "4"
+    STARTING = "5"
+    PASSAGE_1_2 = "b"  # blue
+    PASSAGE_1_3 = "y"  # yellow
+    PASSAGE_1_4 = "g"  # green
+    PASSAGE_2_3 = "p"  # purple
+    PASSAGE_2_4 = "o"  # orange
+    PASSAGE_3_4 = "r"  # red
+
+
+class MappingEncode(Enum):
+    """Encodings required by Erebus for objects."""
+
+    WALL = "1"
+    DEFAULT = "0"
 
 
 @dataclass
@@ -119,6 +122,7 @@ class Tile:
     special_type: SpecialTileType | None = None
 
 
+# Data classes
 class Coordinate:
     def __init__(self, x: Numeric, y: Numeric):
         self.x = x
@@ -158,41 +162,41 @@ class RGB:
 # For each wall, sorted by distance, that robot may collide after moving with some rotation angle:
 # Coordinate delta from robot position to quarter tile and side of it that contains the wall
 DEGREE_WALL_FROM_ROBOT_POSITION: dict[
-    RobotQuadrant, dict[int, list[tuple[Coordinate, Side]]]
+    SideDirection, dict[int, list[tuple[Coordinate, Side]]]
 ] = {
     "front_left": {
-        0: [(Coordinate(0, 1), "front")],
-        45: [(Coordinate(1, 1), "front"), (Coordinate(1, 2), "right")],
-        90: [(Coordinate(1, 1), "right")],
+        0: [(Coordinate(0, -1), "front")],
+        45: [(Coordinate(1, -1), "front"), (Coordinate(1, -2), "right")],
+        90: [(Coordinate(1, -1), "right")],
         135: [(Coordinate(1, 0), "right"), (Coordinate(2, 0), "back")],
         180: [(Coordinate(1, 0), "back")],
-        225: [(Coordinate(0, 0), "back"), (Coordinate(0, -1), "left")],
+        225: [(Coordinate(0, 0), "back"), (Coordinate(0, 1), "left")],
         270: [(Coordinate(0, 0), "left")],
-        315: [(Coordinate(0, 1), "left"), (Coordinate(-1, 1), "front")],
-        360: [(Coordinate(0, 1), "front")],
+        315: [(Coordinate(0, -1), "left"), (Coordinate(-1, -1), "front")],
+        360: [(Coordinate(0, -1), "front")],
     },
     "front_right": {
-        0: [(Coordinate(1, 1), "front")],
-        45: [(Coordinate(1, 1), "right"), (Coordinate(2, 1), "front")],
+        0: [(Coordinate(1, -1), "front")],
+        45: [(Coordinate(1, -1), "right"), (Coordinate(2, -1), "front")],
         90: [(Coordinate(1, 0), "right")],
-        135: [(Coordinate(1, 0), "back"), (Coordinate(1, -1), "right")],
+        135: [(Coordinate(1, 0), "back"), (Coordinate(1, 1), "right")],
         180: [(Coordinate(0, 0), "back")],
         225: [(Coordinate(0, 0), "left"), (Coordinate(-1, 0), "back")],
-        270: [(Coordinate(0, 1), "left")],
-        315: [(Coordinate(0, 1), "front"), (Coordinate(0, 2), "left")],
-        360: [(Coordinate(1, 1), "front")],
+        270: [(Coordinate(0, -1), "left")],
+        315: [(Coordinate(0, -1), "front"), (Coordinate(0, -2), "left")],
+        360: [(Coordinate(1, -1), "front")],
     },
     "front_center": {
-        0: [(Coordinate(0, 2), "right")],
+        0: [(Coordinate(0, -2), "right")],
         90: [(Coordinate(2, 0), "front")],
-        180: [(Coordinate(0, -1), "right")],
+        180: [(Coordinate(0, 1), "right")],
         270: [(Coordinate(-1, 0), "front")],
-        360: [(Coordinate(0, 2), "right")],
+        360: [(Coordinate(0, -2), "right")],
     },
 }
 
 WALL_FROM_ROBOT_POSITION: dict[
-    RobotQuadrant, dict[float, list[tuple[Coordinate, Side]]]
+    SideDirection, dict[float, list[tuple[Coordinate, Side]]]
 ] = {
     robot_quadrant: {
         round(degree_angle * DEGREE_IN_RAD, 2): wall_deltas
@@ -205,25 +209,25 @@ WALL_FROM_ROBOT_POSITION: dict[
 
 
 DEGREE_TARGET_COORDINATE = {
-    0: Coordinate(0, 1),
-    45: Coordinate(1, 1),
+    0: Coordinate(0, -1),
+    45: Coordinate(1, -1),
     90: Coordinate(1, 0),
-    135: Coordinate(1, -1),
-    180: Coordinate(0, -1),
-    225: Coordinate(-1, -1),
+    135: Coordinate(1, 1),
+    180: Coordinate(0, 1),
+    225: Coordinate(-1, 1),
     270: Coordinate(-1, 0),
-    315: Coordinate(-1, 1),
-    360: Coordinate(0, 1),
+    315: Coordinate(-1, -1),
+    360: Coordinate(0, -1),
 }
 
-TARGET_COORDINATE = {
+TARGET_COORDINATE_BY_MOVE_ANGLE = {
     round(degree_angle * DEGREE_IN_RAD, 2): coordinate
     for degree_angle, coordinate in DEGREE_TARGET_COORDINATE.items()
 }
 
-DELTA_TO_QUADRANT: dict[Coordinate, Quadrant] = {
+QUADRANT_OF_DELTA: dict[Coordinate, Quadrant] = {
     Coordinate(0, 0): "bottom_left",
     Coordinate(1, 0): "bottom_right",
-    Coordinate(0, 1): "top_left",
-    Coordinate(1, 1): "top_right",
+    Coordinate(0, -1): "top_left",
+    Coordinate(1, -1): "top_right",
 }

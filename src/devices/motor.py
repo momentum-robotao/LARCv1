@@ -18,8 +18,6 @@ from types_and_constants import (
     WallColisionError,
 )
 
-# TODO: this devices should not be accessed by other devices, this indicates that these
-# functions should be in `Robot` from `robot.py`
 from .color_sensor import ColorSensor
 from .device import Device
 from .gps import GPS
@@ -211,7 +209,6 @@ class Motor(Device):
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
     ) -> MovementResult:
-        # TODO: diferenciar hole/parede de quando tá indo pra trás e para frente
         """
         Move the robot by certain distance in meters in some direction, using
         the motors. If it enconters a hole, it raises `` and if it collide
@@ -242,7 +239,7 @@ class Motor(Device):
         it slows down to `slow_down_speed`. This approach is intended to make
         the movement quick in general, but with a good precision as it moves
         slower in the end of the movement.
-        - Holes are not detected when moving backward.  TODO: solve this?
+        - Holes are not detected when moving backward.
         """
         initial_position = gps.get_position()
 
@@ -334,22 +331,9 @@ class Motor(Device):
 
                 raise WallColisionError()
 
-            # TODO: refator - consider: create deal_with_hole(); data structure for
-            # movement information, ex: slow_down_dist, high_speed, slow_speed...
             if color_sensor.has_hole() and not returning_to_safe_position:
                 self.stop()
 
-                # TODO: verificar se buraco é no quarter tile da esquerda e/ou direita
-                # self.rotate(
-                #     "left",
-                #     20 * DEGREE_IN_RAD,
-                #     imu,
-                #     slow_down_angle,
-                #     high_speed,
-                #     low_speed,
-                # )
-
-                # TODO: check hole when moving backward, doesn't sensor is only on front side?
                 self.move(
                     "backward" if direction == "forward" else "forward",
                     gps,

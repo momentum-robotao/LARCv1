@@ -5,17 +5,39 @@ from debugging import DebugInfo, System
 from helpers import quarter_tile_quadrant, tile_pos_with_quarter_tile
 from types_and_constants import (
     DEBUG,
-    DELTA_TO_QUADRANT,
+    QUADRANT_OF_DELTA,
     Coordinate,
-    Numeric,
+    MappingEncode,
+    Quadrant,
     QuarterTile,
     Side,
     SpecialTileType,
     Tile,
 )
 
-ObjectsMaze = dict[Numeric, dict[Numeric, Tile]]
+MARK_TILES_OF_WALL_SIDE: dict[Side, list[Coordinate]] = {
+    "front": [Coordinate(0, 0), Coordinate(1, 0), Coordinate(2, 0)],
+    "left": [Coordinate(0, 0), Coordinate(0, 1), Coordinate(0, 2)],
+    "right": [Coordinate(2, 0), Coordinate(2, 1), Coordinate(2, 2)],
+    "back": [Coordinate(0, 2), Coordinate(1, 2), Coordinate(2, 2)],
+}
+QUADRANT_DELTA: dict[Quadrant, Coordinate] = (
+    {  # delta to a quadrant in matrix-based coordinates
+        "top_left": Coordinate(0, 0),
+        "top_right": Coordinate(1, 0),
+        "bottom_left": Coordinate(0, 1),
+        "bottom_right": Coordinate(1, 1),
+    }
+)
+
+ObjectsMaze = dict[int, dict[int, Tile]]
 AnswerMaze = list[list[str]]
+
+
+def get_needed_map_size(objects_maze: ObjectsMaze) -> tuple[int, int]:
+    x_tiles = max(objects_maze) - min(objects_maze) + 1
+    y_tiles = max(max(objects_maze[x]) - min(objects_maze[x]) + 1 for x in objects_maze)
+    return (y_tiles * 4 + 1, x_tiles * 4 + 1)
 
 
 def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -35,6 +57,78 @@ def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
+def reindex_maze(objects: ObjectsMaze, debug_info: DebugInfo) -> ObjectsMaze:
+    """Reindex maze in order to match a matrix coordinate instead of plane coordinates.
+    All objects in maze has their coordinates reindexed in order to make all coordinates positive.
+    The smallest coordinate in each axis is considered the new 0/origin.
+    All coordinates are reflected by y because a plane has increasing y to up direction and matrix
+    have decreasing y to up direction.
+    """
+    if DEBUG:
+        debug_info.send(
+            f"Objetos do mapa antes de reindexar: {objects}", System.maze_answer
+        )
+
+    delta_x = 0
+    for x in objects:
+        delta_x = max(delta_x, 0 - x)
+    delta_y = 0
+    for x in objects:
+        for y in objects[x]:
+            delta_y = max(delta_y, 0 - y)
+
+    reindexed_objects: ObjectsMaze = dict()
+    for x in objects:
+        for y in objects[x]:
+            reindexed_objects.setdefault(x + delta_x, dict())[y + delta_y] = objects[x][
+                y
+            ]
+    if DEBUG:
+        debug_info.send(
+            f"Objetos do mapa após reindexar: {reindexed_objects}", System.maze_answer
+        )
+
+    return reindexed_objects
+
+
+def insert_walls_to_maze(
+    answer_maze: AnswerMaze, tile_pos: Coordinate, tile: Tile
+) -> AnswerMaze:
+    for quadrant in tile.quadrants:
+        quarter_tile_pos = tile_pos + QUADRANT_DELTA[quadrant] * 2
+        for wall_in_side in tile.quadrants[quadrant].walls:
+            for mark_in_tile in MARK_TILES_OF_WALL_SIDE[wall_in_side]:
+                answer_pos = quarter_tile_pos + mark_in_tile
+                answer_maze[answer_pos.y][  # type: ignore[index]
+                    answer_pos.x  # type: ignore[index]
+                ] = MappingEncode.WALL.value
+    return answer_maze
+
+
+def insert_starting_tile_to_maze(
+    answer_maze: AnswerMaze, tile_pos: Coordinate, tile: Tile
+) -> AnswerMaze:
+    if tile.special_type == SpecialTileType.STARTING:
+        for mark_in_tile in [
+            Coordinate(1, 1),
+            Coordinate(1, 3),
+            Coordinate(3, 1),
+            Coordinate(3, 3),
+        ]:
+            answer_pos = tile_pos + mark_in_tile
+            answer_maze[answer_pos.y][  # type: ignore[index]
+                answer_pos.x  # type: ignore[index]
+            ] = SpecialTileType.STARTING.value
+    return answer_maze
+
+
+ElementInserterToMaze = Callable[[AnswerMaze, Coordinate, Tile], AnswerMaze]
+ELEMENT_INSERTERS: list[ElementInserterToMaze] = [
+    insert_starting_tile_to_maze,
+    insert_walls_to_maze,
+]
+
+
 class Maze:
     """
     OBS: note that `ObjectsMaze` are composed by full tile coordinates
@@ -43,7 +137,7 @@ class Maze:
     """
 
     def __init__(self, debug_info: DebugInfo) -> None:
-        self.objects: dict[Numeric, dict[Numeric, Tile]] = dict()
+        self.objects: ObjectsMaze = dict()
         self.wall_tokens: list[tuple[Coordinate, Side]] = []
         self.debug_info = debug_info
 
@@ -74,17 +168,16 @@ class Maze:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
 
         tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
-        self.objects.setdefault(tile_pos.x, {}).setdefault(tile_pos.y, Tile())
-        self.objects[tile_pos.x][tile_pos.y].quadrants.setdefault(
+        self.objects.setdefault(tile_pos.x, {}).setdefault(  # type: ignore[arg-type]
+            tile_pos.y, Tile()  # type: ignore[arg-type]
+        )
+        self.objects[tile_pos.x][tile_pos.y].quadrants.setdefault(  # type: ignore[index]
             quarter_tile_quadrant(quarter_tile_pos), QuarterTile()
         )
 
-    def mark_visited(self, robot_position_quarter_tile: Coordinate) -> None:
-        # TODO: make sure robot always have this 4 quarter tiles deltas => não
-        # pode começar em posição que onde ele considera como +(0,1) por exemplo
-        # é um com esses deltas e outros se ele andar pra frente
-        for delta, _ in DELTA_TO_QUADRANT.items():
-            self._mark_quarter_tile(robot_position_quarter_tile + delta)
+    def mark_visited(self, quarter_tile_pos: Coordinate) -> None:
+        for delta, _ in QUADRANT_OF_DELTA.items():
+            self._mark_quarter_tile(quarter_tile_pos + delta)
 
     def is_visited(self, quarter_tile_pos: Coordinate) -> bool:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
@@ -99,11 +192,11 @@ class Maze:
             self.debug_info.send(
                 f"Already visited in x={tile_pos.x}:", System.maze_visited
             )
-            for y, visited_tile in self.objects.get(tile_pos.x, {}).items():
+            for y, visited_tile in self.objects.get(tile_pos.x, {}).items():  # type: ignore
                 self.debug_info.send(f" - {y=}: {visited_tile}", System.maze_visited)
         return (
             quadrant
-            in self.objects.get(tile_pos.x, {}).get(tile_pos.y, Tile()).quadrants
+            in self.objects.get(tile_pos.x, {}).get(tile_pos.y, Tile()).quadrants  # type: ignore
         )
 
     @log_map_change
@@ -112,9 +205,13 @@ class Maze:
         self._mark_quarter_tile(quarter_tile_pos)
 
         tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
-        self.objects[tile_pos.x][tile_pos.y].quadrants[
+        self.objects[tile_pos.x][tile_pos.y].quadrants[  # type: ignore[index]
             quarter_tile_quadrant(quarter_tile_pos)
         ].walls.add(side)
+
+        self.debug_info.send(
+            f"Adicionada parede: {quarter_tile_pos=} e {side=}", System.maze_changes
+        )
 
     @log_map_change
     def set_tile_type(
@@ -123,10 +220,11 @@ class Maze:
         tile_type: SpecialTileType,
     ) -> None:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
+        self._mark_quarter_tile(quarter_tile_pos)
         tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
 
-        old_tile_type = self.objects[tile_pos.x][tile_pos.y].special_type
-        if old_tile_type is None or old_tile_type != tile_type:
+        old_tile_type = self.objects[tile_pos.x][tile_pos.y].special_type  # type: ignore[index]
+        if old_tile_type is not None and old_tile_type != tile_type:
             if DEBUG:
                 self.debug_info.send(
                     f"Tipo do tile que contém {quarter_tile_pos} "
@@ -138,12 +236,38 @@ class Maze:
                     f"Tipo do tile que contém {quarter_tile_pos} foi mudado."
                 )
 
-        self.objects[tile_pos.x][tile_pos.y].special_type = tile_type
+        self.objects[tile_pos.x][tile_pos.y].special_type = tile_type  # type: ignore[index]
 
     def add_wall_token(self, quarter_tile_pos: Coordinate, side: Side) -> None:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
         self.wall_tokens.append((quarter_tile_pos, side))
 
-    def get_answer_map(self) -> AnswerMaze:
-        answer_map = AnswerMaze()
-        return answer_map
+    def get_answer_maze(self) -> AnswerMaze:
+        """
+        Returns a matrix containing the maze in the format required by Erebus.
+        https://v24.erebus.rcj.cloud/docs/rules/mapping/
+        - Cada tile 5x5
+        * Índice do começo dos tiles é de 5 e 5 por ter borda comum entre eles
+        """
+        objects = reindex_maze(self.objects, self.debug_info)
+        map_size = get_needed_map_size(self.objects)
+        answer_maze: AnswerMaze = [
+            [MappingEncode.DEFAULT.value for i in range(map_size[1])]
+            for j in range(map_size[0])
+        ]
+        self.debug_info.send(
+            f"Mapa default: {answer_maze}",
+            System.maze_answer,
+        )
+
+        for inserter in ELEMENT_INSERTERS:
+            for x in objects:
+                for y in objects[x]:
+                    tile_pos = Coordinate(x, y) * 4
+                    tile = objects[x][y]
+                    answer_maze = inserter(answer_maze, tile_pos, tile)
+            self.debug_info.send(
+                f"Mapa após {inserter.__name__}: {answer_maze}", System.maze_answer
+            )
+
+        return answer_maze

@@ -6,18 +6,18 @@ from controller import Robot as WebotsRobot  # type: ignore
 from debugging import DebugInfo, System
 from types_and_constants import (
     DEBUG,
-    DELTA_TO_QUADRANT,
     DIAGONAL_MAX_DIST_IF_WALL1,
     DIAGONAL_MAX_DIST_IF_WALL2,
     ORTOGONAL_MAX_DIST_IF_WALL,
     PI,
-    TARGET_COORDINATE,
+    QUADRANT_OF_DELTA,
+    TARGET_COORDINATE_BY_MOVE_ANGLE,
     WALL_FROM_ROBOT_POSITION,
     Coordinate,
     Numeric,
     Quadrant,
-    RobotQuadrant,
     Side,
+    SideDirection,
 )
 
 
@@ -64,46 +64,42 @@ def cyclic_angle(angle: Numeric) -> Numeric:
     return angle
 
 
-# TODO: rename RobotQuadrant as it has "front_center" now
-# TODO: merge with `coordinate_after_move` to get for example the most similar rotation angle
 def calculate_wall_position(
     robot_position: Coordinate,
-    robot_quadrant: RobotQuadrant,
+    side_direction: SideDirection,
     angle: Numeric,
     wall_idx: int,
     angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2)),
 ) -> tuple[Coordinate, Side]:
-    equivalent_rotation_angle = None
-    equivalent_rotation_angle = round(angle, 2)
-    for testing_angle in WALL_FROM_ROBOT_POSITION[robot_quadrant]:
-        if abs(testing_angle - equivalent_rotation_angle) <= angle_max_difference:
-            equivalent_rotation_angle = testing_angle
+    angle = round(angle, 2)
+    equivalent_angle = None
+    for testing_angle in WALL_FROM_ROBOT_POSITION[side_direction]:
+        if abs(testing_angle - angle) <= angle_max_difference:
+            equivalent_angle = testing_angle
 
-    if equivalent_rotation_angle is None:
+    if equivalent_angle is None:
         if DEBUG:
             error_message = (
-                f"Inválido {equivalent_rotation_angle=} ao tentar calcular posição da parede "
-                f"detectada de {robot_position=} olhando pelo {robot_quadrant=}"
+                f"Inválido {angle=} ao tentar calcular posição da parede "
+                f"detectada de {robot_position=} olhando pela {side_direction=}"
             )
             logging.error(error_message)
             logging.debug(
-                f"Ângulos disponíveis: {list(WALL_FROM_ROBOT_POSITION[robot_quadrant].keys())}"
+                f"Ângulos disponíveis: {list(WALL_FROM_ROBOT_POSITION[side_direction].keys())}"
             )
             raise ValueError(error_message)
 
         # Gets the most similar angle categorized
-        equivalent_rotation_angle = equivalent_rotation_angle
-        for testing_angle in WALL_FROM_ROBOT_POSITION[robot_quadrant]:
-            if (
-                abs(testing_angle - equivalent_rotation_angle)
-                < equivalent_rotation_angle
-            ):
-                equivalent_rotation_angle = testing_angle
+        equivalent_angle = angle
+        for testing_angle in WALL_FROM_ROBOT_POSITION[side_direction]:
+            if abs(testing_angle - angle) < abs(equivalent_angle - angle):
+                equivalent_angle = testing_angle
 
-    delta_from_robot_position, side = WALL_FROM_ROBOT_POSITION[robot_quadrant][
-        equivalent_rotation_angle
+    delta_from_robot_position, side = WALL_FROM_ROBOT_POSITION[side_direction][
+        equivalent_angle
     ][wall_idx]
     quarter_tile = robot_position + delta_from_robot_position
+
     return quarter_tile, side
 
 
@@ -113,9 +109,9 @@ def coordinate_after_move(
     angle_max_difference=float(os.getenv("ANGLE_MAX_DIFFERENCE", 0.2)),
 ) -> Coordinate:
     angle = round(angle, 2)
-    for target_angle in TARGET_COORDINATE:
+    for target_angle in TARGET_COORDINATE_BY_MOVE_ANGLE:
         if abs(target_angle - angle) <= angle_max_difference:
-            return position + TARGET_COORDINATE[target_angle]
+            return position + TARGET_COORDINATE_BY_MOVE_ANGLE[target_angle]
 
     if DEBUG:
         error_message = (
@@ -123,14 +119,16 @@ def coordinate_after_move(
             f"após movimentação começando de {position}"
         )
         logging.error(error_message)
-        logging.debug(f"Ângulos disponíveis: {list(TARGET_COORDINATE.keys())}")
+        logging.debug(
+            f"Ângulos disponíveis: {list(TARGET_COORDINATE_BY_MOVE_ANGLE.keys())}"
+        )
         raise ValueError(error_message)
 
     # Gets the most similar angle categorized
-    most_similar_angle = (angle, position + Coordinate(0, 1))
-    for reference_angle, delta in TARGET_COORDINATE.items():
-        if abs(reference_angle - angle) < most_similar_angle[0]:
-            most_similar_angle = (reference_angle, position + delta)
+    most_similar_angle = (angle, position + TARGET_COORDINATE_BY_MOVE_ANGLE[0])
+    for testing_angle, delta in TARGET_COORDINATE_BY_MOVE_ANGLE.items():
+        if abs(testing_angle - angle) < most_similar_angle[0]:
+            most_similar_angle = (testing_angle, position + delta)
 
     return most_similar_angle[1]
 
@@ -139,7 +137,7 @@ def tile_pos_with_quarter_tile(quarter_tile_pos: Coordinate) -> Coordinate:
     """
     :return: The `Coordinate` of tile that contains this quarter tile.
     """
-    return Coordinate(quarter_tile_pos.x // 2, quarter_tile_pos.y // 2)
+    return Coordinate(quarter_tile_pos.x // 2, (quarter_tile_pos.y + 1) // 2)
 
 
 def quarter_tile_quadrant(quarter_tile_pos: Coordinate) -> Quadrant:
@@ -148,7 +146,7 @@ def quarter_tile_quadrant(quarter_tile_pos: Coordinate) -> Quadrant:
     to the tile in which it is located.
     """
     delta = quarter_tile_pos - tile_pos_with_quarter_tile(quarter_tile_pos) * 2
-    return DELTA_TO_QUADRANT[delta]
+    return QUADRANT_OF_DELTA[delta]
 
 
 def side_angle_from_map_angle(map_angle: float, robot_rotation_angle: float) -> float:
@@ -160,9 +158,9 @@ def side_angle_from_map_angle(map_angle: float, robot_rotation_angle: float) -> 
 
 
 def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
-    if delta_angle_in_degree in [90, 0, -90]:
+    if abs(delta_angle_in_degree) % 90 == 0:
         wall_blocking = 0 if wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
-    elif delta_angle_in_degree in [45, -45]:
+    elif abs(delta_angle_in_degree) % 45 == 0 and delta_angle_in_degree != 0:
         wall_blocking = (
             0
             if wall_distance <= DIAGONAL_MAX_DIST_IF_WALL1
@@ -172,6 +170,6 @@ def get_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
 
 
 def get_central_blocking_wall(wall_distance: float, delta_angle_in_degree: int) -> int:
-    if delta_angle_in_degree not in [-90, 0, 90]:
+    if abs(delta_angle_in_degree) % 90 != 0:
         return -1
     return 0 if wall_distance <= ORTOGONAL_MAX_DIST_IF_WALL else -1
