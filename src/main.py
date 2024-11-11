@@ -20,11 +20,10 @@ try:
         Lidar,
         Motor,
     )
-    from devices.motor import set_dist_change_mapper
-    from dfs import adjust_wall_distance, dfs
+    from dfs import dfs
     from helpers import delay
     from maze import Maze
-    from robot import Robot
+    from robot import Robot, set_dist_change_mapper
     from types_and_constants import (
         DEBUG,
         DEGREE_IN_RAD,
@@ -70,66 +69,38 @@ try:
     def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
         robot.imu.get_rotation_angle()
         initial_position = robot.gps.get_position()
-        robot.motor.move(
+        robot.move(
             "forward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=0.01,
             correction_move=True,
         )
         delta_0_cord = robot.gps.get_position() - initial_position
         delta_0 = (delta_0_cord.x, delta_0_cord.y)
-        robot.motor.move(
+        robot.move(
             "backward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=0.01,
             correction_move=True,
         )
         # TODO: troca para orientação do meu âng (right aumenta) em vez do imu default
-        robot.motor.rotate(
-            "right", 45 * DEGREE_IN_RAD, robot.imu, correction_rotation=True
-        )
+        robot.rotate("right", 45 * DEGREE_IN_RAD, correction_rotation=True)
         initial_position = robot.gps.get_position()
-        robot.motor.move(
+        robot.move(
             "forward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=0.01,
             correction_move=True,
         )
         delta_45_cord = robot.gps.get_position() - initial_position
         delta_45 = (delta_45_cord.x, delta_45_cord.y)
-        robot.motor.move(
+        robot.move(
             "backward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=0.01,
             correction_move=True,
         )
-        robot.motor.rotate(
-            "left", 45 * DEGREE_IN_RAD, robot.imu, correction_rotation=True
-        )
+        robot.rotate("left", 45 * DEGREE_IN_RAD, correction_rotation=True)
         set_dist_change_mapper(delta_0, delta_45)
 
         # for ang in [0, 45, 90, 135, 180, 225, 270, 315, 360]:
@@ -205,7 +176,7 @@ try:
             webots_robot.step(int(os.getenv("TIME_STEP", 32)))
             lidar = Lidar(webots_robot, debug_info)
             gps = GPS(webots_robot, debug_info)
-            motor = Motor(webots_robot, gps, debug_info)
+            motor = Motor(webots_robot, debug_info)
             imu = IMU(webots_robot, debug_info)
             color_sensor = ColorSensor(webots_robot, debug_info)
             communicator = Communicator(webots_robot, debug_info)

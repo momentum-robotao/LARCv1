@@ -4,13 +4,13 @@ from helpers import (
     coordinate_after_move,
     cyclic_angle,
     cyclic_angle_difference,
+    delay,
     get_blocking_wall,
     get_central_blocking_wall,
     side_angle_from_map_angle,
     tile_pos_with_quarter_tile,
 )
 from maze import Maze
-from recognize_wall_token import recognize_wall_token
 from robot import Robot, check_time
 from types_and_constants import (
     DEBUG,
@@ -57,7 +57,7 @@ def get_errors(robot: Robot, field_of_view: float):
         )
 
     angle_error = cyclic_angle_difference(
-        robot.imu.get_rotation_angle(), robot.motor.expected_angle
+        robot.imu.get_rotation_angle(), robot.expected_angle
     )
     return y_error, x_error, angle_error
 
@@ -91,38 +91,28 @@ def adjust_wall_distance(
         print("não ajusta: obstáculo")
         return
 
+    print(robot.expected_angle)
+    print("ângulo erro", angle_error, angle_error / DEGREE_IN_RAD)
     if angle_error <= -angle_max_error:
-        robot.motor.rotate(
-            "right", abs(angle_error), robot.imu, correction_rotation=True
-        )
+        print("rodada erro direito")
+        robot.rotate("right", abs(angle_error), correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
     if angle_error >= angle_max_error:
-        robot.motor.rotate("left", angle_error, robot.imu, correction_rotation=True)
+        print("rodada erro esquerdo")
+        robot.rotate("left", angle_error, correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
     if y_error <= -wall_max_y_error:
-        robot.motor.move(
+        robot.move(
             "backward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=abs(y_error),
             correction_move=True,
         )
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
     if y_error >= wall_max_y_error:
-        robot.motor.move(
+        robot.move(
             "forward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=y_error,
             correction_move=True,
@@ -130,35 +120,25 @@ def adjust_wall_distance(
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
     if x_error <= -wall_max_x_error:
-        robot.motor.rotate_90_left(robot.imu)
-        robot.motor.move(
+        print("rodada pra ajustar -x")
+        robot.rotate_90_left()
+        robot.move(
             "backward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=abs(x_error),
             correction_move=True,
         )
-        robot.motor.rotate_90_right(robot.imu)
+        robot.rotate_90_right()
     if x_error >= wall_max_x_error:
-        robot.motor.rotate_90_left(robot.imu)
-        robot.motor.move(
+        print("rodada pra ajustar x")
+        robot.rotate_90_left()
+        robot.move(
             "forward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=x_error,
             correction_move=True,
         )
-        robot.motor.rotate_90_right(robot.imu)
+        robot.rotate_90_right()
 
 
 def alley(robot: Robot, maze: Maze, position: Coordinate, start_angle: float) -> bool:
@@ -195,7 +175,7 @@ def dfs(
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 
-    start_angle = robot.imu.get_rotation_angle()
+    start_angle = robot.expected_angle
     if DEBUG:
         debug_info.send(
             f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
@@ -205,7 +185,7 @@ def dfs(
     maze.mark_visited(position)
     robot.step()
     adjust_wall_distance(robot, debug_info, maze)
-    recognize_wall_token(robot, debug_info)
+    robot.recognize_wall_token()
 
     # TODO: swamp etc podem estar acessíveis apenas em certo quarter tile
     colored_tile = None
@@ -222,12 +202,11 @@ def dfs(
             debug_info.send(f"Não detectou cor em {position}", System.check_tile_color)
 
     if alley(robot, maze, position, start_angle):
-        robot.motor.rotate_90_left(robot.imu)
+        print("rodada alley")
         adjust_wall_distance(
             robot, debug_info, maze, wall_max_x_error=0.1, wall_max_y_error=0.1
         )
-        recognize_wall_token(robot, debug_info)
-        robot.motor.rotate_90_right(robot.imu)
+        robot.rotate_180()
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
@@ -342,17 +321,12 @@ def dfs(
         new_position_distance = (
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
-        robot.motor.rotate_to_angle(movement_angle, robot.imu)
-        recognize_wall_token(robot, debug_info)
+        print("rodada pro movement_angle")
+        robot.rotate_to_angle(movement_angle)
+        robot.recognize_wall_token()
         try:
-            movement_result = robot.motor.move(
+            movement_result = robot.move(
                 "forward",
-                robot.gps,
-                robot.lidar,
-                robot.color_sensor,
-                robot.imu,
-                robot.distance_sensor,
-                robot.webots_robot,
                 maze,
                 dist=new_position_distance,
                 slow_down_dist=SLOW_DOWN_DIST / 3,
@@ -366,7 +340,7 @@ def dfs(
             elif movement_result == MovementResult.right_hole:
                 angle_to_hole = cyclic_angle(movement_angle + 45)
 
-            if angle_to_hole:
+            if angle_to_hole is not None:
                 robot_position_on_hole = coordinate_after_move(
                     coordinate_after_move(position, angle_to_hole), movement_angle
                 )
@@ -390,14 +364,8 @@ def dfs(
 
         if DEBUG:
             debug_info.send("Retornando do vizinho", System.dfs_decision)
-        robot.motor.move(
+        robot.move(
             "backward",
-            robot.gps,
-            robot.lidar,
-            robot.color_sensor,
-            robot.imu,
-            robot.distance_sensor,
-            robot.webots_robot,
             maze,
             dist=new_position_distance,
             slow_down_dist=SLOW_DOWN_DIST / 3,
@@ -414,6 +382,7 @@ def dfs(
     # this tile, coming back to the last tile.
     robot.step()
     adjust_wall_distance(robot, debug_info, maze)
-    recognize_wall_token(robot, debug_info)
-    robot.motor.rotate_to_angle(start_angle, robot.imu)
+    robot.recognize_wall_token()
+    print("rodada pra voltar dfs")
+    robot.rotate_to_angle(start_angle)
     check_time(robot)

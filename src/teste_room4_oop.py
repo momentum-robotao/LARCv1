@@ -13,7 +13,7 @@ try:
     from robot import Robot
     from types_and_constants import DEBUG, NGROK_URL, ON_DOCKER, Coordinate, MAX_SPEED, SpecialTileType
     #import matplotlib.pyplot as plt
-    from recognize_wall_token import recognize_wall_token
+    from recognize_wall_token import reconhece_lado
 
     radius = (0.071/2) + 0.005
 
@@ -153,7 +153,7 @@ try:
             
             global motor, lidar, gps, imu, color_sensor, communicator, distancesensor
             gps = GPS(webots_robot, debug_info)
-            motor = Motor(webots_robot, gps, debug_info)
+            motor = Motor(webots_robot, debug_info)
             lidar = Lidar(webots_robot, debug_info)
             imu = IMU(webots_robot, debug_info)
             color_sensor = ColorSensor(webots_robot, debug_info)
@@ -230,28 +230,28 @@ try:
             
             def tem_parede_frente():
                 for i in range(5):
-                    if get_distance(i) < 0.045: 
-                        print("1")
+                    if get_distance(i) < 0.043: 
+                        print(f"Vi parede no angulo {i}; distância : {get_distance(i)}")
                         return True
                 for i in range(359, 356, -1) :
-                    if get_distance(i) < 0.045: 
-                        print("2")
+                    if get_distance(i) < 0.043: 
+                        print(f"Vi parede no angulo {i}; distância : {get_distance(i)}")
                         return True
                 for i in range(6, 45): 
                     if (get_distance(i)) < 0.038: 
-                        print("3")
+                        print(f"Vi parede no angulo {i}; distância : {get_distance(i)}")
                         return True
                 for i in range(356, 316): 
                     if (get_distance(i)) < 0.038: 
-                        print("4")
+                        print(f"Vi parede no angulo {i}; distância : {get_distance(i)}")
                         return True
                 for i in range(45, 60): 
                     if (get_distance(i)) < 0.038: 
-                        print("5")
+                        print(f"Vi parede no angulo {i}; distância : {get_distance(i)}")
                         return True
                 for i in range(316, 300, -1) : 
                     if (get_distance(i)) < 0.038: 
-                        print("6")
+                        print(f"Vi parede no angulo {i}; distância : {get_distance(i)}")
                         return True
                 return False
 
@@ -280,8 +280,13 @@ try:
                 for i in range(135, 155):
                     soma3 += get_distance(i)
                 dist5 = soma3/20
+
+                for i in range(267,273):
+                    soma += get_distance(i)
+                dist6 = soma/5
                 
-                return dist1,dist2, dist3, dist4, dist5
+                
+                return dist1,dist2, dist3, dist4, dist5, dist6
             
             def parede_tras():
                 menor_valor = 10000000000
@@ -296,10 +301,9 @@ try:
 
             def voltar_tras(pot):
                 tras = parede_tras()
-                motor._right_motor.setVelocity(-(Pot0))
-                motor._left_motor.setVelocity(-(Pot0))
+                motor.set_velocity(-Pot0, -Pot0)
                 if tras != 0 :
-                    tempo = (tras/2)/(pot*radius)
+                    tempo = (tras)/(pot*radius)
                     delay(webots_robot, debug_info, tempo)
                     motor.stop()
                 else : 
@@ -324,8 +328,7 @@ try:
             def move_until():
                 while robot.step() != -1:
                     if not tem_parede_frente():
-                        motor.set_left_motor_power(Pot0)
-                        motor.set_right_motor_power(Pot0)
+                        motor.set_velocity(Pot0, Pot0)
                     else : break
 
             def seguir_parede_sala4():
@@ -341,9 +344,9 @@ try:
                 
                 
                 # Obter a distância média usando múltiplas leituras do LiDAR
-                d1,d2, d3,d4,d5 = calcular_media_distancias()
+                d1,d2, d3,d4,d5, d6 = calcular_media_distancias()
                 for i in [d1,d2,d3,d4,d5]:
-                    if i > desejada + 0.08 : i = desejada + 0.08
+                    if i > desejada: i = desejada
                     else : continue
 
                 erro = d1-d2
@@ -360,35 +363,43 @@ try:
 
                 if distance_sensor.detect_hole(webots_robot): 
                     voltar_tras(Pot0)
-                    motor.rotate_180(imu)
+                    robot.rotate_180()
                     motor.stop()
                 
                 print(f"PotD : {PotD} ; PotE : {PotE} ; Erro = {erro}; last_error : {last_error}")
                 
                 if tem_parede_frente():
-                    print("bostacolossal")
+                    #print("bostacolossal")
+                    print("VI PAREDE FRENTE!")
                     voltar_tras(Pot0)
                     delay(webots_robot, debug_info, 100)
                     angle = virar_max()
                     if not tem_parede_esquerda():
-                        motor.rotate('left', radians(angle), imu)
+                        robot.rotate('left', radians(angle))
                     elif not tem_parede_direita():
-                        motor.rotate('right', radians(angle), imu)
+                        robot.rotate('right', radians(angle))
                     else:
-                        motor.rotate_180(imu)
+                        robot.rotate_180()
                 
                 else:
                     # Seguir em frente quando possível
-                    motor._right_motor.setVelocity(PotD)
-                    motor._left_motor.setVelocity(PotE)
+                    motor.set_velocity(PotE, PotD)
                     #print(f" DIREITA (90 graus) : {get_distance(90)} ; ESQUERDA (270 graus)  : {get_distance(270)}")
-                    if get_distance(90) < desejada + 0.015  or get_distance(270) < desejada + 0.015 :
-                        recognize_wall_token(robot, debug_info)
-                        
-                        motor.set_left_motor_power(Pot0)
-                        motor.set_right_motor_power(Pot0)
-                        delay(webots_robot, debug_info, 50)
-                        motor.stop()
+                    
+                    robot.recognize_wall_token()
+
+                    #motor.set_velocity(Pot0, Pot0)
+                    #delay(webots_robot, debug_info, 100)
+                    #motor.stop()    
+
+
+
+                    '''    
+                    motor.set_left_motor_power(Pot0)
+                    motor.set_right_motor_power(Pot0)
+                    delay(webots_robot, debug_info, 50)
+                    motor.stop()
+                    ''' 
                     #print(f"d1 = {d1} ; d2 = {d2} ; d3 : {d3} ; d4: {d4}; d5:{d5}")
                     last_error = erro - last_error
                     last2 = erro2 - last_error2
@@ -416,8 +427,7 @@ try:
             def sala4(): 
                 global condicao_sala4
                 if color_sala4():
-                    motor.set_left_motor_power(Pot0)
-                    motor.set_right_motor_power(Pot0)
+                    motor.set_velocity(Pot0, Pot0)
                     delay(webots_robot, debug_info, 750)
                     motor.stop()
                     delay(webots_robot, debug_info, 2000)
@@ -428,12 +438,12 @@ try:
                         condicao_sala4 = True
                     elif not tem_parede_esquerda() or not lidar.has_wall('left'):
                         print(" TEM FRENTE E NAO TEM NADA NA MINHA ESQUERDA")
-                        motor.rotate_90_left(imu)
+                        robot.rotate_90_left()
                         move_until()
                         condicao_sala4 = True
                     elif not tem_parede_direita() or not lidar.has_wall('right'): 
                         (" TEM FRENTE E ESQUERDA E NAO TEM NADA NA MINHA DIREITA")
-                        motor.rotate_90_right(imu)
+                        robot.rotate_90_right()
                         move_until()
                         condicao_sala4 = True
                     else : 
@@ -444,17 +454,20 @@ try:
                         condicao_sala4 = False
                         print("Sai da sala 4")
                 else : 
-                    motor.rotate_180(imu)
+                    robot.rotate_180()
                     condicao_sala4 = False
-
                 
-            
-
+            def cercado():
+                for i in range(360) : 
+                    if get_distance(i) < 0.038:
+                        return True
+                    else : return False
                 
 
 
             
             while robot.step() != -1:
+                
                 #x, y = get_mapa()
                 seguir_parede_sala4()
                 
