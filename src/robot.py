@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Any, Literal
 
 from controller import Robot as WebotsRobot  # type: ignore
@@ -34,7 +35,6 @@ from types_and_constants import (
     MovementResult,
     WallColisionError,
 )
-import time
 
 POSSIBLE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315, 360]
 SQRT_2 = 1.414213562373
@@ -227,7 +227,9 @@ class Robot:
             or game_information.remaining_simulation_time < time_tolerance
         ):
             raise EndOfTimeError()
-        self.last_check_time_ms = round(time.time() * 1000) + 5 * 60 * 1000  # 5 primeiros minutos não checa tempo
+        self.last_check_time_ms = (
+            round(time.time() * 1000) + 5 * 60 * 1000
+        )  # 5 primeiros minutos não checa tempo
 
     def show_initialization_information(self) -> None:
         self.debug_info.send(
@@ -250,7 +252,7 @@ class Robot:
             raise LackOfProgressError()
         actual_time_ms = round(time.time() * 1000)
         if actual_time_ms - self.last_check_time_ms >= 2000:
-           self.check_time()
+            self.check_time()
         return self.webots_robot.step(self.time_step)
 
     def recognize_wall_token(self, rotating=False) -> bool:
@@ -676,6 +678,7 @@ class Robot:
                     dist - traversed_dist > DIST_BEFORE_HOLE or dist <= DIST_BEFORE_HOLE
                 )
                 and dfs_move
+                and not correction_move
             ):
                 self.motor.stop()
                 self.expected_position = initial_expected_position
@@ -708,6 +711,3 @@ class Robot:
             if not just_move and not found_wall_token and self.recognize_wall_token():
                 found_wall_token = True
         return MovementResult.moved
-
-
-
