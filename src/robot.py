@@ -34,6 +34,7 @@ from types_and_constants import (
     MovementResult,
     WallColisionError,
 )
+import time
 
 POSSIBLE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315, 360]
 SQRT_2 = 1.414213562373
@@ -197,6 +198,7 @@ class Robot:
         debug_info: DebugInfo,
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ):
+        self.last_check_time_ms = round(time.time() * 1000)
         self.webots_robot = webots_robot
 
         self.motor = motor
@@ -215,6 +217,17 @@ class Robot:
         self.step()
         self.expected_position = gps.get_position()
         self.rotating = False
+
+    def check_time(
+        self, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
+    ) -> None:
+        game_information = self.communicator.get_game_information()
+        if (
+            game_information.remaining_real_world_time < time_tolerance
+            or game_information.remaining_simulation_time < time_tolerance
+        ):
+            raise EndOfTimeError()
+        self.last_check_time_ms = round(time.time() * 1000) + 5 * 60 * 1000  # 5 primeiros minutos não checa tempo
 
     def show_initialization_information(self) -> None:
         self.debug_info.send(
@@ -235,6 +248,9 @@ class Robot:
     def step(self) -> Any:
         if self.communicator.occured_lack_of_progress():
             raise LackOfProgressError()
+        actual_time_ms = round(time.time() * 1000)
+        if actual_time_ms - self.last_check_time_ms >= 2000:
+           self.check_time()
         return self.webots_robot.step(self.time_step)
 
     def recognize_wall_token(self, rotating=False) -> bool:
@@ -472,8 +488,6 @@ class Robot:
                     imu_expected_angle,
                     dist,
                 )
-        print(dist)
-        print(self.expected_position, end="\n\n")
 
         if DEBUG:
             self.debug_info.send(
@@ -696,12 +710,4 @@ class Robot:
         return MovementResult.moved
 
 
-def check_time(
-    robot: Robot, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
-) -> None:
-    game_information = robot.communicator.get_game_information()
-    if (
-        game_information.remaining_real_world_time < time_tolerance
-        or game_information.remaining_simulation_time < time_tolerance
-    ):
-        raise EndOfTimeError()
+

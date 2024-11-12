@@ -142,21 +142,7 @@ try:
 
         try:
             want = [
-                System.dfs_state,
-                System.dfs_decision,
-                System.dfs_verification,
                 System.unknown_error,
-                System.initialization,
-                System.maze_changes,
-                System.maze_answer,
-                System.maze_visited,
-                System.communicator_send_maze,
-                System.communicator_send_end_of_play,
-                System.communicator_send_messages,
-                System.wall_token_recognition,
-                System.wall_token_classification,
-                System.hole_detection,
-                System.check_tile_color,
             ]
             # want = ALL_SYSTEMS
             debug_info = DebugInfo(
