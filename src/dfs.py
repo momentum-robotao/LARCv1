@@ -167,6 +167,7 @@ def dfs(
 
     :return: The final position of the robot.
     """
+    print(f"DFS {position=}, {robot.expected_position} e {robot.expected_angle}")
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 

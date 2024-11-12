@@ -17,12 +17,12 @@ ENV LOG_PATH=/usr/local/controller/.logs/robo.log
 ENV TIME_STEP=32
 # Configure
 # TIME_TOLERANCE: se tempo restante (real ou simulado) for inferior a isso, o mapa é enviado 
-ENV TIME_TOLERANCE=3
+ENV TIME_TOLERANCE=5
 # IMPORTANT! Remove these DEBUG env vars during competition
-ENV DEBUG=True
-ENV ON_DOCKER=True
-ENV ENTRIES_BETWEEN_SENDS=100
-COPY ./ngrok.txt ./ngrok.txt
+ENV DEBUG=False
+ENV ON_DOCKER=False
+# ENV ENTRIES_BETWEEN_SENDS=100
+# COPY ./ngrok.txt ./ngrok.txt
 ENV ANGLE_MAX_DIFFERENCE=0.3
 
 # Run controller (using extern controller helper)

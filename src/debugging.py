@@ -84,7 +84,7 @@ class DebugInfo:
             getattr(self.logger, level)(f"{system_being_debugged} => {message}")
 
 
-if ON_DOCKER:
+if ON_DOCKER and DEBUG:
     import requests  # type: ignore
 
 

@@ -27,7 +27,6 @@ try:
     from types_and_constants import (
         DEBUG,
         DEGREE_IN_RAD,
-        NGROK_URL,
         ON_DOCKER,
         Coordinate,
         EndOfTimeError,
@@ -35,8 +34,10 @@ try:
         SpecialTileType,
     )
 
-    if ON_DOCKER:
+    if ON_DOCKER and DEBUG:
         import requests  # type: ignore
+
+        from types_and_constants import NGROK_URL
 
     # Initialize logger
     try:
@@ -49,7 +50,7 @@ try:
         )
         logger = logging.getLogger("Robo LARC v1")
         logger.info(f"Criado log com sucesso em: {os.getenv('LOG_PATH')}")
-        if ON_DOCKER:
+        if ON_DOCKER and DEBUG:
             print(f"Url do ngrok recuperada: {NGROK_URL}")
 
             requests.post(f"{NGROK_URL}/start_simulation")
@@ -245,7 +246,7 @@ except Exception as err:
     webots_robot.step(int(os.getenv("TIME_STEP", 32)))
     print(err)
 
-    if (os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]:
+    if (os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"] and DEBUG:
         import logging
 
         import requests  # type: ignore
