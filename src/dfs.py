@@ -11,7 +11,7 @@ from helpers import (
     tile_pos_with_quarter_tile,
 )
 from maze import Maze
-from robot import Robot, check_time
+from robot import Robot
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -176,7 +176,6 @@ def dfs(
             f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
         )
 
-    check_time(robot)
     maze.mark_visited(position)
     robot.step()
     adjust_wall_distance(robot, debug_info, maze)
@@ -375,4 +374,3 @@ def dfs(
     adjust_wall_distance(robot, debug_info, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
-    check_time(robot)
