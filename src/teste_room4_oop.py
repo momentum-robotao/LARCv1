@@ -30,7 +30,7 @@ try:
     last_error2 = 0
     Pot0 = MAX_SPEED - 3.5
     condicao_sala4 = False
-    desejada = 0.05
+    desejada = 0.045
 
     if ON_DOCKER:
         import requests  # type: ignore
@@ -129,9 +129,8 @@ try:
                 #System.wall_token_recognition,
                 #System.wall_token_classification,
                 System.unknown_error,
-                System.maze_snapshot,
+                #System.maze_snapshot,
             ]
-            want = ALL_SYSTEMS
             global debug_info
             debug_info = DebugInfo(
                 logger,
@@ -333,10 +332,14 @@ try:
 
             def seguir_parede_sala4():
                 global desejada, Pot0, erro, last_error, erro2, last_error2
-                kp = 35 
-                kp2 = 40
-                kd = 3
-                kd2 = 2.5
+                #kp = 35 
+                #kp2 = 40
+                #kd = 3
+                #kd2 = 2.5
+                kp = 35
+                kp2 = 45
+                kd = 5
+                kd2 = 3.5
 
                 PotD = Pot0
                 PotE = Pot0
@@ -366,7 +369,8 @@ try:
                     robot.rotate_180()
                     motor.stop()
                 
-                print(f"PotD : {PotD} ; PotE : {PotE} ; Erro = {erro}; last_error : {last_error}")
+                #print(f"PotD : {PotD} ; PotE : {PotE} ; Erro = {erro}; last_error : {last_error}")
+                print(f"direita : {d3} ; esquerda : {d6}" )
                 
                 if tem_parede_frente():
                     #print("bostacolossal")

@@ -69,23 +69,6 @@
 		"a": 2.09,
 		"custom": []
 	},
-	"camera2": {
-		"dictName": "camera2",
-		"name": "Camera",
-		"customName": "cameraD",
-		"type": "add",
-		"x": 370,
-		"y": 120,
-		"z": 0,
-		"rx": -1,
-		"ry": 0,
-		"rz": 0,
-		"a": 1.58,
-		"custom": [
-			40,
-			32
-		]
-	},
 	"Distance Sensor 1": {
 		"dictName": "Distance Sensor 1",
 		"name": "Distance Sensor",
@@ -121,7 +104,7 @@
 		"type": "add",
 		"x": 0,
 		"y": -80,
-		"z": -370,
+		"z": 0,
 		"rx": 0.71,
 		"ry": -0.05,
 		"rz": -0.71,
@@ -133,7 +116,7 @@
 		"name": "Camera",
 		"customName": "cameraE",
 		"type": "add",
-		"x": -370,
+		"x": -310,
 		"y": 120,
 		"z": 0,
 		"rx": -0.02,
@@ -141,8 +124,25 @@
 		"rz": -0.7,
 		"a": 3.1,
 		"custom": [
-			40,
-			32
+			64,
+			40
+		]
+	},
+	"camera2": {
+		"dictName": "camera2",
+		"name": "Camera",
+		"customName": "cameraD",
+		"type": "add",
+		"x": 310,
+		"y": 120,
+		"z": 0,
+		"rx": -1,
+		"ry": 0,
+		"rz": 0,
+		"a": 1.58,
+		"custom": [
+			64,
+			40
 		]
 	}
 }

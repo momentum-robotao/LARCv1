@@ -27,7 +27,7 @@ from types_and_constants import (
     WallToken,
 )
 
-MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.08  # TODO: ajustar, Nicolas colocou 0.08
+MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.06  # TODO: ajustar, Nicolas colocou 0.08
 
 
 img_height, img_width = 256, 320
@@ -139,7 +139,10 @@ def check_organic_peroxide(  # TODO: juntar dist_branco, check_flamable
 
             distance_to_farthest_point = get_distance(lidar_index, lidar)
 
-            if distance_to_farthest_point < 0.08 and non_black_pixels > 60:
+            if (
+                distance_to_farthest_point < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
+                and non_black_pixels > 60
+            ):
                 return True
 
     return False
@@ -191,7 +194,10 @@ def check_flamable_gas(raw_image, side: Literal["left", "right"], lidar: Lidar) 
 
             distance_to_farthest_point = get_distance(lidar_index, lidar)
 
-            if distance_to_farthest_point < 0.08 and non_black_pixels > 60:
+            if (
+                distance_to_farthest_point < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
+                and non_black_pixels > 60
+            ):
                 return True
 
     return False
@@ -334,7 +340,6 @@ def get_image_metrics(raw_image, target_width=320, target_height=256):
 
 
 def classify_H_S_U(margem, metrics):
-    print("HSU normal")
     if not metrics:
         return None
 
@@ -394,7 +399,6 @@ def H_S_U_perto(raw_image, target_width=320, target_height=256):
     Pega direto a imagem e cria um quadrado, de modo a encaixar a maior quantidade de
     pixels brancos. Isso tira as bordas pretas, que não são vítimas.
     """
-    print("HSU perto")
     if (bounding_box_around_white := find_bounding_box_around_white(raw_image)) is None:
         return 0
     x, y, w, h = bounding_box_around_white
@@ -429,7 +433,6 @@ def H_S_U_perto(raw_image, target_width=320, target_height=256):
     preto_vertical = (total_pixels_vertical - non_black_pixels_vertical) * 1.52
     preto_vertical = int(preto_vertical)
 
-    print(preto_cima, preto_meio, preto_baixo, preto_vertical)
     if branco > 50000:
         # garantir que a vitima ta inteira na image, sujeito a mudanças
         if preto_vertical == min(
@@ -458,18 +461,24 @@ def classify_wall_token(
     image_metrics = get_image_metrics(raw_image)
     (dist_branco, qty_preto, hazmat) = image_information
     wall_token: WallToken | None = None
-    print(f"{dist_branco=}")
+    print(qty_preto)
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
         wall_token = HazmatSign.ORGANIC_PEROXIDE
     elif check_flamable_gas(raw_image, side, lidar):
         wall_token = HazmatSign.FLAMMABLE_GAS
-    elif hazmat >= 4 and dist_branco < 0.07 and qty_preto > 0:
+    elif (
+        hazmat >= 4 and dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN and qty_preto > 0
+    ):
         if qty_preto < 50:
             wall_token = HazmatSign.POISON
         else:
             wall_token = HazmatSign.CORROSIVE
-    elif dist_branco < 0.068 and dist_branco > 0.06 and qty_preto > 0:
+    elif (
+        dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
+        and dist_branco > 0.053
+        and qty_preto > 0
+    ):
         # distancia ideal para reconhecimento + ou - 0.06
         if classify_H_S_U(margem, image_metrics) == "H":
             wall_token = Victim.HARMED
@@ -479,7 +488,7 @@ def classify_wall_token(
             wall_token = Victim.UNHARMED
         else:
             print("TODO: há vítima, fazer estratégia pra 'encaixá-la'")
-    elif dist_branco < 0.06 and qty_preto > 0:
+    elif dist_branco < 0.053 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":
             wall_token = Victim.HARMED
         if H_S_U_perto(raw_image) == "S":
