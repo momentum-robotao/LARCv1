@@ -349,7 +349,6 @@ try:
                     condicao = True
                     onde.append('tras_direita')
                 return condicao, onde
-                    
                 
                     
 
@@ -500,9 +499,9 @@ try:
             while robot.step() != -1:
                 
                 #x, y = get_mapa()
-                #seguir_parede_sala4()
-                condicao, onde = ver_obstaculo()
-                print(f"Tem obstáculo : {print(condicao)} ; onde : {print(onde)}")
+                seguir_parede_sala4()
+                #condicao, onde = ver_obstaculo()
+                #print(f"Tem obstáculo : {print(condicao)} ; onde : {print(onde)}")
                 
                 #sala4()
                 

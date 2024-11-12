@@ -251,42 +251,38 @@ class Robot:
                 ),
             ),
         ]:
-            if wall_token: # BEIJO
+            if wall_token:
+                ''' 
                 self.motor.stop()
-                
                 to_move = 0.0
-                
                 if side == "left":
                     to_move = self.lidar.get_side_distance("left", use_min=True)
                     self.rotate_90_left(just_rotate=True)
                 if side == "right":
                     to_move = self.lidar.get_side_distance("right", use_min=True)
                     self.rotate_90_right(just_rotate=True)
-                
-                self.motor.set_velocity(6.24-3.5, 6.24 - 3.5)
-                delay(self.webots_robot, self.debug_info, 20)
+                self.move(
+                    "forward", Maze(self.debug_info), dist=to_move / 2, just_move=True
+                )  # TODO: test Maze
+                '''
                 self.motor.stop()
-                
                 delay(self.webots_robot, self.debug_info, 1300)
                 self.communicator.send_wall_token_information(
                     self.gps.get_position(), wall_token
                 )
-                
-                self.motor.set_velocity(-(6.24-3.5), -(6.24 - 3.5))
-                delay(self.webots_robot, self.debug_info, 20)
+                delay(self.webots_robot, self.debug_info, 1000)
+                self.motor.set_velocity(6.24 - 3.5, 6.24 - 3.5)
+                delay(self.webots_robot, self.debug_info, 100)
                 self.motor.stop()
+                '''
+                self.move(
+                    "backward", Maze(self.debug_info), dist=to_move / 2, just_move=True
+                )  # TODO: test Maze
                 if side == "left":
                     self.rotate_90_right(just_rotate=True)
                 if side == "right":
                     self.rotate_90_left(just_rotate=True)
-                self.motor.stop()
-                
-                
-                
-
-                self.motor.set_velocity(6.24-3.5, 6.24 - 3.5)
-                delay(self.webots_robot, self.debug_info, 100)
-                self.motor.stop()
+                '''
                 found = True
         return found
 
@@ -300,7 +296,7 @@ class Robot:
         high_speed: float = MAX_SPEED,
         low_speed: float = MAX_SPEED / 100,
         just_rotate: bool = False,
-        dfs_rotation: bool = False # TO DO,
+        dfs_rotation: bool = True,
     ) -> None:
         """
         Rotate the robot in a direction by an angle, using the motors. Uses
@@ -422,7 +418,7 @@ class Robot:
         returning_to_safe_position: bool = False,
         correction_move: bool = False,
         just_move: bool = False,
-        dfs_move: bool = False # TODO !,
+        dfs_move: bool = True,
     ) -> MovementResult:
         """
         Move the robot by certain distance in meters in some direction, using
@@ -611,8 +607,8 @@ class Robot:
             traversed_dist = x_delta + y_delta
 
             if (
-                dfs_move and (x_traversed and y_traversed)
-                if not correction_move and not found_obstacle
+                (x_traversed and y_traversed)
+                if not correction_move and not found_obstacle and dfs_move
                 else traversed_dist >= dist
             ):
                 self.motor.stop()
@@ -626,8 +622,9 @@ class Robot:
                 break
 
             if (
-                dfs_move and self.lidar.wall_collision("front" if direction == "forward" else "back")
+                self.lidar.wall_collision("front" if direction == "forward" else "back")
                 and not returning_to_safe_position
+                and dfs_move
             ):
                 self.motor.stop()
                 self.expected_position = initial_expected_position
@@ -651,14 +648,14 @@ class Robot:
 
                 raise WallColisionError()
 
-            if dfs_move:
-                hole = self.distance_sensor.detect_hole(self.webots_robot)
+            hole = self.distance_sensor.detect_hole()
             if (
-                dfs_move and hole
+                hole
                 and not returning_to_safe_position
                 and (
                     dist - traversed_dist > DIST_BEFORE_HOLE or dist <= DIST_BEFORE_HOLE
                 )
+                and dfs_move
             ):
                 self.motor.stop()
                 self.expected_position = initial_expected_position
