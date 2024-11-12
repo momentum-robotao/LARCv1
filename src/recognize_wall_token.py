@@ -27,7 +27,7 @@ from types_and_constants import (
     WallToken,
 )
 
-MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.06  # TODO: ajustar, Nicolas colocou 0.08
+MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.08  # TODO: ajustar, Nicolas colocou 0.08
 
 
 img_height, img_width = 256, 320
@@ -561,7 +561,7 @@ def reconhece_lado(
         margem = 0.5
         if rotating:
             print("reconhece rodando")
-            margem = 3.5
+            margem = 1.2
     else:
         margem = 0.2
     return classify_wall_token(
