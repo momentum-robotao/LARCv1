@@ -34,6 +34,7 @@ from types_and_constants import (
     MovementResult,
     WallColisionError,
 )
+import time
 
 POSSIBLE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315, 360]
 SQRT_2 = 1.414213562373
@@ -197,6 +198,7 @@ class Robot:
         debug_info: DebugInfo,
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ):
+        self.last_check_time_ms = round(time.time() * 1000)
         self.webots_robot = webots_robot
 
         self.motor = motor
@@ -215,6 +217,17 @@ class Robot:
         self.step()
         self.expected_position = gps.get_position()
         self.rotating = False
+
+    def check_time(
+        self, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
+    ) -> None:
+        game_information = self.communicator.get_game_information()
+        if (
+            game_information.remaining_real_world_time < time_tolerance
+            or game_information.remaining_simulation_time < time_tolerance
+        ):
+            raise EndOfTimeError()
+        self.last_check_time_ms = round(time.time() * 1000) + 5 * 60 * 1000  # 5 primeiros minutos não checa tempo
 
     def show_initialization_information(self) -> None:
         self.debug_info.send(
@@ -235,6 +248,9 @@ class Robot:
     def step(self) -> Any:
         if self.communicator.occured_lack_of_progress():
             raise LackOfProgressError()
+        actual_time_ms = round(time.time() * 1000)
+        if actual_time_ms - self.last_check_time_ms >= 2000:
+           self.check_time()
         return self.webots_robot.step(self.time_step)
 
     def recognize_wall_token(self, rotating=False) -> bool:
@@ -272,14 +288,14 @@ class Robot:
                     self.rotate_90_right(just_rotate=True)
                 self.move(
                     "forward", Maze(self.debug_info), dist=to_move / 2, just_move=True
-                )  # TODO: test Maze
+                )  # TODO-: test Maze
                 delay(self.webots_robot, self.debug_info, 1300)
                 self.communicator.send_wall_token_information(
                     self.gps.get_position(), wall_token
                 )
                 self.move(
                     "backward", Maze(self.debug_info), dist=to_move / 2, just_move=True
-                )  # TODO: test Maze
+                )  # TODO-: test Maze
                 if side == "left":
                     self.rotate_90_right(just_rotate=True)
                 if side == "right":
@@ -472,8 +488,6 @@ class Robot:
                     imu_expected_angle,
                     dist,
                 )
-        print(dist)
-        print(self.expected_position, end="\n\n")
 
         if DEBUG:
             self.debug_info.send(
@@ -565,7 +579,7 @@ class Robot:
                 right_side = right_side_distance <= 0.006
 
                 if (left_diagonal or left_side) and (right_side or right_diagonal):
-                    # TODO: retornar para posição livre e desfazer movimento obstáculo
+                    # TODO+: retornar para posição livre e desfazer movimento obstáculo
                     raise WallColisionError()
 
                 if left_diagonal or left_side:
@@ -586,7 +600,7 @@ class Robot:
                     self.move(
                         direction,
                         maze,
-                        dist=0.001,  # TODO: proporcional a quao perto está
+                        dist=0.001,  # TODO-: proporcional a quao perto está
                         correction_move=True,
                     )
                     self.rotate_90_right()
@@ -603,7 +617,7 @@ class Robot:
                     return MovementResult.moved
 
                 if found_obstacle:
-                    print("TODO: deixar 'branco' no mapa")
+                    print("TODO-: deixar 'branco' no mapa")
 
             x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
@@ -643,7 +657,7 @@ class Robot:
                     slow_down_speed=slow_down_speed,
                     kp=kp,
                     expected_wall_distance=expected_wall_distance,
-                    returning_to_safe_position=True,  # TODO: lidar com esse caso na dfs como parede e returning_to_safe_position desfazer movimento que é feito para obstáculo
+                    returning_to_safe_position=True,  # TODO+: lidar com esse caso na dfs como parede e returning_to_safe_position desfazer movimento que é feito para obstáculo
                 )
 
                 if DEBUG:
@@ -696,12 +710,4 @@ class Robot:
         return MovementResult.moved
 
 
-def check_time(
-    robot: Robot, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
-) -> None:
-    game_information = robot.communicator.get_game_information()
-    if (
-        game_information.remaining_real_world_time < time_tolerance
-        or game_information.remaining_simulation_time < time_tolerance
-    ):
-        raise EndOfTimeError()
+

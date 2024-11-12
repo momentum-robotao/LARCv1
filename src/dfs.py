@@ -11,7 +11,7 @@ from helpers import (
     tile_pos_with_quarter_tile,
 )
 from maze import Maze
-from robot import Robot, check_time
+from robot import Robot
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -176,13 +176,12 @@ def dfs(
             f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
         )
 
-    check_time(robot)
     maze.mark_visited(position)
     robot.step()
     adjust_wall_distance(robot, debug_info, maze)
     robot.recognize_wall_token()
 
-    # TODO: swamp etc podem estar acessíveis apenas em certo quarter tile
+    # TODO-: swamp etc podem estar acessíveis apenas em certo quarter tile
     colored_tile = None
     if position.x % 2 == 0 and position.y % 2 == 0:  # centered in tile
         colored_tile = robot.color_sensor.check_colored_special_tile()
@@ -204,9 +203,7 @@ def dfs(
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [0, 90, -90] + (  # TODO: múltiplos de 45
-        [180] if starting else []
-    ):
+    for delta_angle_in_degree in [0, 90, -90] + ([180] if starting else []):
         #     # ? Only in the start we can't assume that backward empty: important to make sure
         #     # everything was visited and all walls mapped
         # ):
@@ -377,4 +374,3 @@ def dfs(
     adjust_wall_distance(robot, debug_info, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
-    check_time(robot)
