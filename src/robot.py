@@ -217,6 +217,8 @@ class Robot:
         self.step()
         self.expected_position = gps.get_position()
         self.rotating = False
+        # ? 5 primeiros minutos não checa tempo. Depois a cada 2 segs
+        self.last_check_time_ms = round(time.time() * 1000) + 5 * 60 * 1000
 
     def check_time(
         self, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
@@ -227,9 +229,7 @@ class Robot:
             or game_information.remaining_simulation_time < time_tolerance
         ):
             raise EndOfTimeError()
-        self.last_check_time_ms = (
-            round(time.time() * 1000) + 5 * 60 * 1000
-        )  # 5 primeiros minutos não checa tempo
+        self.last_check_time_ms = round(time.time() * 1000)
 
     def show_initialization_information(self) -> None:
         self.debug_info.send(
@@ -251,6 +251,7 @@ class Robot:
         if self.communicator.occured_lack_of_progress():
             raise LackOfProgressError()
         actual_time_ms = round(time.time() * 1000)
+        print(actual_time_ms - self.last_check_time_ms)
         if actual_time_ms - self.last_check_time_ms >= 2000:
             self.check_time()
         return self.webots_robot.step(self.time_step)
@@ -471,6 +472,9 @@ class Robot:
         slower in the end of the movement.
         - Holes are not detected when moving backward.
         """
+        print(
+            f"  Movendo {dist=} para {direction}. {correction_move=} {just_move=} {dfs_move=}"
+        )
         found_wall_token = False
         initial_position = self.gps.get_position()
         # if self.expected_raw_angle is None:
@@ -538,6 +542,7 @@ class Robot:
                     if self.expected_position.y > initial_position.y
                     else self.expected_position.y > actual_position.y
                 ) or delta[1] == 0
+            print(f"  {actual_position}; {self.expected_position}; {initial_position=}")
 
             if dfs_move:
                 left_diagonal_distance = self.lidar.get_side_distance(

@@ -63,6 +63,7 @@ def get_errors(robot: Robot, field_of_view: float):
     return y_error, x_error, angle_error
 
 
+# TODO+: ficar ajustando e desajustando
 def adjust_wall_distance(
     robot: Robot,
     debug_info: DebugInfo,
@@ -136,6 +137,7 @@ def adjust_wall_distance(
         robot.rotate_90_right()
 
 
+# TODO+: parede quarter tile ou canto de quarter já vira
 def alley(robot: Robot, maze: Maze, position: Coordinate, start_angle: float) -> bool:
     for delta_angle_in_degree, side in [(0, "front"), (90, "right"), (-90, "left")]:
         delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
@@ -167,6 +169,9 @@ def dfs(
 
     :return: The final position of the robot.
     """
+    print(
+        f"DFS {position=}; {robot.expected_position}; {robot.expected_angle / DEGREE_IN_RAD}"
+    )
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 
@@ -374,3 +379,4 @@ def dfs(
     adjust_wall_distance(robot, debug_info, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
+    print(f"Retornando dfs {position=}")
