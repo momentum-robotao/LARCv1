@@ -91,14 +91,10 @@ def adjust_wall_distance(
         print("não ajusta: obstáculo")
         return
 
-    print(robot.expected_angle)
-    print("ângulo erro", angle_error, angle_error / DEGREE_IN_RAD)
     if angle_error <= -angle_max_error:
-        print("rodada erro direito")
         robot.rotate("right", abs(angle_error), correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
     if angle_error >= angle_max_error:
-        print("rodada erro esquerdo")
         robot.rotate("left", angle_error, correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
@@ -120,7 +116,6 @@ def adjust_wall_distance(
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
     if x_error <= -wall_max_x_error:
-        print("rodada pra ajustar -x")
         robot.rotate_90_left()
         robot.move(
             "backward",
@@ -130,7 +125,6 @@ def adjust_wall_distance(
         )
         robot.rotate_90_right()
     if x_error >= wall_max_x_error:
-        print("rodada pra ajustar x")
         robot.rotate_90_left()
         robot.move(
             "forward",
@@ -202,7 +196,6 @@ def dfs(
             debug_info.send(f"Não detectou cor em {position}", System.check_tile_color)
 
     if alley(robot, maze, position, start_angle):
-        print("rodada alley")
         adjust_wall_distance(
             robot, debug_info, maze, wall_max_x_error=0.1, wall_max_y_error=0.1
         )
@@ -321,7 +314,6 @@ def dfs(
         new_position_distance = (
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
-        print("rodada pro movement_angle")
         robot.rotate_to_angle(movement_angle)
         robot.recognize_wall_token()
         try:
@@ -383,6 +375,5 @@ def dfs(
     robot.step()
     adjust_wall_distance(robot, debug_info, maze)
     robot.recognize_wall_token()
-    print("rodada pra voltar dfs")
     robot.rotate_to_angle(start_angle)
     check_time(robot)

@@ -459,6 +459,18 @@ def classify_wall_token(
     lidar: Lidar,
 ) -> WallToken | None:
     image_metrics = get_image_metrics(raw_image)
+
+    if image_metrics:
+        (
+            quadrado,
+            preto_vertical,
+            preto_cima,
+            preto_meio,
+            preto_baixo,
+            preto_vertical,
+        ) = image_metrics
+        print(preto_meio)
+
     (dist_branco, qty_preto, hazmat) = image_information
     wall_token: WallToken | None = None
     print(qty_preto)
@@ -467,12 +479,16 @@ def classify_wall_token(
         wall_token = HazmatSign.ORGANIC_PEROXIDE
     elif check_flamable_gas(raw_image, side, lidar):
         wall_token = HazmatSign.FLAMMABLE_GAS
+    elif image_metrics is None:
+        pass
     elif (
-        hazmat >= 4 and dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN and qty_preto > 0
+        hazmat >= 4
+        and dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
+        and (preto_meio > 800 or qty_preto > 0)
     ):
         if qty_preto < 50:
             wall_token = HazmatSign.POISON
-        else:
+        elif qty_preto > 0:
             wall_token = HazmatSign.CORROSIVE
     elif (
         dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
