@@ -287,6 +287,7 @@ class Robot:
         high_speed: float = MAX_SPEED,
         low_speed: float = MAX_SPEED / 100,
         just_rotate: bool = False,
+        dfs_rotation: bool = True,
     ) -> None:
         """
         Rotate the robot in a direction by an angle, using the motors. Uses
@@ -296,7 +297,7 @@ class Robot:
         self.rotating = True
 
         recognized_wall_token = False
-        if not correction_rotation and not was_rotating:
+        if not correction_rotation and not was_rotating and dfs_rotation:
             self.expected_angle = cyclic_angle(
                 self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
             )
@@ -408,6 +409,7 @@ class Robot:
         returning_to_safe_position: bool = False,
         correction_move: bool = False,
         just_move: bool = False,
+        dfs_move: bool = True,
     ) -> MovementResult:
         """
         Move the robot by certain distance in meters in some direction, using
@@ -445,7 +447,7 @@ class Robot:
         initial_position = self.gps.get_position()
         # if self.expected_raw_angle is None:
         #     self.expected_raw_angle = imu.get_rotation_angle(raw=True)
-        if not correction_move:
+        if not correction_move and dfs_move:
             initial_expected_position = self.expected_position
             imu_expected_angle = cyclic_angle(
                 self.expected_angle
@@ -497,7 +499,7 @@ class Robot:
             self.motor.set_velocity(left_velocity, right_velocity)
 
             x_traversed, y_traversed = False, False
-            if not correction_move:
+            if not correction_move and dfs_move:
                 x_traversed = (
                     self.expected_position.x < actual_position.x
                     if self.expected_position.x > initial_position.x
@@ -509,86 +511,87 @@ class Robot:
                     else self.expected_position.y > actual_position.y
                 ) or delta[1] == 0
 
-            left_diagonal_distance = self.lidar.get_side_distance(
-                cyclic_angle(
-                    315 * DEGREE_IN_RAD
-                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
-                ),
-                field_of_view=30 * DEGREE_IN_RAD,
-                use_min=True,
-            )
-            right_diagonal_distance = self.lidar.get_side_distance(
-                cyclic_angle(
-                    45 * DEGREE_IN_RAD
-                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
-                ),
-                field_of_view=30 * DEGREE_IN_RAD,
-                use_min=True,
-            )
-            # print("diagonais", left_diagonal_distance, right_diagonal_distance)
-            left_diagonal = left_diagonal_distance <= 0.007
-            right_diagonal = right_diagonal_distance <= 0.007
-
-            left_side_distance = self.lidar.get_side_distance(
-                cyclic_angle(
-                    285 * DEGREE_IN_RAD
-                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
-                ),
-                field_of_view=30 * DEGREE_IN_RAD,
-                use_min=True,
-            )
-            right_side_distance = self.lidar.get_side_distance(
-                cyclic_angle(
-                    75 * DEGREE_IN_RAD
-                    + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
-                ),
-                field_of_view=30 * DEGREE_IN_RAD,
-                use_min=True,
-            )
-            # print("laterais", left_side_distance, right_side_distance)
-            left_side = left_side_distance <= 0.006
-            right_side = right_side_distance <= 0.006
-
-            if (left_diagonal or left_side) and (right_side or right_diagonal):
-                # TODO: retornar para posição livre e desfazer movimento obstáculo
-                raise WallColisionError()
-
-            if left_diagonal or left_side:
-                self.motor.stop()
-                self.rotate_90_right()
-                self.move(
-                    direction,
-                    maze,
-                    dist=0.001,
-                    correction_move=True,
+            if dfs_move:
+                left_diagonal_distance = self.lidar.get_side_distance(
+                    cyclic_angle(
+                        315 * DEGREE_IN_RAD
+                        + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                    ),
+                    field_of_view=30 * DEGREE_IN_RAD,
+                    use_min=True,
                 )
-                self.rotate_90_left()
-                found_obstacle = True
-
-            if right_diagonal or right_side:
-                self.motor.stop()
-                self.rotate_90_left()
-                self.move(
-                    direction,
-                    maze,
-                    dist=0.001,  # TODO: proporcional a quao perto está
-                    correction_move=True,
+                right_diagonal_distance = self.lidar.get_side_distance(
+                    cyclic_angle(
+                        45 * DEGREE_IN_RAD
+                        + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                    ),
+                    field_of_view=30 * DEGREE_IN_RAD,
+                    use_min=True,
                 )
-                self.rotate_90_right()
-                found_obstacle = True
+                # print("diagonais", left_diagonal_distance, right_diagonal_distance)
+                left_diagonal = left_diagonal_distance <= 0.007
+                right_diagonal = right_diagonal_distance <= 0.007
 
-            front_distance = self.lidar.get_side_distance(
-                180 * DEGREE_IN_RAD if direction == "backward" else 0,
-                field_of_view=30 * DEGREE_IN_RAD,
-                use_min=True,
-            )
-            if front_distance < 0.01:
-                self.motor.stop()
-                found_obstacle = True
-                return MovementResult.moved
+                left_side_distance = self.lidar.get_side_distance(
+                    cyclic_angle(
+                        285 * DEGREE_IN_RAD
+                        + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                    ),
+                    field_of_view=30 * DEGREE_IN_RAD,
+                    use_min=True,
+                )
+                right_side_distance = self.lidar.get_side_distance(
+                    cyclic_angle(
+                        75 * DEGREE_IN_RAD
+                        + (180 * DEGREE_IN_RAD if direction == "backward" else 0)
+                    ),
+                    field_of_view=30 * DEGREE_IN_RAD,
+                    use_min=True,
+                )
+                # print("laterais", left_side_distance, right_side_distance)
+                left_side = left_side_distance <= 0.006
+                right_side = right_side_distance <= 0.006
 
-            if found_obstacle:
-                print("TODO: deixar 'branco' no mapa")
+                if (left_diagonal or left_side) and (right_side or right_diagonal):
+                    # TODO: retornar para posição livre e desfazer movimento obstáculo
+                    raise WallColisionError()
+
+                if left_diagonal or left_side:
+                    self.motor.stop()
+                    self.rotate_90_right()
+                    self.move(
+                        direction,
+                        maze,
+                        dist=0.001,
+                        correction_move=True,
+                    )
+                    self.rotate_90_left()
+                    found_obstacle = True
+
+                if right_diagonal or right_side:
+                    self.motor.stop()
+                    self.rotate_90_left()
+                    self.move(
+                        direction,
+                        maze,
+                        dist=0.001,  # TODO: proporcional a quao perto está
+                        correction_move=True,
+                    )
+                    self.rotate_90_right()
+                    found_obstacle = True
+
+                front_distance = self.lidar.get_side_distance(
+                    180 * DEGREE_IN_RAD if direction == "backward" else 0,
+                    field_of_view=30 * DEGREE_IN_RAD,
+                    use_min=True,
+                )
+                if front_distance < 0.01:
+                    self.motor.stop()
+                    found_obstacle = True
+                    return MovementResult.moved
+
+                if found_obstacle:
+                    print("TODO: deixar 'branco' no mapa")
 
             x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
@@ -596,7 +599,7 @@ class Robot:
 
             if (
                 (x_traversed and y_traversed)
-                if not correction_move and not found_obstacle
+                if not correction_move and not found_obstacle and dfs_move
                 else traversed_dist >= dist
             ):
                 self.motor.stop()
@@ -612,6 +615,7 @@ class Robot:
             if (
                 self.lidar.wall_collision("front" if direction == "forward" else "back")
                 and not returning_to_safe_position
+                and dfs_move
             ):
                 self.motor.stop()
                 self.expected_position = initial_expected_position
@@ -642,6 +646,7 @@ class Robot:
                 and (
                     dist - traversed_dist > DIST_BEFORE_HOLE or dist <= DIST_BEFORE_HOLE
                 )
+                and dfs_move
             ):
                 self.motor.stop()
                 self.expected_position = initial_expected_position
