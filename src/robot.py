@@ -272,14 +272,14 @@ class Robot:
                     self.rotate_90_right(just_rotate=True)
                 self.move(
                     "forward", Maze(self.debug_info), dist=to_move / 2, just_move=True
-                )  # TODO: test Maze
+                )  # TODO-: test Maze
                 delay(self.webots_robot, self.debug_info, 1300)
                 self.communicator.send_wall_token_information(
                     self.gps.get_position(), wall_token
                 )
                 self.move(
                     "backward", Maze(self.debug_info), dist=to_move / 2, just_move=True
-                )  # TODO: test Maze
+                )  # TODO-: test Maze
                 if side == "left":
                     self.rotate_90_right(just_rotate=True)
                 if side == "right":
@@ -565,7 +565,7 @@ class Robot:
                 right_side = right_side_distance <= 0.006
 
                 if (left_diagonal or left_side) and (right_side or right_diagonal):
-                    # TODO: retornar para posição livre e desfazer movimento obstáculo
+                    # TODO+: retornar para posição livre e desfazer movimento obstáculo
                     raise WallColisionError()
 
                 if left_diagonal or left_side:
@@ -586,7 +586,7 @@ class Robot:
                     self.move(
                         direction,
                         maze,
-                        dist=0.001,  # TODO: proporcional a quao perto está
+                        dist=0.001,  # TODO-: proporcional a quao perto está
                         correction_move=True,
                     )
                     self.rotate_90_right()
@@ -603,7 +603,7 @@ class Robot:
                     return MovementResult.moved
 
                 if found_obstacle:
-                    print("TODO: deixar 'branco' no mapa")
+                    print("TODO-: deixar 'branco' no mapa")
 
             x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
@@ -643,7 +643,7 @@ class Robot:
                     slow_down_speed=slow_down_speed,
                     kp=kp,
                     expected_wall_distance=expected_wall_distance,
-                    returning_to_safe_position=True,  # TODO: lidar com esse caso na dfs como parede e returning_to_safe_position desfazer movimento que é feito para obstáculo
+                    returning_to_safe_position=True,  # TODO+: lidar com esse caso na dfs como parede e returning_to_safe_position desfazer movimento que é feito para obstáculo
                 )
 
                 if DEBUG:

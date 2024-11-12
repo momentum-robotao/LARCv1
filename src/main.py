@@ -84,7 +84,6 @@ try:
             dist=0.01,
             correction_move=True,
         )
-        # TODO: troca para orientação do meu âng (right aumenta) em vez do imu default
         robot.rotate("right", 45 * DEGREE_IN_RAD, correction_rotation=True)
         initial_position = robot.gps.get_position()
         robot.move(
@@ -112,7 +111,7 @@ try:
         #     while robot.webots_robot.step(32) != -1:
         #         print("começa", robot.gps.get_position())
         #         robot.motor.move(
-        #             "frontward",  # TODO: testa backward
+        #             "frontward", e testa backward
         #             robot.gps,
         #             robot.lidar,
         #             robot.color_sensor,

@@ -27,7 +27,7 @@ from types_and_constants import (
     WallToken,
 )
 
-MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.06  # TODO: ajustar, Nicolas colocou 0.08
+MIN_DIST_TO_RECOGNIZE_WALL_TOKEN = 0.07
 
 
 img_height, img_width = 256, 320
@@ -64,7 +64,7 @@ def get_dist_branco(raw_image, side: Literal["left", "right"], lidar: Lidar):
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    if contours:  # TODO: função largest_countour
+    if contours:  # TODO-: função largest_countour
         largest_contour = max(contours, key=cv2.contourArea)
         center_x = raw_image.shape[1] // 2  # centro da imagem ('linha imaginaria')
 
@@ -94,7 +94,7 @@ def get_dist_branco(raw_image, side: Literal["left", "right"], lidar: Lidar):
     return 0
 
 
-def check_organic_peroxide(  # TODO: juntar dist_branco, check_flamable
+def check_organic_peroxide(  # TODO-: juntar dist_branco, check_flamable
     raw_image, side: Literal["left", "right"], lidar: Lidar
 ) -> bool:
     if side == "left":
@@ -307,7 +307,7 @@ def get_image_metrics(raw_image, target_width=320, target_height=256):
 
     _, black_white_image = cv2.threshold(gray_resized, 127, 255, cv2.THRESH_BINARY)
 
-    # TODO: função para essas masks
+    # TODO-: função para essas masks
     lower_half = black_white_image[190:210, :]
     non_black_pixels_lower = cv2.countNonZero(lower_half)
     total_pixels_lower = lower_half.size
@@ -504,7 +504,7 @@ def classify_wall_token(
         elif classify_H_S_U(margem, image_metrics) == "U":
             wall_token = Victim.UNHARMED
         else:
-            print("TODO: há vítima, fazer estratégia pra 'encaixá-la'")
+            print("TODO-: há vítima, fazer estratégia pra 'encaixá-la'")
     elif dist_branco < 0.053 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":
             wall_token = Victim.HARMED
@@ -517,9 +517,6 @@ def classify_wall_token(
     if DEBUG:
         debug_info.send(f"{wall_token=}", System.wall_token_classification)
     return wall_token
-
-
-# TODO: world1.wbt pegar vítima entre dfs's
 
 
 def reconhece_lado(
@@ -548,15 +545,14 @@ def reconhece_lado(
     )
 
     image_information = get_image_information(raw_image, side, lidar)
-    # TODO: separar em reconhece perto e reconhece longe e função que identifica caso
+    # TODO-: separar em reconhece perto e reconhece longe e função que identifica caso
     print("checks:", check_robo_torto(lidar, side), rotating)
     if check_robo_torto(lidar, side):
         """
         Se a vitima (cropped image) estiver inteira na imagem, a imagem vai ser um quadrado, mas
         quando o robo ta angulado em relação a parede, a imagem da vitima vai ser tipo um trapezio
         (ponto de fuga no fundo da imagem), entao eu fiz um metodo pra aumentar a margem do
-        quadrado, se o robo estiver angulado como eu não tenho o docker pra rodar o codigo, tem que
-        ir mudando essa marge, mas deve ta meio bom <= TODO
+        quadrado, se o robo estiver angulado como eu não tenho o docker pra rodar o codigo
         """
         margem = 0.5
         if rotating:
