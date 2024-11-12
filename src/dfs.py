@@ -4,7 +4,6 @@ from helpers import (
     coordinate_after_move,
     cyclic_angle,
     cyclic_angle_difference,
-    delay,
     get_blocking_wall,
     get_central_blocking_wall,
     side_angle_from_map_angle,
@@ -21,7 +20,6 @@ from types_and_constants import (
     TILE_SIZE,
     AreaDFSMappable,
     Coordinate,
-    LackOfProgressError,
     MovementResult,
     SpecialTileType,
     WallColisionError,
@@ -379,4 +377,3 @@ def dfs(
     adjust_wall_distance(robot, debug_info, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
-    print(f"Retornando dfs {position=}")

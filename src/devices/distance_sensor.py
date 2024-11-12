@@ -18,6 +18,9 @@ class DistanceSensor(Device):
         debug_info: DebugInfo,
         left_name: str = "ds2",
         right_name: str = "ds1",
+        front_name: str = "ds3",
+        back_left: str = "ds4",
+        back_right: str = "ds5",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ) -> None:
         self.debug_info = debug_info
@@ -26,9 +29,18 @@ class DistanceSensor(Device):
         self._left.enable(time_step)
         self._right = robot.getDevice(right_name)
         self._right.enable(time_step)
+        self._front = robot.getDevice(front_name)
+        self._front.enable(time_step)
+        self._backleft = robot.getDevice(back_left)
+        self._backleft.enable(time_step)
+        self._backright = robot.getDevice(back_right)
+        self._backright.enable(time_step)
 
     def get_distance(self, position: DistanceSensorPosition) -> float:
         sensor = getattr(self, f"_{position}")
+        return float(sensor.getValue())
+
+    def pegar_distancia(self, sensor):
         return float(sensor.getValue())
 
     def detect_hole(self) -> HolePosition | None:

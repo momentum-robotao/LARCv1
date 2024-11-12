@@ -60,3 +60,7 @@ class IMU(Device):
         if abs(new_ang - ang) <= PI:
             return abs(new_ang - ang)
         return min(ang, new_ang) + (2 * PI - max(ang, new_ang))
+
+    # TODO-: unify with get_rotation_angle
+    def get_roll_pitch_yaw(self) -> float:
+        return self._imu.getRollPitchYaw()[2]

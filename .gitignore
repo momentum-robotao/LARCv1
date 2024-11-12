@@ -4,3 +4,5 @@ venv
 .history
 .logs
 __pycache__
+ngrok.txt
+log.txt

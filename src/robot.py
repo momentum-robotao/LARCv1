@@ -256,7 +256,12 @@ class Robot:
             self.check_time()
         return self.webots_robot.step(self.time_step)
 
-    def recognize_wall_token(self, rotating=False) -> bool:
+    def recognize_wall_token(
+        self,
+        rotating: bool = False,
+        wall_token_approximation: bool = True,
+        move_after_found_wall_token: bool = False,
+    ) -> bool:
         found = False
         for side, wall_token in [
             (
@@ -282,27 +287,39 @@ class Robot:
         ]:
             if wall_token:
                 self.motor.stop()
-                to_move = 0.0
-                if side == "left":
-                    to_move = self.lidar.get_side_distance("left", use_min=True)
-                    self.rotate_90_left(just_rotate=True)
-                if side == "right":
-                    to_move = self.lidar.get_side_distance("right", use_min=True)
-                    self.rotate_90_right(just_rotate=True)
-                self.move(
-                    "forward", Maze(self.debug_info), dist=to_move / 2, just_move=True
-                )  # TODO-: test Maze
+                if wall_token_approximation:
+                    to_move = 0.0
+                    if side == "left":
+                        to_move = self.lidar.get_side_distance("left", use_min=True)
+                        self.rotate_90_left(just_rotate=True)
+                    if side == "right":
+                        to_move = self.lidar.get_side_distance("right", use_min=True)
+                        self.rotate_90_right(just_rotate=True)
+                    self.move(
+                        "forward",
+                        Maze(self.debug_info),
+                        dist=to_move / 2,
+                        just_move=True,
+                    )  # TODO-: test Maze
                 delay(self.webots_robot, self.debug_info, 1300)
                 self.communicator.send_wall_token_information(
                     self.gps.get_position(), wall_token
                 )
-                self.move(
-                    "backward", Maze(self.debug_info), dist=to_move / 2, just_move=True
-                )  # TODO-: test Maze
-                if side == "left":
-                    self.rotate_90_right(just_rotate=True)
-                if side == "right":
-                    self.rotate_90_left(just_rotate=True)
+                if wall_token_approximation:
+                    self.move(
+                        "backward",
+                        Maze(self.debug_info),
+                        dist=to_move / 2,
+                        just_move=True,
+                    )  # TODO-: test Maze
+                    if side == "left":
+                        self.rotate_90_right(just_rotate=True)
+                    if side == "right":
+                        self.rotate_90_left(just_rotate=True)
+                if move_after_found_wall_token:
+                    self.motor.set_velocity(6.24 - 3.5, 6.24 - 3.5)
+                    delay(self.webots_robot, self.debug_info, 100)
+                    self.motor.stop()
                 found = True
         return found
 
@@ -472,9 +489,6 @@ class Robot:
         slower in the end of the movement.
         - Holes are not detected when moving backward.
         """
-        print(
-            f"  Movendo {dist=} para {direction}. {correction_move=} {just_move=} {dfs_move=}"
-        )
         found_wall_token = False
         initial_position = self.gps.get_position()
         # if self.expected_raw_angle is None:
@@ -542,7 +556,6 @@ class Robot:
                     if self.expected_position.y > initial_position.y
                     else self.expected_position.y > actual_position.y
                 ) or delta[1] == 0
-            print(f"  {actual_position}; {self.expected_position}; {initial_position=}")
 
             if dfs_move:
                 left_diagonal_distance = self.lidar.get_side_distance(

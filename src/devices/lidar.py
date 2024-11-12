@@ -52,6 +52,10 @@ class Lidar(Device):
         angle = measure_idx * (self.field_of_view / self.horizontal_resolution)
         return angle
 
+    # TODO-: unify
+    def _get_range_image_(self):
+        return self._lidar.getRangeImage()
+
     def show_initialization_information(self) -> None:
         if DEBUG:
             self.debug_info.send("\nSobre o LIDAR", System.initialization)

@@ -494,7 +494,6 @@ def classify_wall_token(
         and dist_branco > 0.053
         and qty_preto > 0
     ):
-        # distancia ideal para reconhecimento + ou - 0.06
         if classify_H_S_U(margem, image_metrics) == "H":
             wall_token = Victim.HARMED
         elif classify_H_S_U(margem, image_metrics) == "S":
