@@ -352,6 +352,7 @@ def classify_H_S_U(margem, metrics):
         preto_vertical,
     ) = metrics
 
+    print(quadrado)
     if (1 - margem) <= quadrado <= (1 + margem):
         if preto_vertical == min(
             preto_cima, preto_meio, preto_baixo, preto_vertical
@@ -472,6 +473,8 @@ def classify_wall_token(
 
     (dist_branco, qty_preto, hazmat) = image_information
     wall_token: WallToken | None = None
+
+    print(image_metrics, image_information)
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
         wall_token = HazmatSign.ORGANIC_PEROXIDE
@@ -519,7 +522,13 @@ def classify_wall_token(
 # TODO: world1.wbt pegar vítima entre dfs's
 
 
-def reconhece_lado(camera, debug_info, side: Literal["left", "right"], lidar: Lidar):
+def reconhece_lado(
+    camera,
+    debug_info,
+    side: Literal["left", "right"],
+    lidar: Lidar,
+    rotating: bool = False,
+):
     # ? FOV=20: mudei isso aqui pra pegar o quarter tile, ent so de ter parede na camera
     # ele ja vai reconhecer
     dist = (
@@ -540,6 +549,7 @@ def reconhece_lado(camera, debug_info, side: Literal["left", "right"], lidar: Li
 
     image_information = get_image_information(raw_image, side, lidar)
     # TODO: separar em reconhece perto e reconhece longe e função que identifica caso
+    print("checks:", check_robo_torto(lidar, side), rotating)
     if check_robo_torto(lidar, side):
         """
         Se a vitima (cropped image) estiver inteira na imagem, a imagem vai ser um quadrado, mas
@@ -549,6 +559,9 @@ def reconhece_lado(camera, debug_info, side: Literal["left", "right"], lidar: Li
         ir mudando essa marge, mas deve ta meio bom <= TODO
         """
         margem = 0.5
+        if rotating:
+            print("reconhece rodando")
+            margem = 3.5
     else:
         margem = 0.2
     return classify_wall_token(

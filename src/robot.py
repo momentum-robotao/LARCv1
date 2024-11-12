@@ -237,19 +237,27 @@ class Robot:
             raise LackOfProgressError()
         return self.webots_robot.step(self.time_step)
 
-    def recognize_wall_token(self) -> bool:
+    def recognize_wall_token(self, rotating=False) -> bool:
         found = False
         for side, wall_token in [
             (
                 "left",
                 reconhece_lado(
-                    self.camera._left_camera, self.debug_info, "left", self.lidar
+                    self.camera._left_camera,
+                    self.debug_info,
+                    "left",
+                    self.lidar,
+                    rotating=rotating,
                 ),
             ),
             (
                 "right",
                 reconhece_lado(
-                    self.camera._right_camera, self.debug_info, "right", self.lidar
+                    self.camera._right_camera,
+                    self.debug_info,
+                    "right",
+                    self.lidar,
+                    rotating=rotating,
                 ),
             ),
         ]:
@@ -317,7 +325,7 @@ class Robot:
             if (
                 not just_rotate
                 and not recognized_wall_token
-                and self.recognize_wall_token()
+                and self.recognize_wall_token(rotating=True)
             ):
                 recognized_wall_token = True
 
