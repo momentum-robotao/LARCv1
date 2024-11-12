@@ -213,6 +213,7 @@ class Robot:
         self.expected_angle = 0.0
         self.step()
         self.expected_position = gps.get_position()
+        self.rotating = False
 
     def show_initialization_information(self) -> None:
         self.debug_info.send(
@@ -236,20 +237,43 @@ class Robot:
     def recognize_wall_token(self) -> bool:
         print("reconhece")
         found = False
-        for wall_token in [
-            reconhece_lado(
-                self.camera._left_camera, self.debug_info, "left", self.lidar
+        for side, wall_token in [
+            (
+                "left",
+                reconhece_lado(
+                    self.camera._left_camera, self.debug_info, "left", self.lidar
+                ),
             ),
-            reconhece_lado(
-                self.camera._right_camera, self.debug_info, "right", self.lidar
+            (
+                "right",
+                reconhece_lado(
+                    self.camera._right_camera, self.debug_info, "right", self.lidar
+                ),
             ),
         ]:
             if wall_token:
                 self.motor.stop()
+                to_move = 0.0
+                if side == "left":
+                    to_move = self.lidar.get_side_distance("left", use_min=True)
+                    self.rotate_90_left(just_rotate=True)
+                if side == "right":
+                    to_move = self.lidar.get_side_distance("right", use_min=True)
+                    self.rotate_90_right(just_rotate=True)
+                self.move(
+                    "forward", Maze(self.debug_info), dist=to_move / 2, just_move=True
+                )  # TODO: test Maze
                 delay(self.webots_robot, self.debug_info, 1300)
                 self.communicator.send_wall_token_information(
                     self.gps.get_position(), wall_token
                 )
+                self.move(
+                    "backward", Maze(self.debug_info), dist=to_move / 2, just_move=True
+                )  # TODO: test Maze
+                if side == "left":
+                    self.rotate_90_right(just_rotate=True)
+                if side == "right":
+                    self.rotate_90_left(just_rotate=True)
                 found = True
         return found
 
@@ -257,19 +281,22 @@ class Robot:
         self,
         direction: Literal["left", "right"],
         turn_angle: float,
+        *,
         correction_rotation: bool = False,
         slow_down_angle: float = 0.1,
         high_speed: float = MAX_SPEED,
         low_speed: float = MAX_SPEED / 100,
+        just_rotate: bool = False,
     ) -> None:
         """
         Rotate the robot in a direction by an angle, using the motors. Uses
         `imu` to check the robot angle to rotate correctly.
         """
-        print(f"rotacionando {correction_rotation=}")
+        was_rotating = self.rotating
+        self.rotating = True
 
         recognized_wall_token = False
-        if not correction_rotation:
+        if not correction_rotation and not was_rotating:
             self.expected_angle = cyclic_angle(
                 self.expected_angle + (-1 if direction == "left" else 1) * turn_angle
             )
@@ -277,13 +304,18 @@ class Robot:
                 test_angle = test_angle_degree * DEGREE_IN_RAD
                 if abs(test_angle - self.expected_angle) <= 0.05:
                     self.expected_angle = test_angle
+
         self.motor.stop()
 
         angle_accumulated_delta = 0
         rotation_angle = self.imu.get_rotation_angle()
 
         while self.step() != -1:
-            if not recognized_wall_token and self.recognize_wall_token():
+            if (
+                not just_rotate
+                and not recognized_wall_token
+                and self.recognize_wall_token()
+            ):
                 recognized_wall_token = True
 
             new_robot_angle = self.imu.get_rotation_angle()
@@ -317,18 +349,19 @@ class Robot:
                     )
 
                 break
+        self.rotating = False
 
     def rotate_180(self) -> None:
         """Rotate 180 degrees."""
         self.rotate("right", PI)
 
-    def rotate_90_left(self) -> None:
+    def rotate_90_left(self, just_rotate=False) -> None:
         """Rotate 90 degrees to left."""
-        self.rotate("left", PI / 2)
+        self.rotate("left", PI / 2, just_rotate=just_rotate)
 
-    def rotate_90_right(self) -> None:
+    def rotate_90_right(self, just_rotate=False) -> None:
         """Rotate 90 degrees to right."""
-        self.rotate("right", PI / 2)
+        self.rotate("right", PI / 2, just_rotate=just_rotate)
 
     def rotate_to_angle(
         self,
@@ -374,6 +407,7 @@ class Robot:
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
         correction_move: bool = False,
+        just_move: bool = False,
     ) -> MovementResult:
         """
         Move the robot by certain distance in meters in some direction, using
@@ -492,8 +526,8 @@ class Robot:
                 use_min=True,
             )
             # print("diagonais", left_diagonal_distance, right_diagonal_distance)
-            left_diagonal = left_diagonal_distance <= 0.004
-            right_diagonal = right_diagonal_distance <= 0.004
+            left_diagonal = left_diagonal_distance <= 0.007
+            right_diagonal = right_diagonal_distance <= 0.007
 
             left_side_distance = self.lidar.get_side_distance(
                 cyclic_angle(
@@ -512,8 +546,8 @@ class Robot:
                 use_min=True,
             )
             # print("laterais", left_side_distance, right_side_distance)
-            left_side = left_side_distance <= 0.005
-            right_side = right_side_distance <= 0.005
+            left_side = left_side_distance <= 0.006
+            right_side = right_side_distance <= 0.006
 
             if (left_diagonal or left_side) and (right_side or right_diagonal):
                 # TODO: retornar para posição livre e desfazer movimento obstáculo
@@ -637,7 +671,7 @@ class Robot:
                 else:
                     return MovementResult.right_hole
 
-            if not found_wall_token and self.recognize_wall_token():
+            if not just_move and not found_wall_token and self.recognize_wall_token():
                 found_wall_token = True
         return MovementResult.moved
 
