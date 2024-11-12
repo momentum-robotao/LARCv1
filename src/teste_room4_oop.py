@@ -31,6 +31,7 @@ try:
     Pot0 = MAX_SPEED - 3.5
     condicao_sala4 = False
     desejada = 0.045
+    IMU_THRESHOLD = IMU_THRESHOLD=math.pi/6
 
     if ON_DOCKER:
         import requests  # type: ignore
@@ -330,6 +331,28 @@ try:
                         motor.set_velocity(Pot0, Pot0)
                     else : break
 
+            def ver_obstaculo():
+                frente = distance_sensor.pegar_distancia(distance_sensor._front)
+                tras_esquerda = distance_sensor.pegar_distancia(distance_sensor._backleft)
+                tras_direita = distance_sensor.pegar_distancia(distance_sensor._backright)
+                distancia = 0.037
+                condicao = False
+                onde = []
+                print(tras_direita)
+                if frente<distancia:
+                    condicao = True
+                    onde.append('frente')
+                if tras_esquerda<distancia:
+                    condicao = True
+                    onde.append('tras_esquerda')
+                if tras_direita<distancia:
+                    condicao = True
+                    onde.append('tras_direita')
+                return condicao, onde
+                    
+                
+                    
+
             def seguir_parede_sala4():
                 global desejada, Pot0, erro, last_error, erro2, last_error2
                 #kp = 35 
@@ -428,6 +451,10 @@ try:
                 #motor._left_motor.setVelocity(PotE)
 
                 
+                
+            
+
+
             def sala4(): 
                 global condicao_sala4
                 if color_sala4():
@@ -473,7 +500,9 @@ try:
             while robot.step() != -1:
                 
                 #x, y = get_mapa()
-                seguir_parede_sala4()
+                #seguir_parede_sala4()
+                condicao, onde = ver_obstaculo()
+                print(f"Tem obstáculo : {print(condicao)} ; onde : {print(onde)}")
                 
                 #sala4()
                 
