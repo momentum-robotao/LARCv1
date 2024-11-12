@@ -21,6 +21,7 @@ from types_and_constants import (
     TILE_SIZE,
     AreaDFSMappable,
     Coordinate,
+    LackOfProgressError,
     MovementResult,
     SpecialTileType,
     WallColisionError,

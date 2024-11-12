@@ -30,6 +30,7 @@ from types_and_constants import (
     TILE_SIZE,
     Coordinate,
     EndOfTimeError,
+    LackOfProgressError,
     MovementResult,
     WallColisionError,
 )
@@ -232,10 +233,11 @@ class Robot:
         )
 
     def step(self) -> Any:
+        if self.communicator.occured_lack_of_progress():
+            raise LackOfProgressError()
         return self.webots_robot.step(self.time_step)
 
     def recognize_wall_token(self) -> bool:
-        print("reconhece")
         found = False
         for side, wall_token in [
             (
@@ -447,7 +449,7 @@ class Robot:
         initial_position = self.gps.get_position()
         # if self.expected_raw_angle is None:
         #     self.expected_raw_angle = imu.get_rotation_angle(raw=True)
-        if not correction_move and dfs_move:
+        if not correction_move and dfs_move and not just_move:
             initial_expected_position = self.expected_position
             imu_expected_angle = cyclic_angle(
                 self.expected_angle
@@ -462,6 +464,8 @@ class Robot:
                     imu_expected_angle,
                     dist,
                 )
+        print(dist)
+        print(self.expected_position, end="\n\n")
 
         if DEBUG:
             self.debug_info.send(
@@ -499,7 +503,7 @@ class Robot:
             self.motor.set_velocity(left_velocity, right_velocity)
 
             x_traversed, y_traversed = False, False
-            if not correction_move and dfs_move:
+            if not correction_move and dfs_move and not just_move:
                 x_traversed = (
                     self.expected_position.x < actual_position.x
                     if self.expected_position.x > initial_position.x
@@ -599,7 +603,10 @@ class Robot:
 
             if (
                 (x_traversed and y_traversed)
-                if not correction_move and not found_obstacle and dfs_move
+                if not correction_move
+                and not found_obstacle
+                and dfs_move
+                and not just_move
                 else traversed_dist >= dist
             ):
                 self.motor.stop()

@@ -469,11 +469,9 @@ def classify_wall_token(
             preto_baixo,
             preto_vertical,
         ) = image_metrics
-        print(preto_meio)
 
     (dist_branco, qty_preto, hazmat) = image_information
     wall_token: WallToken | None = None
-    print(qty_preto)
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
         wall_token = HazmatSign.ORGANIC_PEROXIDE

@@ -31,6 +31,7 @@ try:
         ON_DOCKER,
         Coordinate,
         EndOfTimeError,
+        LackOfProgressError,
         SpecialTileType,
     )
 
@@ -218,6 +219,9 @@ try:
         try:
             solve_map(robot, debug_info, maze)
         except EndOfTimeError:
+            pass
+        except LackOfProgressError:
+            print("LoP")
             pass
         except Exception:
             if DEBUG:
