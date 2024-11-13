@@ -21,7 +21,6 @@ WallToken = HazmatSign | Victim
 
 
 DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
-ON_DOCKER = ((os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]) and DEBUG
 
 PI = 3.14159265359
 DEGREE_IN_RAD = 0.0174533
@@ -47,11 +46,6 @@ DIAGONAL_MAX_DIST_IF_WALL1 = (
 DIAGONAL_MAX_DIST_IF_WALL2 = (
     0.135481996  # 0.5*TILE_SIZE*cos 25°*(1+3*((1-tg 25)/(2*tg 25)))
 )
-
-if ON_DOCKER:
-    NGROK_URL = ""
-    with open("./ngrok.txt", "r") as file:
-        NGROK_URL = file.readlines()[0]
 
 AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]

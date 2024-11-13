@@ -5,7 +5,10 @@ from enum import Enum
 from logging import Logger, LogRecord
 from typing import Literal
 
-from types_and_constants import DEBUG, ON_DOCKER
+from types_and_constants import DEBUG
+
+if DEBUG:
+    import requests  # type: ignore
 
 
 class System(Enum):
@@ -51,20 +54,19 @@ ALL_SYSTEMS = [system for system in System]
 class DebugInfo:
     def __init__(
         self,
-        logger: Logger,
+        logger: Logger | None,
         systems_to_debug: list[System] | None = None,
         systems_to_ignore: list[System] | None = None,
     ) -> None:
         self.systems_to_debug = systems_to_debug or []
         self.systems_to_ignore = systems_to_ignore or []
         self.logger = logger
-        if not DEBUG:
-            self.systems_to_debug = []
-        self.send(
-            "Inicializado `DebugInfo`.\n"
-            f"Debugar: {self.systems_to_debug}\nIgnorar: {self.systems_to_ignore}",
-            System.debug_info,
-        )
+        if DEBUG:
+            self.send(
+                "Inicializado `DebugInfo`.\n"
+                f"Debugar: {self.systems_to_debug}\nIgnorar: {self.systems_to_ignore}",
+                System.debug_info,
+            )
 
     def send(
         self,
@@ -72,8 +74,11 @@ class DebugInfo:
         system_being_debugged: System,
         level: Literal["info", "error", "debug", "warning", "critical"] = "info",
     ) -> None:
+        if not DEBUG or self.logger is None:
+            return
+
         if system_being_debugged not in self.systems_to_debug:
-            if DEBUG and system_being_debugged not in self.systems_to_ignore:
+            if system_being_debugged not in self.systems_to_ignore:
                 self.logger.debug(f"{system_being_debugged} => {message}")
             return
         if level in ["error", "critical"]:
@@ -82,10 +87,6 @@ class DebugInfo:
             )
         else:
             getattr(self.logger, level)(f"{system_being_debugged} => {message}")
-
-
-if ON_DOCKER:
-    import requests  # type: ignore
 
 
 class HttpHandler(logging.Handler):
@@ -101,6 +102,8 @@ class HttpHandler(logging.Handler):
         self.entries_between_sends = entries_between_sends
 
     def send_queue_data(self):
+        if not DEBUG:
+            return
         response = requests.post(self.url, json={"new_entries": self.log_queue})
         if response.text != "ok":
             print(
@@ -112,6 +115,8 @@ class HttpHandler(logging.Handler):
         self.log_queue = ""
 
     def emit(self, record: LogRecord) -> None:
+        if not DEBUG:
+            return
         self.log_queue += f"{self.format(record)}\n"
         self.log_counter += 1
         if self.log_counter % self.entries_between_sends == 0:

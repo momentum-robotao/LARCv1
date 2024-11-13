@@ -3,284 +3,91 @@
 # print(sys.path)  # ? para ver path do controller
 
 try:
-    import logging
     import os
-    from datetime import datetime
 
-    from controller import Robot as WebotsRobot  # type: ignore
-
-    from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
-    from devices import (
-        GPS,
-        IMU,
-        Camera,
-        ColorSensor,
-        Communicator,
-        DistanceSensor,
-        Lidar,
-        Motor,
-    )
-    from dfs import dfs
-    from helpers import delay
+    from debugging import DebugInfo
+    from end_of_play import end_of_play_routine
     from maze import Maze
-    from robot import Robot, set_dist_change_mapper
-    from types_and_constants import (
-        DEBUG,
-        DEGREE_IN_RAD,
-        NGROK_URL,
-        ON_DOCKER,
-        Coordinate,
-        EndOfTimeError,
-        LackOfProgressError,
-        SpecialTileType,
-    )
+    from setup import setup_debuggers, setup_delta_coordinate_mapper, setup_robot
+    from solve_map import solve_map
+    from types_and_constants import DEBUG, EndOfTimeError, LackOfProgressError
 
-    if ON_DOCKER:
-        import requests  # type: ignore
+    if DEBUG:
+        http_handler, debug_info = setup_debuggers()
+    else:
+        debug_info = DebugInfo(logger=None)
 
-    # Initialize logger
+    robot = setup_robot(debug_info)
+    maze = Maze(debug_info)
+
     try:
-        log_dir = os.path.dirname(os.getenv("LOG_PATH", ""))
-        os.makedirs(log_dir, exist_ok=True)
-        logging.basicConfig(
-            level=logging.DEBUG,
-            format="%(levelname)s %(message)s",
-            filename=os.getenv("LOG_PATH"),
-        )
-        logger = logging.getLogger("Robo LARC v1")
-        logger.info(f"Criado log com sucesso em: {os.getenv('LOG_PATH')}")
-        if ON_DOCKER:
-            print(f"Url do ngrok recuperada: {NGROK_URL}")
-
-            requests.post(f"{NGROK_URL}/start_simulation")
-
-            http_handler = HttpHandler(f"{NGROK_URL}/send")
-            http_handler.setLevel(logging.DEBUG)
-            formatter = logging.Formatter("%(levelname)s %(message)s")
-            http_handler.setFormatter(formatter)
-            logger.addHandler(http_handler)
-
-            print("Adicionado handler com ngrok")
-
+        setup_delta_coordinate_mapper(robot, maze)
+        solve_map(robot, debug_info, maze)
+    except EndOfTimeError:
+        pass
+    except LackOfProgressError:
+        pass
     except Exception:
         if DEBUG:
-            logging.error("Erro ao inicializar o logger", exc_info=True)
+            from debugging import System
+
+            debug_info.send(
+                "Erro inesperado enquanto resolvia o mapa",
+                System.unknown_error,
+                "critical",
+            )
             raise
 
-    def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
-        robot.imu.get_rotation_angle()
-        initial_position = robot.gps.get_position()
-        robot.move(
-            "forward",
-            maze,
-            dist=0.01,
-            correction_move=True,
-        )
-        delta_0_cord = robot.gps.get_position() - initial_position
-        delta_0 = (delta_0_cord.x, delta_0_cord.y)
-        robot.move(
-            "backward",
-            maze,
-            dist=0.01,
-            correction_move=True,
-        )
-        robot.rotate("right", 45 * DEGREE_IN_RAD, correction_rotation=True)
-        initial_position = robot.gps.get_position()
-        robot.move(
-            "forward",
-            maze,
-            dist=0.01,
-            correction_move=True,
-        )
-        delta_45_cord = robot.gps.get_position() - initial_position
-        delta_45 = (delta_45_cord.x, delta_45_cord.y)
-        robot.move(
-            "backward",
-            maze,
-            dist=0.01,
-            correction_move=True,
-        )
-        robot.rotate("left", 45 * DEGREE_IN_RAD, correction_rotation=True)
-        set_dist_change_mapper(delta_0, delta_45)
+    end_of_play_routine(robot, maze, debug_info)
 
-        # for ang in [0, 45, 90, 135, 180, 225, 270, 315, 360]:
-        #     robot.motor.expected_angle = robot.imu.get_rotation_angle()
-        #     robot.motor.expected_position = robot.gps.get_position()
-        #     robot.motor.rotate("right", ang * DEGREE_IN_RAD, robot.imu)
-        #     cnt = 0
-        #     while robot.webots_robot.step(32) != -1:
-        #         print("começa", robot.gps.get_position())
-        #         robot.motor.move(
-        #             "frontward", e testa backward
-        #             robot.gps,
-        #             robot.lidar,
-        #             robot.color_sensor,
-        #             robot.imu,
-        #             robot.distance_sensor,
-        #             robot.webots_robot,
-        #         )
-        #         print("termina", robot.gps.get_position())
-        #         print("================")
-        #         cnt += 1
-        #         if cnt == 2:
-        #             break
-        #     print("------------------")
-        #     robot.communicator.send_lack_of_progress()
-        #     import time
-
-        #     time.sleep(1)
-
-        position = Coordinate(0, 0)
-        maze.set_tile_type(position, SpecialTileType.STARTING)
-        position = dfs(position, maze, robot, debug_info, area=1, starting=True)
-
-    def main() -> None:
-        # Initialize DebugInfo instance
-        if DEBUG:
-            logger.info(f"Começando nova execução: {datetime.now()}")
-
-        try:
-            want = [
-                System.unknown_error,
-            ]
-            # want = ALL_SYSTEMS
-            debug_info = DebugInfo(
-                logger,
-                systems_to_debug=want,
-                systems_to_ignore=[
-                    e for e in ALL_SYSTEMS if str(e) not in [str(w) for w in want]
-                ],
-            )
-        except Exception:
-            if DEBUG:
-                logger.error("Erro ao inicializar o debug info", exc_info=True)
-                raise
-
-        # Initialize robot and devices
-        try:
-            webots_robot = WebotsRobot()
-            webots_robot.step(int(os.getenv("TIME_STEP", 32)))
-            lidar = Lidar(webots_robot, debug_info)
-            gps = GPS(webots_robot, debug_info)
-            motor = Motor(webots_robot, debug_info)
-            imu = IMU(webots_robot, debug_info)
-            color_sensor = ColorSensor(webots_robot, debug_info)
-            communicator = Communicator(webots_robot, debug_info)
-            camera = Camera(webots_robot, debug_info)
-            distance_sensor = DistanceSensor(webots_robot, debug_info)
-        except Exception:
-            if DEBUG:
-                debug_info.send(
-                    "Erro durante inicialização dos devices",
-                    System.initialization,
-                    "error",
-                )
-                raise
-
-        try:
-            robot = Robot(
-                webots_robot,
-                motor,
-                lidar,
-                gps,
-                imu,
-                color_sensor,
-                communicator,
-                camera,
-                distance_sensor,
-                debug_info=debug_info,
-            )
-            robot.step()
-        except Exception:
-            if DEBUG:
-                debug_info.send(
-                    "Erro durante inicialização do robô", System.initialization, "error"
-                )
-                raise
-
-        maze = Maze(debug_info)
-
-        # Solve map
-        try:
-            solve_map(robot, debug_info, maze)
-        except EndOfTimeError:
-            pass
-        except LackOfProgressError:
-            print("LoP")
-            pass
-        except Exception:
-            if DEBUG:
-                debug_info.send(
-                    "Erro inesperado enquanto resolvia o mapa",
-                    System.unknown_error,
-                    "critical",
-                )
-                raise
-
-        # Routine to inform supervisor about the end of play. In the end, we get map bonus
-        try:
-            answer_maze = maze.get_answer_maze()
-            communicator.send_maze(answer_maze)
-            communicator.send_end_of_play()
-            delay(webots_robot, debug_info, 5000)
-        except Exception as err:
-            if DEBUG:
-                debug_info.send(
-                    "Erro inesperado enquanto finalizava o jogo e enviava o mapa",
-                    System.unknown_error,
-                    "critical",
-                )
-                print(f"Erro ao finalizar jogo e enviar mapa: {err}")
-                raise
-
-    try:
-        main()
-    except Exception:
-        pass
-    http_handler.send_queue_data()
+    if DEBUG:
+        http_handler.send_queue_data()
 except Exception as err:
+    # ? For debugging purpouses
+    DEBUG = (os.getenv("DEBUG", "") + " ").upper()[0] in ["T", "1"]
+
+    if not DEBUG:
+        raise
+
     from controller import Robot as WebotsRobot  # type: ignore
 
     webots_robot = WebotsRobot()
     webots_robot.step(int(os.getenv("TIME_STEP", 32)))
     print(err)
 
-    if (os.getenv("ON_DOCKER", "") + " ").upper()[0] in ["T", "1"]:
-        import logging
+    import logging
 
-        import requests  # type: ignore
+    import requests  # type: ignore
 
-        class HttpHandler(logging.Handler):  # type: ignore
-            def __init__(
-                self,
-                url: str,
-            ):
-                self.url = url
-                logging.Handler.__init__(self=self)
+    class HttpHandler(logging.Handler):  # type: ignore
+        def __init__(
+            self,
+            url: str,
+        ):
+            self.url = url
+            logging.Handler.__init__(self=self)
 
-            def emit(self, record: logging.LogRecord) -> None:
-                requests.post(
-                    self.url, json={"new_entries": f"{self.format(record)}\n"}
-                )
+        def emit(self, record: logging.LogRecord) -> None:
+            requests.post(self.url, json={"new_entries": f"{self.format(record)}\n"})
 
-        logging.basicConfig()
-        logger = logging.getLogger("Robo LARC v1")
+    logging.basicConfig()
+    logger = logging.getLogger("Robo LARC v1")
 
-        NGROK_URL = ""
-        with open("./ngrok.txt", "r") as file:
-            NGROK_URL = file.readlines()[0]
-        print(f"Url do ngrok recuperada: {NGROK_URL}")
+    NGROK_URL = ""
+    with open("./ngrok.txt", "r") as file:
+        NGROK_URL = file.readlines()[0]
+    print(f"Url do ngrok recuperada: {NGROK_URL}")
 
-        try:
-            resp = requests.post(f"{NGROK_URL}/start_simulation")
-            print(resp.text)
-        except Exception as e:
-            print(f"Erro: {e}")
+    try:
+        resp = requests.post(f"{NGROK_URL}/start_simulation")
+        print(resp.text)
+    except Exception as e:
+        print(f"Erro: {e}")
 
-        http_handler = HttpHandler(f"{NGROK_URL}/send")
-        http_handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter("%(levelname)s %(message)s")
-        http_handler.setFormatter(formatter)
-        logger.addHandler(http_handler)
+    http_handler = HttpHandler(f"{NGROK_URL}/send")
+    http_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter("%(levelname)s %(message)s")
+    http_handler.setFormatter(formatter)
+    logger.addHandler(http_handler)
 
-        logger.critical("erro geral", exc_info=True)
+    logger.critical("erro geral", exc_info=True)

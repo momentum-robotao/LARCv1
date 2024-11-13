@@ -500,7 +500,7 @@ def classify_wall_token(
             wall_token = Victim.STABLE
         elif classify_H_S_U(margem, image_metrics) == "U":
             wall_token = Victim.UNHARMED
-        else:
+        elif DEBUG:
             print("TODO-: há vítima, fazer estratégia pra 'encaixá-la'")
     elif dist_branco < 0.053 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":

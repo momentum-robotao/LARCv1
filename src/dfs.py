@@ -88,7 +88,6 @@ def adjust_wall_distance(
         )
         <= 0.03
     ):
-        print("não ajusta: obstáculo")
         return
 
     if angle_error <= -angle_max_error:
@@ -167,9 +166,6 @@ def dfs(
 
     :return: The final position of the robot.
     """
-    print(
-        f"DFS {position=}; {robot.expected_position}; {robot.expected_angle / DEGREE_IN_RAD}"
-    )
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 

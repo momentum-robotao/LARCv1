@@ -251,7 +251,6 @@ class Robot:
         if self.communicator.occured_lack_of_progress():
             raise LackOfProgressError()
         actual_time_ms = round(time.time() * 1000)
-        print(actual_time_ms - self.last_check_time_ms)
         if actual_time_ms - self.last_check_time_ms >= 2000:
             self.check_time()
         return self.webots_robot.step(self.time_step)
@@ -636,7 +635,7 @@ class Robot:
                     found_obstacle = True
                     return MovementResult.moved
 
-                if found_obstacle:
+                if DEBUG and found_obstacle:
                     print("TODO-: deixar 'branco' no mapa")
 
             x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
