@@ -522,6 +522,8 @@ class Robot:
             )
 
         found_obstacle = False
+        found_hole_type = None
+        blocking = False
 
         # print(f"  Movendo {dist=} em {direction}")
         # print(
@@ -610,9 +612,21 @@ class Robot:
                 left_side = left_side_distance <= 0.006
                 right_side = right_side_distance <= 0.006
 
-                if (left_diagonal or left_side) and (right_side or right_diagonal):
-                    # TODO+: retornar para posição livre e desfazer movimento obstáculo
-                    raise WallColisionError()
+                if (
+                    (left_diagonal or left_side)
+                    and (right_side or right_diagonal)
+                    and DEBUG
+                ):
+                    print("obstáculo duplo")
+                if (
+                    (left_diagonal or left_side)
+                    and (right_side or right_diagonal)
+                    and not just_move
+                ):
+                    # TODO-: desfazer movimento obstáculo ou GPS arruma depois já?
+                    found_obstacle = True
+                    blocking = True
+                    break
 
                 if left_diagonal or left_side:
                     self.motor.stop()
@@ -637,19 +651,6 @@ class Robot:
                     )
                     self.rotate_90_right()
                     found_obstacle = True
-
-                front_distance = self.lidar.get_side_distance(
-                    180 * DEGREE_IN_RAD if direction == "backward" else 0,
-                    field_of_view=30 * DEGREE_IN_RAD,
-                    use_min=True,
-                )
-                if front_distance < 0.01:
-                    self.motor.stop()
-                    found_obstacle = True
-                    return MovementResult.moved
-
-                if DEBUG and found_obstacle:
-                    print("TODO-: deixar 'branco' no mapa")
 
             x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
@@ -681,27 +682,15 @@ class Robot:
                 and not returning_to_safe_position
                 and dfs_move
             ):
-                self.motor.stop()
-                self.expected_position = initial_expected_position
-                self.move(
-                    "backward" if direction == "forward" else "forward",
-                    maze,
-                    dist=traversed_dist,
-                    slow_down_dist=slow_down_dist,
-                    high_speed=high_speed,
-                    slow_down_speed=slow_down_speed,
-                    kp=kp,
-                    expected_wall_distance=expected_wall_distance,
-                    returning_to_safe_position=True,  # TODO+: lidar com esse caso na dfs como parede e returning_to_safe_position desfazer movimento que é feito para obstáculo
-                )
+                blocking = True
 
                 if DEBUG:
                     self.debug_info.send(
-                        "Retornou à posição antiga após colidir com parede.",
+                        "Retornará à posição antiga após colidir com parede.",
                         System.lidar_wall_detection,
                     )
 
-                raise WallColisionError()
+                break
 
             hole = self.distance_sensor.detect_hole()
             if (
@@ -713,34 +702,42 @@ class Robot:
                 and dfs_move
                 and not correction_move
             ):
-                self.motor.stop()
-                self.expected_position = initial_expected_position
-
-                self.move(
-                    "backward" if direction == "forward" else "forward",
-                    maze,
-                    dist=traversed_dist,
-                    slow_down_dist=slow_down_dist,
-                    high_speed=high_speed,
-                    slow_down_speed=slow_down_speed,
-                    kp=kp,
-                    expected_wall_distance=expected_wall_distance,
-                    returning_to_safe_position=True,
-                )
-
                 if DEBUG:
                     self.debug_info.send(
-                        "Retornou à posição antiga após achar buraco.",
+                        "Retornará à posição antiga após achar buraco.",
                         System.hole_detection,
                     )
 
+                blocking = True
                 if hole == "central":
-                    return MovementResult.central_hole
+                    found_hole_type = MovementResult.central_hole
                 elif hole == "left":
-                    return MovementResult.left_hole
+                    found_hole_type = MovementResult.left_hole
                 else:
-                    return MovementResult.right_hole
+                    found_hole_type = MovementResult.right_hole
+                break
 
             if not just_move and not found_wall_token and self.recognize_wall_token():
                 found_wall_token = True
+
+        if blocking:  # ? hole, obstacle or unexpected wall collision
+            self.motor.stop()
+            self.expected_position = initial_expected_position
+            self.move(
+                "backward" if direction == "forward" else "forward",
+                maze,
+                dist=traversed_dist,
+                slow_down_dist=slow_down_dist,
+                high_speed=high_speed,
+                slow_down_speed=slow_down_speed,
+                kp=kp,
+                expected_wall_distance=expected_wall_distance,
+                returning_to_safe_position=True,
+            )
+            if found_hole_type:
+                return found_hole_type
+            if DEBUG and found_obstacle:
+                print("TODO-: deixar 'branco' no mapa")
+            raise WallColisionError()
+
         return MovementResult.moved
