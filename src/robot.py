@@ -289,10 +289,14 @@ class Robot:
                 if wall_token_approximation:
                     to_move = 0.0
                     if side == "left":
-                        to_move = self.lidar.get_side_distance("left", use_min=True)
+                        to_move = self.lidar.get_side_distance(
+                            "left", use_min=True, field_of_view=40 * DEGREE_IN_RAD
+                        )
                         self.rotate_90_left(just_rotate=True)
                     if side == "right":
-                        to_move = self.lidar.get_side_distance("right", use_min=True)
+                        to_move = self.lidar.get_side_distance(
+                            "right", use_min=True, field_of_view=40 * DEGREE_IN_RAD
+                        )
                         self.rotate_90_right(just_rotate=True)
                     self.move(
                         "forward",
@@ -571,7 +575,7 @@ class Robot:
                     else self.expected_position.y > actual_position.y
                 ) or delta[1] == 0
 
-            if dfs_move:
+            if dfs_move and not just_move:
                 left_diagonal_distance = self.lidar.get_side_distance(
                     cyclic_angle(
                         315 * DEGREE_IN_RAD
@@ -681,6 +685,7 @@ class Robot:
                 self.lidar.wall_collision("front" if direction == "forward" else "back")
                 and not returning_to_safe_position
                 and dfs_move
+                and not just_move
             ):
                 blocking = True
 
@@ -701,6 +706,7 @@ class Robot:
                 )
                 and dfs_move
                 and not correction_move
+                and not just_move
             ):
                 if DEBUG:
                     self.debug_info.send(
