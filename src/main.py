@@ -49,10 +49,10 @@ except Exception as err:
     if not DEBUG:
         raise
 
-    from controller import Robot as WebotsRobot  # type: ignore
+    # from controller import Robot as WebotsRobot  # type: ignore
 
-    webots_robot = WebotsRobot()
-    webots_robot.step(int(os.getenv("TIME_STEP", 32)))
+    # webots_robot = WebotsRobot()
+    # webots_robot.step(int(os.getenv("TIME_STEP", 32)))
     print(err)
 
     import logging
@@ -73,7 +73,6 @@ except Exception as err:
     logging.basicConfig()
     logger = logging.getLogger("Robo LARC v1")
 
-    NGROK_URL = ""
     with open("./ngrok.txt", "r") as file:
         NGROK_URL = file.readlines()[0]
     print(f"Url do ngrok recuperada: {NGROK_URL}")

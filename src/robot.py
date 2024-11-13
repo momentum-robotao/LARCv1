@@ -216,7 +216,7 @@ class Robot:
         self.expected_angle = 0.0
         self.step()
         self.expected_position = gps.get_position()
-        self.rotating = False
+        self.rotating = 0
         # ? 5 primeiros minutos não checa tempo. Depois a cada 2 segs
         self.last_check_time_ms = round(time.time() * 1000) + 5 * 60 * 1000
 
@@ -338,9 +338,13 @@ class Robot:
         Rotate the robot in a direction by an angle, using the motors. Uses
         `imu` to check the robot angle to rotate correctly.
         """
-        was_rotating = self.rotating
-        self.rotating = True
+        was_rotating = self.rotating > 0
+        self.rotating += 1
 
+        # print(
+        #     f"     rotacionando {turn_angle / DEGREE_IN_RAD} para {direction}. Era {self.expected_angle / DEGREE_IN_RAD}"
+        # )
+        # print(f"     {correction_rotation=} {just_rotate=} {was_rotating=}")
         recognized_wall_token = False
         if not correction_rotation and not was_rotating and dfs_rotation:
             self.expected_angle = cyclic_angle(
@@ -355,6 +359,9 @@ class Robot:
 
         angle_accumulated_delta = 0
         rotation_angle = self.imu.get_rotation_angle()
+        # print(
+        #     f"    Tá {rotation_angle / DEGREE_IN_RAD}, Esperado: {self.expected_angle / DEGREE_IN_RAD}"
+        # )
 
         while self.step() != -1:
             if (
@@ -395,7 +402,7 @@ class Robot:
                     )
 
                 break
-        self.rotating = False
+        self.rotating -= 1
 
     def rotate_180(self) -> None:
         """Rotate 180 degrees."""
@@ -515,6 +522,12 @@ class Robot:
             )
 
         found_obstacle = False
+
+        # print(f"  Movendo {dist=} em {direction}")
+        # print(
+        #     f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}"
+        # )
+        # print(f"  {initial_position=}; {self.expected_position=}")
 
         while self.step() != -1:
             actual_position = self.gps.get_position()
@@ -641,6 +654,9 @@ class Robot:
             x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
+
+            # print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
+            # print(f"    {actual_position=}")
 
             if (
                 (x_traversed and y_traversed)
