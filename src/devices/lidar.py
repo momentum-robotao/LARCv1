@@ -238,7 +238,7 @@ class Lidar(Device):
         side: Literal["front", "back"],
         wall_collision_dist: float = WALL_COLLISION_DISTANCE,
     ) -> bool:
-        wall_dist = self.get_side_distance(side)
+        wall_dist = self.get_side_distance(side, use_min=True)
         wall_collision = wall_dist <= wall_collision_dist
         if DEBUG:
             if wall_collision:

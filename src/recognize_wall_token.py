@@ -476,8 +476,10 @@ def classify_wall_token(
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
         wall_token = HazmatSign.ORGANIC_PEROXIDE
+        print("peroxide")
     elif check_flamable_gas(raw_image, side, lidar):
         wall_token = HazmatSign.FLAMMABLE_GAS
+        print("gas")
     elif image_metrics is None:
         pass
     elif (
@@ -487,27 +489,35 @@ def classify_wall_token(
     ):
         if qty_preto < 50:
             wall_token = HazmatSign.POISON
+            print("poison")
         elif qty_preto > 0:
             wall_token = HazmatSign.CORROSIVE
+            print("corrosive")
     elif (
         dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
         and dist_branco > 0.053
         and qty_preto > 0
     ):
         if classify_H_S_U(margem, image_metrics) == "H":
+            print("h")
             wall_token = Victim.HARMED
         elif classify_H_S_U(margem, image_metrics) == "S":
+            print("s")
             wall_token = Victim.STABLE
         elif classify_H_S_U(margem, image_metrics) == "U":
+            print("u")
             wall_token = Victim.UNHARMED
         elif DEBUG:
             print("TODO-: há vítima, fazer estratégia pra 'encaixá-la'")
     elif dist_branco < 0.053 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":
+            print("h perto")
             wall_token = Victim.HARMED
         if H_S_U_perto(raw_image) == "S":
+            print("s perto")
             wall_token = Victim.STABLE
         if H_S_U_perto(raw_image) == "U":
+            print("u perto")
             wall_token = Victim.UNHARMED
     else:  # ? não tem vítima nenhuma na imagem
         pass
