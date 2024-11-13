@@ -251,7 +251,7 @@ class Robot:
         if self.communicator.occured_lack_of_progress():
             raise LackOfProgressError()
         actual_time_ms = round(time.time() * 1000)
-        if actual_time_ms - self.last_check_time_ms >= 2000:
+        if actual_time_ms - self.last_check_time_ms >= 1000:
             self.check_time()
         return self.webots_robot.step(self.time_step)
 
