@@ -37,7 +37,11 @@ AnswerMaze = list[list[str]]
 
 def get_needed_map_size(objects_maze: ObjectsMaze) -> tuple[int, int]:
     x_tiles = max(objects_maze) - min(objects_maze) + 1
-    y_tiles = max(max(objects_maze[x]) - min(objects_maze[x]) + 1 for x in objects_maze)
+    y_tiles = (
+        max(max(objects_maze[x]) for x in objects_maze)
+        - min(min(objects_maze[x]) for x in objects_maze)
+        + 1
+    )
     return (y_tiles * 4 + 1, x_tiles * 4 + 1)
 
 
