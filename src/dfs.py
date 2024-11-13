@@ -201,6 +201,13 @@ def dfs(
         )
         robot.rotate_180()
 
+    if colored_tile in [
+        SpecialTileType.PASSAGE_1_4,
+        SpecialTileType.PASSAGE_2_4,
+        SpecialTileType.PASSAGE_3_4,
+    ]:
+        return
+
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
     for delta_angle_in_degree in [0, 90, -90] + ([180] if starting else []):
