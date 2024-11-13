@@ -473,21 +473,27 @@ def classify_wall_token(
     (dist_branco, qty_preto, hazmat) = image_information
     wall_token: WallToken | None = None
 
+    print(image_metrics, image_information)
+
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
+        print('O')
         wall_token = HazmatSign.ORGANIC_PEROXIDE
     elif check_flamable_gas(raw_image, side, lidar):
+        print('F')
         wall_token = HazmatSign.FLAMMABLE_GAS
     elif image_metrics is None:
         pass
     elif (
         hazmat >= 4
         and dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
-        and (preto_meio > 800 or qty_preto > 0)
+        and (preto_meio > 500 or qty_preto > 0)
     ):
         if qty_preto < 50:
+            print('P')
             wall_token = HazmatSign.POISON
         elif qty_preto > 0:
+            print('C')
             wall_token = HazmatSign.CORROSIVE
     elif (
         dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
@@ -495,19 +501,25 @@ def classify_wall_token(
         and qty_preto > 0
     ):
         if classify_H_S_U(margem, image_metrics) == "H":
+            print('H')
             wall_token = Victim.HARMED
         elif classify_H_S_U(margem, image_metrics) == "S":
+            print('S')
             wall_token = Victim.STABLE
         elif classify_H_S_U(margem, image_metrics) == "U":
+            print('U')
             wall_token = Victim.UNHARMED
         elif DEBUG:
             print("TODO-: há vítima, fazer estratégia pra 'encaixá-la'")
     elif dist_branco < 0.053 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":
+            print('H')
             wall_token = Victim.HARMED
         if H_S_U_perto(raw_image) == "S":
+            print('S')
             wall_token = Victim.STABLE
         if H_S_U_perto(raw_image) == "U":
+            print('U')
             wall_token = Victim.UNHARMED
     else:  # ? não tem vítima nenhuma na imagem
         pass
@@ -552,9 +564,9 @@ def reconhece_lado(
         """
         margem = 0.5
         if rotating:
-            margem = 1.2
+            margem = 0.7
     else:
-        margem = 0.2
+        margem = 0.16
     return classify_wall_token(
         image_information, raw_image, dist, debug_info, margem, side, lidar
     )
