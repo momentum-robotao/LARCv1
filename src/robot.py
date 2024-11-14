@@ -298,6 +298,7 @@ class Robot:
                             "right", use_min=True, field_of_view=40 * DEGREE_IN_RAD
                         )
                         self.rotate_90_right(just_rotate=True)
+                    print("avança vítima")
                     self.move(
                         "forward",
                         Maze(self.debug_info),
@@ -309,6 +310,7 @@ class Robot:
                     self.gps.get_position(), wall_token
                 )
                 if wall_token_approximation:
+                    print("retorna vítima")
                     self.move(
                         "backward",
                         Maze(self.debug_info),
@@ -345,10 +347,10 @@ class Robot:
         was_rotating = self.rotating > 0
         self.rotating += 1
 
-        # print(
-        #     f"     rotacionando {turn_angle / DEGREE_IN_RAD} para {direction}. Era {self.expected_angle / DEGREE_IN_RAD}"
-        # )
-        # print(f"     {correction_rotation=} {just_rotate=} {was_rotating=}")
+        print(
+            f"     rotacionando {turn_angle / DEGREE_IN_RAD} para {direction}. Era {self.expected_angle / DEGREE_IN_RAD}"
+        )
+        print(f"     {correction_rotation=} {just_rotate=} {was_rotating=}")
         recognized_wall_token = False
         if not correction_rotation and not was_rotating and dfs_rotation:
             self.expected_angle = cyclic_angle(
@@ -363,9 +365,9 @@ class Robot:
 
         angle_accumulated_delta = 0
         rotation_angle = self.imu.get_rotation_angle()
-        # print(
-        #     f"    Tá {rotation_angle / DEGREE_IN_RAD}, Esperado: {self.expected_angle / DEGREE_IN_RAD}"
-        # )
+        print(
+            f"    Tá {rotation_angle / DEGREE_IN_RAD}, Esperado: {self.expected_angle / DEGREE_IN_RAD}"
+        )
 
         while self.step() != -1:
             if (
@@ -529,11 +531,11 @@ class Robot:
         found_hole_type = None
         blocking = False
 
-        # print(f"  Movendo {dist=} em {direction}")
-        # print(
-        #     f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}"
-        # )
-        # print(f"  {initial_position=}; {self.expected_position=}")
+        print(f"  Movendo {dist=} em {direction}")
+        print(
+            f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}"
+        )
+        print(f"  {initial_position=}; {self.expected_position=}")
 
         while self.step() != -1:
             actual_position = self.gps.get_position()
@@ -633,6 +635,7 @@ class Robot:
                     break
 
                 if left_diagonal or left_side:
+                    print("ajusta obstáculo esquerdo")
                     self.motor.stop()
                     self.rotate_90_right()
                     self.move(
@@ -645,6 +648,7 @@ class Robot:
                     found_obstacle = True
 
                 if right_diagonal or right_side:
+                    print("ajusta obstáculo direito")
                     self.motor.stop()
                     self.rotate_90_left()
                     self.move(
@@ -660,8 +664,8 @@ class Robot:
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
 
-            # print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
-            # print(f"    {actual_position=}")
+            print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
+            print(f"    {actual_position=}")
 
             if (
                 (x_traversed and y_traversed)
@@ -680,6 +684,11 @@ class Robot:
                     )
 
                 break
+
+            if DEBUG and self.lidar.wall_collision(
+                "front" if direction == "forward" else "back"
+            ):
+                print("seria colisão")
 
             if (
                 self.lidar.wall_collision("front" if direction == "forward" else "back")
@@ -729,6 +738,7 @@ class Robot:
         if blocking:  # ? hole, obstacle or unexpected wall collision
             self.motor.stop()
             self.expected_position = initial_expected_position
+            print("bloquado, retorna")
             self.move(
                 "backward" if direction == "forward" else "forward",
                 maze,
