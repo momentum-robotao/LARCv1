@@ -139,10 +139,7 @@ def check_organic_peroxide(  # TODO-: juntar dist_branco, check_flamable
 
             distance_to_farthest_point = get_distance(lidar_index, lidar)
 
-            if (
-                distance_to_farthest_point < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
-                and non_black_pixels > 60
-            ):
+            if distance_to_farthest_point < 0.06 and non_black_pixels > 60:
                 return True
 
     return False
@@ -194,10 +191,7 @@ def check_flamable_gas(raw_image, side: Literal["left", "right"], lidar: Lidar) 
 
             distance_to_farthest_point = get_distance(lidar_index, lidar)
 
-            if (
-                distance_to_farthest_point < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
-                and non_black_pixels > 60
-            ):
+            if distance_to_farthest_point < 0.06 and non_black_pixels > 60:
                 return True
 
     return False

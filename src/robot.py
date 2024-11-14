@@ -114,9 +114,9 @@ def expected_gps_after_move(
 def rotation_velocity_controller(
     angle_to_rotate: float,
     direction: Literal["left", "right"],
-    slow_down_angle: float = 0.1,
-    high_speed: float = MAX_SPEED,
-    low_speed: float = MAX_SPEED / 100,
+    slow_down_angle: float = 0.5,
+    high_speed: float = MAX_SPEED / 5,
+    low_speed: float = MAX_SPEED / 20,
 ) -> tuple[float, float]:
     """
     It returns the `high_speed` if the robot has already to rotate a lot
@@ -346,6 +346,7 @@ class Robot:
         """
         was_rotating = self.rotating > 0
         self.rotating += 1
+        rotation_angle = self.imu.get_rotation_angle()
 
         print(
             f"     rotacionando {turn_angle / DEGREE_IN_RAD} para {direction}. Era {self.expected_angle / DEGREE_IN_RAD}"
@@ -360,11 +361,20 @@ class Robot:
                 test_angle = test_angle_degree * DEGREE_IN_RAD
                 if abs(test_angle - self.expected_angle) <= 0.05:
                     self.expected_angle = test_angle
+            if direction == "left":
+                if self.expected_angle > rotation_angle:
+                    turn_angle = 2 * PI - (self.expected_angle - rotation_angle)
+                else:
+                    turn_angle = rotation_angle - self.expected_angle
+            else:
+                if self.expected_angle > rotation_angle:
+                    turn_angle = self.expected_angle - rotation_angle
+                else:
+                    turn_angle = 2 * PI - (rotation_angle - self.expected_angle)
 
         self.motor.stop()
 
         angle_accumulated_delta = 0
-        rotation_angle = self.imu.get_rotation_angle()
         print(
             f"    Tá {rotation_angle / DEGREE_IN_RAD}, Esperado: {self.expected_angle / DEGREE_IN_RAD}"
         )
