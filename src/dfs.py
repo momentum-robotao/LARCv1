@@ -185,6 +185,12 @@ def dfs(
     colored_tile = None
     if position.x % 2 == 0 and position.y % 2 == 0:  # centered in tile
         colored_tile = robot.color_sensor.check_colored_special_tile()
+        if area == 4 and colored_tile not in [
+            SpecialTileType.PASSAGE_1_4,
+            SpecialTileType.PASSAGE_2_4,
+            SpecialTileType.PASSAGE_3_4,
+        ]:
+            maze.set_tile_type(position, SpecialTileType.AREA_4)
     if colored_tile:
         if DEBUG:
             debug_info.send(

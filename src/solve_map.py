@@ -59,6 +59,7 @@ def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
         starting=True,
     )
 
+    # TODO4: retornar pra tile inicial (+10%)
     # best_moves_before.reverse()
     # for move in best_moves_before:
     #     command, args = move
