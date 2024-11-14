@@ -144,9 +144,9 @@ def movement_velocity_controller(
     direction: Literal["forward", "backward"],
     rotation_angle_error: float,
     debug_info: DebugInfo,
-    slow_down_dist: float = 0.001,
+    slow_down_dist: float = 0.01,
     high_speed: float = MAX_SPEED,
-    low_speed: float = MAX_SPEED / 100,
+    low_speed: float = MAX_SPEED / 10,
 ) -> tuple[float, float]:
     """
     It returns the `high_speed` if the robot has already to move a lot
