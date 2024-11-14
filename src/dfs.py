@@ -161,14 +161,14 @@ def dfs(
     robot: Robot,
     debug_info: DebugInfo,
     area: AreaDFSMappable,
+    moves_before: list[tuple[str, tuple]],
     starting: bool = False,
-):
+) -> list[tuple[Coordinate, SpecialTileType, list[tuple[str, tuple]]]]:
     """
-    Map all the specified `area`, then go to transition `area+1`.
+    Map all the specified `area`, then return transitions to next area.
     Robot position is specified by the lower left coordinate.
-
-    :return: The final position of the robot.
     """
+    transitions: list[tuple[Coordinate, SpecialTileType, list[tuple[str, tuple]]]] = []
     # print(f"entra DFS {position=}")
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
@@ -188,6 +188,12 @@ def dfs(
     colored_tile = None
     if position.x % 2 == 0 and position.y % 2 == 0:  # centered in tile
         colored_tile = robot.color_sensor.check_colored_special_tile()
+        if area == 4 and colored_tile not in [
+            SpecialTileType.PASSAGE_1_4,
+            SpecialTileType.PASSAGE_2_4,
+            SpecialTileType.PASSAGE_3_4,
+        ]:
+            maze.set_tile_type(position, SpecialTileType.AREA_4)
     if colored_tile:
         if DEBUG:
             debug_info.send(
@@ -208,12 +214,14 @@ def dfs(
         SpecialTileType.PASSAGE_1_4,
         SpecialTileType.PASSAGE_2_4,
         SpecialTileType.PASSAGE_3_4,
-    ]:
-        return
+    ] and (area != 4 or starting is False):
+        return [(position, colored_tile, moves_before)]
 
     # Transition to neighbours on grid, prioritizing front, left and right
     # before diagonals
-    for delta_angle_in_degree in [0, 90, -90] + ([180] if starting else []):
+    for delta_angle_in_degree in [0, 90, -90] + (
+        [180] if starting and area != 4 else []
+    ):
         #     # ? Only in the start we can't assume that backward empty: important to make sure
         #     # everything was visited and all walls mapped
         # ):
@@ -322,10 +330,12 @@ def dfs(
         new_position_distance = (
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
+        viz_moves = moves_before.copy()
+        viz_moves.append(("rotate_to_angle", (movement_angle,)))
         robot.rotate_to_angle(movement_angle)
         robot.recognize_wall_token()
         try:
-            print("avança pro vizinho")
+            viz_moves.append(("move", ("forward", new_position_distance)))
             movement_result = robot.move(
                 "forward",
                 maze,
@@ -361,7 +371,16 @@ def dfs(
         except WallColisionError:
             continue
 
-        dfs(new_robot_position, maze, robot, debug_info, area)
+        transitions.extend(
+            dfs(
+                new_robot_position,
+                maze,
+                robot,
+                debug_info,
+                area,
+                moves_before=viz_moves,
+            )
+        )
 
         if DEBUG:
             debug_info.send("Retornando do vizinho", System.dfs_decision)
@@ -387,3 +406,4 @@ def dfs(
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
     # print(f"sai DFS {position=}")
+    return transitions

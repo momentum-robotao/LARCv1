@@ -138,10 +138,27 @@ def insert_special_tile_to_maze(
     return answer_maze
 
 
+def insert_room4_to_maze(
+    answer_maze: AnswerMaze, tile_pos: Coordinate, tile: Tile
+) -> AnswerMaze:
+    if tile.special_type == SpecialTileType.AREA_4:
+        mark = []
+        for i in range(5):
+            for j in range(5):
+                mark.append(Coordinate(i, j))
+        for mark_in_tile in mark:
+            answer_pos = tile_pos + mark_in_tile
+            answer_maze[answer_pos.y][  # type: ignore[index]
+                answer_pos.x  # type: ignore[index]
+            ] = tile.special_type.value
+    return answer_maze
+
+
 ElementInserterToMaze = Callable[[AnswerMaze, Coordinate, Tile], AnswerMaze]
 ELEMENT_INSERTERS: list[ElementInserterToMaze] = [
     insert_special_tile_to_maze,
     insert_walls_to_maze,
+    insert_room4_to_maze,
 ]
 
 
