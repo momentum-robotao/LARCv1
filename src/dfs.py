@@ -61,7 +61,6 @@ def get_errors(robot: Robot, field_of_view: float):
     return y_error, x_error, angle_error
 
 
-# TODO+: ficar ajustando e desajustando
 def adjust_wall_distance(
     robot: Robot,
     debug_info: DebugInfo,
@@ -90,7 +89,7 @@ def adjust_wall_distance(
     ):
         return
 
-    print(f"{angle_error=}")
+    # print(f"{angle_error=}")
     if angle_error <= -angle_max_error:
         robot.rotate("right", abs(angle_error), correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
@@ -98,7 +97,7 @@ def adjust_wall_distance(
         robot.rotate("left", angle_error, correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
-    print(f"{y_error=}")
+    # print(f"{y_error=}")
     if y_error <= -wall_max_y_error:
         robot.move(
             "backward",
@@ -116,7 +115,7 @@ def adjust_wall_distance(
         )
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
-    print(f"{x_error=}")
+    # print(f"{x_error=}")
     if x_error <= -wall_max_x_error:
         robot.rotate_90_left()
         robot.move(
@@ -384,7 +383,7 @@ def dfs(
 
         if DEBUG:
             debug_info.send("Retornando do vizinho", System.dfs_decision)
-        print("rotarna do vizinho")
+        # print("rotarna do vizinho")
         robot.move(
             "backward",
             maze,
