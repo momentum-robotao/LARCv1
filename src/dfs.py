@@ -191,7 +191,7 @@ def dfs(
             SpecialTileType.PASSAGE_3_4,
         ]:
             maze.set_tile_type(position, SpecialTileType.AREA_4)
-    if colored_tile:
+    if colored_tile and area != 4:
         if DEBUG:
             debug_info.send(
                 f"Cor do chão detectou {colored_tile}", System.check_tile_color
