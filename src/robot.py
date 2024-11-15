@@ -26,7 +26,9 @@ from types_and_constants import (
     KP,
     MAX_SPEED,
     PI,
+    SLOW_DOWN_ANGLE,
     SLOW_DOWN_DIST,
+    SLOW_DOWN_ROTATE_SPEED,
     SLOW_DOWN_SPEED,
     TILE_SIZE,
     Coordinate,
@@ -114,9 +116,9 @@ def expected_gps_after_move(
 def rotation_velocity_controller(
     angle_to_rotate: float,
     direction: Literal["left", "right"],
-    slow_down_angle: float = 0.3,
+    slow_down_angle: float = SLOW_DOWN_ANGLE,
     high_speed: float = MAX_SPEED,
-    low_speed: float = MAX_SPEED / 10,
+    low_speed: float = SLOW_DOWN_ROTATE_SPEED,
 ) -> tuple[float, float]:
     """
     It returns the `high_speed` if the robot has already to rotate a lot
@@ -144,9 +146,9 @@ def movement_velocity_controller(
     direction: Literal["forward", "backward"],
     rotation_angle_error: float,
     debug_info: DebugInfo,
-    slow_down_dist: float = 0.01,
+    slow_down_dist: float = SLOW_DOWN_DIST,
     high_speed: float = MAX_SPEED,
-    low_speed: float = MAX_SPEED / 10,
+    low_speed: float = MAX_SPEED / 100,
 ) -> tuple[float, float]:
     """
     It returns the `high_speed` if the robot has already to move a lot
@@ -334,9 +336,9 @@ class Robot:
         turn_angle: float,
         *,
         correction_rotation: bool = False,
-        slow_down_angle: float = 0.3,
+        slow_down_angle: float = SLOW_DOWN_ANGLE,
         high_speed: float = MAX_SPEED,
-        low_speed: float = MAX_SPEED / 10,
+        low_speed: float = SLOW_DOWN_ROTATE_SPEED,
         just_rotate: bool = False,
         dfs_rotation: bool = True,
     ) -> None:
@@ -361,7 +363,7 @@ class Robot:
                 test_angle = test_angle_degree * DEGREE_IN_RAD
                 if abs(test_angle - self.expected_angle) <= 0.05:
                     self.expected_angle = test_angle
-            if direction == "left":
+            if direction == "left":  # changed
                 if self.expected_angle > rotation_angle:
                     turn_angle = 2 * PI - (self.expected_angle - rotation_angle)
                 else:
@@ -417,12 +419,19 @@ class Robot:
                         System.motor_rotation,
                     )
 
-                if angle_accumulated_delta - turn_angle >= 0.1:
+                print("\n\n\n\n")
+                print(
+                    f"Girou a mais {(angle_accumulated_delta - turn_angle)/DEGREE_IN_RAD}"
+                )
+                if angle_accumulated_delta - turn_angle >= 0.1:  # changed
                     self.rotate(
                         "left" if direction == "right" else "right",
                         angle_accumulated_delta - turn_angle,
                         correction_rotation=True,
                         slow_down_angle=angle_accumulated_delta - turn_angle + 1,
+                    )
+                    print(
+                        f"Girou demais, voltou {self.expected_angle=} e {self.imu.get_rotation_angle()}"
                     )
 
                 break
@@ -443,9 +452,9 @@ class Robot:
     def rotate_to_angle(
         self,
         angle: float,
-        slow_down_angle: float = 0.3,
+        slow_down_angle: float = 0.1,
         high_speed: float = MAX_SPEED,
-        low_speed: float = MAX_SPEED / 10,
+        low_speed: float = MAX_SPEED / 100,
     ) -> None:
         """
         Rotate the robot to `angle`. It rotates to the direction that
@@ -519,6 +528,16 @@ class Robot:
         slower in the end of the movement.
         - Holes are not detected when moving backward.
         """
+        if (
+            self.lidar.get_side_distance(
+                "front" if direction == "forward" else "back",
+                field_of_view=20 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            <= TILE_SIZE
+        ):
+            slow_down_dist = TILE_SIZE / 2 / 3
+            slow_down_speed = MAX_SPEED / 2
         found_wall_token = False
         initial_position = self.gps.get_position()
         # if self.expected_raw_angle is None:
@@ -549,11 +568,11 @@ class Robot:
         found_hole_type = None
         blocking = False
 
-        # print(f"  Movendo {dist=} em {direction}")
-        # print(
-        #     f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}"
-        # )
-        # print(f"  {initial_position=}; {self.expected_position=}")
+        print(f"  Movendo {dist=} em {direction}")
+        print(
+            f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}"
+        )
+        print(f"  {initial_position=}; {self.expected_position=}")
 
         while self.step() != -1:
             actual_position = self.gps.get_position()
@@ -682,8 +701,8 @@ class Robot:
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
 
-            # print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
-            # print(f"    {actual_position=}")
+            print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
+            print(f"    {actual_position=}")
 
             if (
                 (x_traversed and y_traversed)
