@@ -1,0 +1,1518 @@
+#VRML_SIM R2021a utf8
+WorldInfo {
+  basicTimeStep 16
+  coordinateSystem "NUE"
+  contactProperties [
+    ContactProperties {
+      material1 "TILE"
+      material2 "NO_FRIC"
+      coulombFriction [
+        0
+      ]
+      bounce 0
+      bumpSound ""
+      rollSound ""
+      slideSound ""
+    }
+  ]
+}
+DEF Viewpoint Viewpoint {
+  orientation -1 0 0 0.85
+  position -0.09914458832536141 1.7277372234951422 1.397769623633066
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+DEF WALLTILES Group {
+  children [
+    DEF TILE halfTile {
+      id "0"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile4Walls [
+        0, 0, 5, 0
+      ]
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile3External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      zPos 1
+      id "1"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile1Walls [
+        0, 4, 0, 0
+      ]
+      tile3Walls [
+        0, 9, 10, 0
+      ]
+      tile1External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      tile3External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      zPos 2
+      id "2"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      leftWall 1
+      tile1External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      tile3External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      zPos 3
+      id "3"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 3
+      leftWall 1
+      tile1External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      tile3External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      swamp TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      zPos 4
+      id "4"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 6
+      bottomWall 15
+      leftWall 3
+      tile1External [
+        FALSE
+        FALSE
+        FALSE
+        TRUE
+      ]
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        TRUE
+      ]
+      tile4External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 1
+      id "5"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile2Walls [
+        0, 6, 225, 0
+      ]
+      tile3Walls [
+        0, 36, 2, 0
+      ]
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 1
+      zPos 1
+      id "6"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile4Walls [
+        0, 0, 3, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 1
+      zPos 2
+      id "7"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile2Walls [
+        0, 2, 0, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 1
+      zPos 3
+      id "8"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile3Walls [
+        0, 0, 5, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 1
+      zPos 4
+      id "9"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 2
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 2
+      id "10"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      topWall 1
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      trap TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 2
+      zPos 1
+      id "11"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 2
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 2
+      zPos 2
+      id "12"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      width 12
+      height 5
+      floor TRUE
+      checkpoint TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 2
+      zPos 3
+      id "13"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile4Walls [
+        0, 2, 0, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 2
+      zPos 4
+      id "14"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 1
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 3
+      id "15"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      topWall 1
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 3
+      zPos 1
+      id "16"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 6
+      bottomWall 3
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 3
+      zPos 2
+      id "17"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 3
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.10196078431372549 0.10196078431372549 0.9019607843137255
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 3
+      zPos 3
+      id "18"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 2
+      tile1Walls [
+        0, 9, 225, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 3
+      zPos 4
+      id "19"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 3
+      bottomWall 3
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE halfTile {
+      xPos 4
+      id "20"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 15
+      topWall 1
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 2
+    }
+    DEF TILE worldTile {
+      xPos 4
+      zPos 1
+      floor TRUE
+      rightWall 6
+      width 12
+      height 5
+      id "21"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 4
+      zPos 2
+      floor TRUE
+      width 12
+      height 5
+      id "22"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 4
+      zPos 3
+      floor TRUE
+      width 12
+      height 5
+      id "23"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 4
+      zPos 4
+      floor TRUE
+      rightWall 3
+      bottomWall 6
+      bottomExternal TRUE
+      width 12
+      height 5
+      id "24"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE halfTile {
+      xPos 5
+      id "25"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 2
+      topWall 1
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.9019607843137255 0.10196078431372549 0.10196078431372549
+      room 2
+    }
+    DEF TILE worldTile {
+      xPos 5
+      zPos 1
+      floor TRUE
+      bottomWall 5
+      width 12
+      height 5
+      id "26"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 5
+      zPos 2
+      floor TRUE
+      width 12
+      height 5
+      id "27"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 5
+      zPos 3
+      floor TRUE
+      width 12
+      height 5
+      id "28"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF START_TILE worldTile {
+      xPos 5
+      zPos 4
+      floor TRUE
+      rightWall 3
+      bottomWall 6
+      bottomExternal TRUE
+      start TRUE
+      width 12
+      height 5
+      id "29"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE halfTile {
+      xPos 6
+      id "30"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 3
+      topWall 1
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      swamp TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE worldTile {
+      xPos 6
+      zPos 1
+      floor TRUE
+      rightWall 6
+      width 12
+      height 5
+      id "31"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 6
+      zPos 2
+      floor TRUE
+      swamp TRUE
+      width 12
+      height 5
+      id "32"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 6
+      zPos 3
+      trap TRUE
+      width 12
+      height 5
+      id "33"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 6
+      zPos 4
+      floor TRUE
+      bottomWall 2
+      bottomExternal TRUE
+      width 12
+      height 5
+      id "34"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE halfTile {
+      xPos 7
+      id "35"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      topWall 1
+      tile3Walls [
+        0, 0, 2, 0
+      ]
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 7
+      zPos 1
+      id "36"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 5
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE worldTile {
+      xPos 7
+      zPos 2
+      floor TRUE
+      width 12
+      height 5
+      id "37"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 7
+      zPos 3
+      floor TRUE
+      rightWall 2
+      width 12
+      height 5
+      id "38"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE worldTile {
+      xPos 7
+      zPos 4
+      floor TRUE
+      rightWall 3
+      bottomWall 3
+      bottomExternal TRUE
+      width 12
+      height 5
+      id "39"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tileColor 0.635 0.635 0.635
+      room 1
+    }
+    DEF TILE halfTile {
+      xPos 8
+      id "40"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      topWall 1
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 8
+      zPos 1
+      id "41"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 1
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 8
+      zPos 2
+      id "42"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 15
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.30196078431372547 0.10196078431372549 0.6
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 8
+      zPos 3
+      id "43"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile2Walls [
+        0, 2, 0, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 8
+      zPos 4
+      id "44"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 2
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      curve [
+        0, 0, 3, 0
+      ]
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 9
+      id "45"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      topWall 1
+      tile3Walls [
+        0, 0, 1, 0
+      ]
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 9
+      zPos 1
+      id "46"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 6
+      width 12
+      height 5
+      floor TRUE
+      curve [
+        0, 1, 0, 0
+      ]
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 9
+      zPos 2
+      id "47"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      width 12
+      height 5
+      floor TRUE
+      checkpoint TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 9
+      zPos 3
+      id "48"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile4Walls [
+        0, 0, 1, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      curve [
+        0, 0, 3, 0
+      ]
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 9
+      zPos 4
+      id "49"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 1
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 10
+      id "50"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 6
+      bottomWall 15
+      topWall 3
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      checkpoint TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 10
+      zPos 1
+      id "51"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile3Walls [
+        0, 0, 5, 0
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 10
+      zPos 2
+      id "52"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 10
+      zPos 3
+      id "53"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 10
+      zPos 4
+      id "54"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      bottomWall 1
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 11
+      id "55"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile1Walls [
+        2, 0, 0, 0
+      ]
+      tile4Walls [
+        0, 1, 0, 0
+      ]
+      tile1External [
+        TRUE
+        FALSE
+        FALSE
+        FALSE
+      ]
+      tile2External [
+        TRUE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      curve [
+        2, 1, 0, 0
+      ]
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 11
+      zPos 1
+      id "56"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 1
+      tile2External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 11
+      zPos 2
+      id "57"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 1
+      tile2External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 11
+      zPos 3
+      id "58"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      rightWall 3
+      bottomWall 3
+      tile2External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      width 12
+      height 5
+      trap TRUE
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+    DEF TILE halfTile {
+      xPos 11
+      zPos 4
+      id "59"
+      xScale 0.4
+      zScale 0.4
+      yScale 0.4
+      tile2Walls [
+        0, 2, 0, 0
+      ]
+      tile3Walls [
+        0, 0, 1, 0
+      ]
+      tile2External [
+        FALSE
+        TRUE
+        FALSE
+        FALSE
+      ]
+      tile3External [
+        FALSE
+        FALSE
+        TRUE
+        FALSE
+      ]
+      tile4External [
+        FALSE
+        TRUE
+        TRUE
+        FALSE
+      ]
+      width 12
+      height 5
+      floor TRUE
+      curve [
+        0, 0, 0, 2
+      ]
+      tileColor 0.635 0.635 0.635
+      room 3
+    }
+  ]
+}
+DEF CHECKPOINTBOUNDS Group {
+  children [
+    DEF boundary Group {
+      children [
+        DEF checkpoint0min Transform {
+          translation -0.54 -0.03 -0.12
+        }
+        DEF checkpoint0max Transform {
+          translation -0.42 -0.03 0
+        }
+      ]
+    }
+    DEF boundary Group {
+      children [
+        DEF checkpoint1min Transform {
+          translation 0.2999999999999999 -0.03 -0.12
+        }
+        DEF checkpoint1max Transform {
+          translation 0.4199999999999999 -0.03 0
+        }
+      ]
+    }
+    DEF boundary Group {
+      children [
+        DEF checkpoint2min Transform {
+          translation 0.4200000000000002 -0.03 -0.36
+        }
+        DEF checkpoint2max Transform {
+          translation 0.5400000000000003 -0.03 -0.24
+        }
+      ]
+    }
+  ]
+}
+DEF TRAPBOUNDS Group {
+  children [
+    DEF boundary Group {
+      children [
+        DEF trap0min Transform {
+          translation -0.54 -0.03 -0.36
+        }
+        DEF trap0max Transform {
+          translation -0.42 -0.03 -0.24
+        }
+      ]
+    }
+    DEF boundary Group {
+      children [
+        DEF trap1min Transform {
+          translation -0.06 -0.03 0
+        }
+        DEF trap1max Transform {
+          translation 0.06 -0.03 0.12
+        }
+      ]
+    }
+    DEF boundary Group {
+      children [
+        DEF trap2min Transform {
+          translation 0.54 -0.03 0
+        }
+        DEF trap2max Transform {
+          translation 0.6600000000000001 -0.03 0.12
+        }
+      ]
+    }
+  ]
+}
+DEF STARTBOUNDS Group {
+  children [
+    DEF boundary Group {
+      children [
+        DEF start0min Transform {
+          translation -0.17999999999999988 -0.03 0.12
+        }
+        DEF start0max Transform {
+          translation -0.05999999999999989 -0.03 0.24
+        }
+      ]
+    }
+  ]
+}
+DEF SWAMPBOUNDS Group {
+  children [
+    DEF boundary Group {
+      children [
+        DEF swamp0min Transform {
+          translation -0.78 -0.03 0
+        }
+        DEF swamp0max Transform {
+          translation -0.6599999999999999 -0.03 0.12
+        }
+      ]
+    }
+    DEF boundary Group {
+      children [
+        DEF swamp1min Transform {
+          translation -0.06 -0.03 -0.36
+        }
+        DEF swamp1max Transform {
+          translation 0.06 -0.03 -0.24
+        }
+      ]
+    }
+    DEF boundary Group {
+      children [
+        DEF swamp2min Transform {
+          translation -0.06 -0.03 -0.12
+        }
+        DEF swamp2max Transform {
+          translation 0.06 -0.03 0
+        }
+      ]
+    }
+  ]
+}
+DEF OBSTACLES Group {
+}
+DEF HUMANGROUP Group {
+  children [
+    Victim {
+      translation -0.69 0 -0.2344
+      rotation 0 1 0 3.14
+      name "Victim0"
+      scoreWorth 5
+    }
+    Victim {
+      translation -0.582 0 0.235
+      name "Victim1"
+      type "unharmed"
+      scoreWorth 5
+    }
+    Victim {
+      translation -0.351 0 -0.355
+      rotation 0 1 0 3.14
+      name "Victim2"
+      type "stable"
+      scoreWorth 5
+    }
+    Victim {
+      translation -0.185 0 0.142
+      rotation 0 1 0 1.57
+      name "Victim3"
+      type "stable"
+      scoreWorth 5
+    }
+    Victim {
+      translation -0.11199999999999988 0 -0.12499999999999999
+      name "Victim4"
+      scoreWorth 15
+    }
+    Victim {
+      translation 0.012 0 -0.235
+      rotation 0 1 0 3.14
+      name "Victim5"
+      type "unharmed"
+      scoreWorth 15
+    }
+    Victim {
+      translation 0.09000000000000011 0 -0.2344
+      rotation 0 1 0 3.14
+      name "Victim6"
+      type "stable"
+      scoreWorth 15
+    }
+    Victim {
+      translation 0.34899999999999987 0 -0.245
+      name "Victim7"
+      scoreWorth 5
+    }
+    Victim {
+      translation 0.33599999999999985 0 0.12499999999999999
+      rotation 0 1 0 3.14
+      name "Victim8"
+      type "stable"
+      scoreWorth 5
+    }
+    Victim {
+      translation 0.6550000000000001 0 -0.093
+      rotation 0 1 0 1.57
+      name "Victim9"
+      type "unharmed"
+      scoreWorth 5
+    }
+  ]
+}
+DEF HAZARDGROUP Group {
+  children [
+    HazardMap {
+      translation -0.6656 0 0.17099999999999999
+      rotation 0 1 0 1.57
+      name "Hazard0"
+      type "C"
+    }
+    HazardMap {
+      translation -0.5456 0 -0.09
+      rotation 0 1 0 1.57
+      name "Hazard1"
+    }
+    HazardMap {
+      translation -0.32999999999999996 0 -0.1256
+      name "Hazard2"
+      type "O"
+    }
+    HazardMap {
+      translation -0.39 0 0.06559999999999999
+      rotation 0 1 0 3.14
+      name "Hazard3"
+      type "P"
+    }
+    HazardMap {
+      translation -0.1856 0 -0.161
+      rotation 0 1 0 1.57
+      name "Hazard4"
+      scoreWorth 30
+    }
+    HazardMap {
+      translation -0.006 0 0.2344
+      name "Hazard5"
+      type "P"
+    }
+    HazardMap {
+      translation 0.2944 0 0.03
+      rotation 0 1 0 1.57
+      name "Hazard6"
+      type "C"
+    }
+    HazardMap {
+      translation 0.4500000000000002 0 -0.1256
+      name "Hazard7"
+      type "P"
+    }
+    HazardMap {
+      translation 0.5700000000000001 0 0.1256
+      rotation 0 1 0 3.14
+      name "Hazard8"
+      type "O"
+    }
+  ]
+}
+DEF MAINSUPERVISOR Robot {
+  children [
+    Receiver {
+      channel 1
+    }
+    Emitter {
+      channel 1
+    }
+  ]
+  controller "MainSupervisor"
+  customData "480"
+  supervisor TRUE
+  showWindow TRUE
+  window "MainSupervisorWindow"
+}
