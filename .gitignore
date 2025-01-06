@@ -1,0 +1,8 @@
+.mypy_cache
+venv
+.env
+.history
+.logs
+__pycache__
+ngrok.txt
+log.txt
