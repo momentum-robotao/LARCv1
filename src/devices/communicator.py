@@ -5,16 +5,10 @@ from typing import NamedTuple
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import DebugInfo, System
+from debugging import RobotLogger, System
 from helpers import delay
 from maze import AnswerMaze
-from types_and_constants import (
-    DEBUG,
-    METER_TO_CM,
-    Coordinate,
-    LackOfProgressError,
-    WallToken,
-)
+from types_and_constants import METER_TO_CM, Coordinate, LackOfProgressError, WallToken
 
 from .device import Device
 
@@ -38,7 +32,7 @@ class Communicator(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        debug_info: DebugInfo,
+        logger: RobotLogger,
         emitter_name: str = "emitter",
         receiver_name: str = "receiver",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
@@ -50,8 +44,8 @@ class Communicator(Device):
         self._emitter = robot.getDevice(emitter_name)
         self._receiver = robot.getDevice(receiver_name)
         self._receiver.enable(time_step)
-        self.debug_info = debug_info
-        self.robot_delay = partial(delay, robot, debug_info)
+        self.logger = logger
+        self.robot_delay = partial(delay, robot, logger)
 
         self.LACK_OF_PROGRESS_CODE = lack_of_progress_code
         self.END_OF_PLAY_CODE = end_of_play_code
@@ -59,28 +53,25 @@ class Communicator(Device):
         self.MAP_EVALUATE_REQUEST_CODE = map_evaluate_request_code
 
     def send_message(self, message: bytes) -> None:
-        if DEBUG:
-            self.debug_info.send(
-                f"Enviando mensagem {message!r}", System.communicator_send_messages
-            )
-        self._emitter.send(message)
-        if DEBUG:
-            self.debug_info.send(
-                "Mensagem enviada com sucesso", System.communicator_send_messages
-            )
+        self.logger.info(
+            f"Enviando mensagem {message!r}", System.communicator_send_messages
+        )
+        self._emitter.info(message)
+        self.logger.info(
+            "Mensagem enviada com sucesso", System.communicator_send_messages
+        )
 
     def get_received_data(self) -> bytes | None:
-        if DEBUG:
-            self.debug_info.send(
-                f"Buscando dados recebidos. Há {self._receiver.getQueueLength()} elementos na fila",
-                System.communicator_receive_data,
-            )
+        self.logger.info(
+            f"Buscando dados recebidos. Há {self._receiver.getQueueLength()} elementos na fila",
+            System.communicator_receive_data,
+        )
         if self._receiver.getQueueLength() == 0:
             return None
 
         received_data = self._receiver.getBytes()
         self._receiver.nextPacket()  # ? Discard the current data packet
-        self.debug_info.send(
+        self.logger.info(
             f"Dados recebidos: {received_data}", System.communicator_receive_data
         )
         return received_data
@@ -92,20 +83,18 @@ class Communicator(Device):
         Used to report the position and the type of the victim letter or hazard map.
         If correct, points are earned for identifying the game element.
         """
-        if DEBUG:
-            self.debug_info.send(
-                f"Recebido {wall_token} em {position}",
-                System.communicator_send_wall_token,
-            )
+        self.logger.info(
+            f"Recebido {wall_token} em {position}",
+            System.communicator_send_wall_token,
+        )
         wall_token_bytes = bytes(wall_token.value, "utf-8")
         x_cm = int(position.x * METER_TO_CM)
         y_cm = int(position.y * METER_TO_CM)
 
-        if DEBUG:
-            self.debug_info.send(
-                f"Enviando: {wall_token_bytes.decode()} em {x_cm=} e {y_cm=}",
-                System.communicator_send_wall_token,
-            )
+        self.logger.info(
+            f"Enviando: {wall_token_bytes.decode()} em {x_cm=} e {y_cm=}",
+            System.communicator_send_wall_token,
+        )
         message = struct.pack("i i c", x_cm, y_cm, wall_token_bytes)
         self.send_message(message)
 
@@ -113,10 +102,7 @@ class Communicator(Device):
         """
         Call lack of progress autonomously.
         """
-        if DEBUG:
-            self.debug_info.send(
-                "Enviando LoP", System.communicator_send_lack_of_progress
-            )
+        self.logger.info("Enviando LoP", System.communicator_send_lack_of_progress)
         message = struct.pack("c", self.LACK_OF_PROGRESS_CODE.encode())
         self.send_message(message)
         self.robot_delay(
@@ -127,18 +113,14 @@ class Communicator(Device):
         """
         Signal to the Main Supervisor the end of play in order to receive an exit bonus.
         """
-        if DEBUG:
-            self.debug_info.send(
-                "Enviando end of play", System.communicator_send_end_of_play
-            )
+        self.logger.info("Enviando end of play", System.communicator_send_end_of_play)
         message = bytes(self.END_OF_PLAY_CODE, "utf-8")
         self.send_message(message)
 
     def send_maze(self, maze: AnswerMaze) -> None:
-        if DEBUG:
-            self.debug_info.send(
-                "Convertendo mapa para enviá-lo", System.communicator_send_maze
-            )
+        self.logger.info(
+            "Convertendo mapa para enviá-lo", System.communicator_send_maze
+        )
         maze_shape = (len(maze), 0 if len(maze) == 0 else len(maze[0]))
         flat_maze = ",".join([elm for line in maze for elm in line])
 
@@ -148,11 +130,10 @@ class Communicator(Device):
         all_bytes = parsed_shape + parsed_maze
         self.send_message(all_bytes)
 
-        if DEBUG:
-            self.debug_info.send(
-                "Enviando pedido de análise do mapa enviado",
-                System.communicator_send_maze,
-            )
+        self.logger.info(
+            "Enviando pedido de análise do mapa enviado",
+            System.communicator_send_maze,
+        )
         map_evaluate_request = struct.pack("c", self.MAP_EVALUATE_REQUEST_CODE.encode())
         self.send_message(map_evaluate_request)
 
@@ -166,25 +147,23 @@ class Communicator(Device):
         return False
 
     def get_game_information(self) -> GameInformation:
-        if DEBUG:
-            self.debug_info.send(
-                "Pegando informações da rodada",
-                System.communicator_get_game_information,
-            )
-            self.debug_info.send(
-                "Checando por lack of progress na fila do receiver",
-                System.communicator_get_game_information,
-            )
+        self.logger.info(
+            "Pegando informações da rodada",
+            System.communicator_get_game_information,
+        )
+        self.logger.info(
+            "Checando por lack of progress na fila do receiver",
+            System.communicator_get_game_information,
+        )
         if self.occured_lack_of_progress():
             # ? Before emitting data requesting game information, checks for a LoP
             # in order to avoid erasing one from the receiver queue
             raise LackOfProgressError()
 
-        if DEBUG:
-            self.debug_info.send(
-                "Enviando pedido das informações da rodada",
-                System.communicator_get_game_information,
-            )
+        self.logger.info(
+            "Enviando pedido das informações da rodada",
+            System.communicator_get_game_information,
+        )
 
         message = struct.pack("c", self.GAME_INFORMATION.encode())
         self.send_message(message)
@@ -195,20 +174,18 @@ class Communicator(Device):
             received_data = self.get_received_data()
 
             if not received_data or len(received_data) != 16:
-                if DEBUG:
-                    self.debug_info.send(
-                        f"Dados inválidos ou não recebidos: {received_data!r}",
-                        System.communicator_get_game_information,
-                    )
+                self.logger.info(
+                    f"Dados inválidos ou não recebidos: {received_data!r}",
+                    System.communicator_get_game_information,
+                )
                 self.robot_delay(time_ms=100)
                 counter += 1
 
                 if counter == 10:
-                    if DEBUG:
-                        self.debug_info.send(
-                            "Reenviando pedido das informações",
-                            System.communicator_get_game_information,
-                        )
+                    self.logger.info(
+                        "Reenviando pedido das informações",
+                        System.communicator_get_game_information,
+                    )
                     message = struct.pack("c", self.GAME_INFORMATION.encode())
                     self.send_message(message)
                     counter = 0
@@ -222,10 +199,9 @@ class Communicator(Device):
             if event_code == self.GAME_INFORMATION:
                 game_information = GameInformation(*other_data_received)
 
-        if DEBUG:
-            self.debug_info.send(
-                f"Dados recuperados sobre a partida: {game_information}",
-                System.communicator_get_game_information,
-            )
+        self.logger.info(
+            f"Dados recuperados sobre a partida: {game_information}",
+            System.communicator_get_game_information,
+        )
 
         return game_information

@@ -17,7 +17,6 @@ ENV TIME_TOLERANCE=3
 ENV ANGLE_MAX_DIFFERENCE=0.3
 ENV TIME_STEP=32
 
-# TODO_COMPET! Set these if it is a competition or you want to debug
 COPY ./ngrok.txt ./ngrok.txt
 ENV ENTRIES_BETWEEN_SENDS=100
 ENV LOG_PATH=/usr/local/controller/.logs/robo.log

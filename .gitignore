@@ -1,7 +1,7 @@
 .mypy_cache
 venv
 .env
-.history
+.history.md
 .logs
 __pycache__
 ngrok.txt

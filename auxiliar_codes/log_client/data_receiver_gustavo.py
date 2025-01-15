@@ -20,8 +20,11 @@ def start_simulation():
 
 @app.route("/send", methods=["POST"])
 def send_data():
-    with open(LOG_PATH, "a+") as file:
-        file.write(request.json["new_entries"])
+    try:
+        with open(LOG_PATH, "a+") as file:
+            file.write(request.json["new_entries"])
+    except Exception:
+        print(request.json.get("new_entries"))
     return "ok"
 
 

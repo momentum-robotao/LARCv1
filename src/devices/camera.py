@@ -2,7 +2,7 @@ import os
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import DebugInfo
+from debugging import RobotLogger
 
 from .device import Device
 
@@ -11,12 +11,12 @@ class Camera(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        debug_info: DebugInfo,
+        logger: RobotLogger,
         left_camera_name: str = "cameraE",
         right_camera_name: str = "cameraD",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ) -> None:
-        self.debug_info = debug_info
+        self.logger = logger
 
         self._left_camera = robot.getDevice(left_camera_name)
         self._left_camera.enable(time_step)

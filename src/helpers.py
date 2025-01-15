@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Any
 
-from debugging import DebugInfo, System
+from debugging import RobotLogger, System
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -25,12 +25,11 @@ WebotsRobot = Any
 
 def delay(
     robot: WebotsRobot,
-    debug_info: DebugInfo,
+    logger: RobotLogger,
     time_ms: Numeric,
     time_step: int = int(os.getenv("TIME_STEP", 32)),
 ):
-    if DEBUG:
-        debug_info.send(f"Esperando: {time_ms}ms", System.delay)
+    logger.info(f"Esperando: {time_ms}ms", System.delay)
 
     init_time = robot.getTime()
     while robot.step(time_step) != -1:

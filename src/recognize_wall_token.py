@@ -16,7 +16,7 @@ from typing import Literal
 import cv2
 import numpy as np
 
-from debugging import DebugInfo, System
+from debugging import RobotLogger, System
 from devices import Lidar
 from types_and_constants import (
     DEBUG,
@@ -447,7 +447,7 @@ def classify_wall_token(
     image_information,
     raw_image,
     dist,
-    debug_info: DebugInfo,
+    logger: RobotLogger,
     margem,
     side: Literal["left", "right"],
     lidar: Lidar,
@@ -521,14 +521,13 @@ def classify_wall_token(
             wall_token = Victim.UNHARMED
     else:  # ? não tem vítima nenhuma na imagem
         pass
-    if DEBUG:
-        debug_info.send(f"{wall_token=}", System.wall_token_classification)
+    logger.info(f"{wall_token=}", System.wall_token_classification)
     return wall_token
 
 
 def reconhece_lado(
     camera,
-    debug_info,
+    logger,
     side: Literal["left", "right"],
     lidar: Lidar,
     rotating: bool = False,
@@ -540,10 +539,7 @@ def reconhece_lado(
         + ROBOT_RADIUS
     )
     if dist >= MIN_DIST_TO_RECOGNIZE_WALL_TOKEN:
-        if DEBUG:
-            debug_info.send(
-                "No wall to recognize wall token", System.wall_token_recognition
-            )
+        logger.info("No wall to recognize wall token", System.wall_token_recognition)
         return
 
     raw_image = camera.getImage()
@@ -566,5 +562,5 @@ def reconhece_lado(
     else:
         margem = 0.16
     return classify_wall_token(
-        image_information, raw_image, dist, debug_info, margem, side, lidar
+        image_information, raw_image, dist, logger, margem, side, lidar
     )

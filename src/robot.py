@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import DebugInfo, System
+from debugging import RobotLogger, System
 from devices import (
     GPS,
     IMU,
@@ -145,7 +145,7 @@ def movement_velocity_controller(
     dist_to_move: float,
     direction: Literal["forward", "backward"],
     rotation_angle_error: float,
-    debug_info: DebugInfo,
+    logger: RobotLogger,
     slow_down_dist: float = SLOW_DOWN_DIST,
     high_speed: float = MAX_SPEED,
     low_speed: float = MAX_SPEED / 100,
@@ -166,12 +166,11 @@ def movement_velocity_controller(
     high_speed = min(high_speed, MAX_SPEED - abs(rotation_angle_error))
 
     if DEBUG and abs(rotation_angle_error) > MAX_SPEED:
-        debug_info.send(
+        logger.warning(
             "No PID, o erro para ser corrigido da rotação do "
             f"robô é: {rotation_angle_error}, maior do que a "
             f"maior velocidade do robô: {MAX_SPEED}",
             System.motor_velocity,
-            "warning",
         )
 
     speed = high_speed if dist_to_move > slow_down_dist else low_speed
@@ -197,7 +196,7 @@ class Robot:
         communicator: Communicator,
         camera: Camera,
         distance_sensor: DistanceSensor,
-        debug_info: DebugInfo,
+        logger: RobotLogger,
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ):
         self.last_check_time_ms = round(time.time() * 1000)
@@ -213,7 +212,7 @@ class Robot:
         self.distance_sensor = distance_sensor
 
         self.time_step = time_step
-        self.debug_info = debug_info
+        self.logger = logger
 
         self.expected_angle = 0.0
         self.step()
@@ -234,17 +233,17 @@ class Robot:
         self.last_check_time_ms = round(time.time() * 1000)
 
     def show_initialization_information(self) -> None:
-        self.debug_info.send(
+        self.logger.info(
             "========= Informações do robô inicializado ==========",
             System.initialization,
         )
         if DEBUG:
-            self.debug_info.send("Modo do robô: teste", System.initialization)
+            self.logger.info("Modo do robô: teste", System.initialization)
 
             self.lidar.show_initialization_information()
         else:
-            self.debug_info.send("Modo do robô: competição", System.initialization)
-        self.debug_info.send(
+            print("Modo do robô: competição")
+        self.logger.info(
             "===================================================\n",
             System.initialization,
         )
@@ -269,7 +268,7 @@ class Robot:
                 "left",
                 reconhece_lado(
                     self.camera._left_camera,
-                    self.debug_info,
+                    self.logger,
                     "left",
                     self.lidar,
                     rotating=rotating,
@@ -279,7 +278,7 @@ class Robot:
                 "right",
                 reconhece_lado(
                     self.camera._right_camera,
-                    self.debug_info,
+                    self.logger,
                     "right",
                     self.lidar,
                     rotating=rotating,
@@ -303,11 +302,11 @@ class Robot:
                     # print("avança vítima")
                     self.move(
                         "forward",
-                        Maze(self.debug_info),
+                        Maze(self.logger),
                         dist=to_move / 2,
                         just_move=True,
                     )  # TODO-: test Maze
-                delay(self.webots_robot, self.debug_info, 1300)
+                delay(self.webots_robot, self.logger, 1300)
                 self.communicator.send_wall_token_information(
                     self.gps.get_position(), wall_token
                 )
@@ -315,7 +314,7 @@ class Robot:
                     # print("retorna vítima")
                     self.move(
                         "backward",
-                        Maze(self.debug_info),
+                        Maze(self.logger),
                         dist=to_move / 2,
                         just_move=True,
                     )  # TODO-: test Maze
@@ -325,7 +324,7 @@ class Robot:
                         self.rotate_90_left(just_rotate=True)
                 if move_after_found_wall_token:
                     self.motor.set_velocity(6.24 - 3.5, 6.24 - 3.5)
-                    delay(self.webots_robot, self.debug_info, 100)
+                    delay(self.webots_robot, self.logger, 100)
                     self.motor.stop()
                 found = True
         return found
@@ -350,10 +349,11 @@ class Robot:
         self.rotating += 1
         rotation_angle = self.imu.get_rotation_angle()
 
-        # print(
-        #     f"     rotacionando {turn_angle / DEGREE_IN_RAD} para {direction}. Era {self.expected_angle / DEGREE_IN_RAD}"
-        # )
-        # print(f"     {correction_rotation=} {just_rotate=} {was_rotating=}")
+        self.logger.info(
+            f"     rotacionando {turn_angle / DEGREE_IN_RAD} para {direction}. "
+            "Era {self.expected_angle / DEGREE_IN_RAD}",
+            System.rotation,
+        )
         recognized_wall_token = False
         if not correction_rotation and not was_rotating and dfs_rotation:
             self.expected_angle = cyclic_angle(
@@ -377,9 +377,6 @@ class Robot:
         self.motor.stop()
 
         angle_accumulated_delta = 0
-        # print(
-        #     f"    Tá {rotation_angle / DEGREE_IN_RAD}, Esperado: {self.expected_angle / DEGREE_IN_RAD}"
-        # )
 
         while self.step() != -1:
             if (
@@ -395,12 +392,11 @@ class Robot:
             )
             angle_to_rotate = turn_angle - angle_accumulated_delta
 
-            if DEBUG:
-                self.debug_info.send(
-                    f"- Já girou {angle_accumulated_delta} no total, falta "
-                    f"{angle_to_rotate}",
-                    System.motor_rotation,
-                )
+            self.logger.info(
+                f"- Já girou {angle_accumulated_delta} no total, falta "
+                f"{angle_to_rotate}",
+                System.rotation,
+            )
 
             rotation_angle = new_robot_angle
 
@@ -412,16 +408,15 @@ class Robot:
             if angle_accumulated_delta >= turn_angle:
                 self.motor.stop()
 
-                if DEBUG:
-                    self.debug_info.send(
-                        f"=== Terminou de girar {angle_accumulated_delta} "
-                        f"para {direction}. ",
-                        System.motor_rotation,
-                    )
+                self.logger.info(
+                    f"=== Terminou de girar {angle_accumulated_delta} "
+                    f"para {direction}. ",
+                    System.rotation,
+                )
 
-                print("\n\n\n\n")
-                print(
-                    f"Girou a mais {(angle_accumulated_delta - turn_angle)/DEGREE_IN_RAD}"
+                self.logger.info(
+                    f"Girou a mais {(angle_accumulated_delta - turn_angle)/DEGREE_IN_RAD}",
+                    System.rotation_angle_correction,
                 )
                 if angle_accumulated_delta - turn_angle >= 0.1:  # changed
                     self.rotate(
@@ -430,8 +425,10 @@ class Robot:
                         correction_rotation=True,
                         slow_down_angle=angle_accumulated_delta - turn_angle + 1,
                     )
-                    print(
-                        f"Girou demais, voltou {self.expected_angle=} e {self.imu.get_rotation_angle()}"
+                    self.logger.info(
+                        f"Girou demais, voltou {self.expected_angle=}. "
+                        f"Parando em: {self.imu.get_rotation_angle()}",
+                        System.rotation_angle_correction,
                     )
 
                 break
@@ -558,11 +555,10 @@ class Robot:
                     dist,
                 )
 
-        if DEBUG:
-            self.debug_info.send(
-                f"Começando a mover {dist} para {direction}. Chegará: {self.expected_position}",
-                System.motor_movement,
-            )
+        self.logger.info(
+            f"Começando a mover {dist} para {direction}. Chegará: {self.expected_position}",
+            System.motor_movement,
+        )
 
         found_obstacle = False
         found_hole_type = None
@@ -581,11 +577,10 @@ class Robot:
                 expected_wall_distance, kp
             )
 
-            if DEBUG:
-                self.debug_info.send(
-                    f"Já moveu até {actual_position}.",
-                    System.motor_movement,
-                )
+            self.logger.info(
+                f"Já moveu até {actual_position}.",
+                System.motor_movement,
+            )
 
             left_velocity, right_velocity = movement_velocity_controller(
                 max(
@@ -594,7 +589,7 @@ class Robot:
                 ),
                 direction,
                 rotation_angle_error,
-                self.debug_info,
+                self.logger,
                 slow_down_dist,
                 high_speed,
                 slow_down_speed,
@@ -714,11 +709,10 @@ class Robot:
             ):
                 self.motor.stop()
 
-                if DEBUG:
-                    self.debug_info.send(
-                        f"Fim do movimento, andou para {actual_position}",
-                        System.motor_movement,
-                    )
+                self.logger.info(
+                    f"Fim do movimento, andou para {actual_position}",
+                    System.motor_movement,
+                )
 
                 break
 
@@ -735,11 +729,10 @@ class Robot:
             ):
                 blocking = True
 
-                if DEBUG:
-                    self.debug_info.send(
-                        "Retornará à posição antiga após colidir com parede.",
-                        System.lidar_wall_detection,
-                    )
+                self.logger.info(
+                    "Retornará à posição antiga após colidir com parede.",
+                    System.lidar_wall_detection,
+                )
 
                 break
 
@@ -754,11 +747,10 @@ class Robot:
                 and not correction_move
                 and not just_move
             ):
-                if DEBUG:
-                    self.debug_info.send(
-                        "Retornará à posição antiga após achar buraco.",
-                        System.hole_detection,
-                    )
+                self.logger.info(
+                    "Retornará à posição antiga após achar buraco.",
+                    System.hole_detection,
+                )
 
                 blocking = True
                 if hole == "central":

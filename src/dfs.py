@@ -1,4 +1,4 @@
-from debugging import DebugInfo, System
+from debugging import RobotLogger, System
 from helpers import (
     calculate_wall_position,
     coordinate_after_move,
@@ -63,7 +63,7 @@ def get_errors(robot: Robot, field_of_view: float):
 
 def adjust_wall_distance(
     robot: Robot,
-    debug_info: DebugInfo,
+    logger: RobotLogger,
     maze: Maze,
     angle_max_error: float = 2 * DEGREE_IN_RAD,
     field_of_view: float = 30 * DEGREE_IN_RAD,
@@ -159,7 +159,7 @@ def dfs(
     position: Coordinate,
     maze: Maze,
     robot: Robot,
-    debug_info: DebugInfo,
+    logger: RobotLogger,
     area: AreaDFSMappable,
     moves_before: list[tuple[str, tuple]],
     starting: bool = False,
@@ -168,20 +168,20 @@ def dfs(
     Map all the specified `area`, then return transitions to next area.
     Robot position is specified by the lower left coordinate.
     """
+    for line in maze.get_answer_maze():
+        print("".join(line))
     transitions: list[tuple[Coordinate, SpecialTileType, list[tuple[str, tuple]]]] = []
     print(f"entra DFS {position=}")
-    if DEBUG:
-        debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
+    logger.info(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 
     start_angle = robot.expected_angle
-    if DEBUG:
-        debug_info.send(
-            f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
-        )
+    logger.info(
+        f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
+    )
 
     maze.mark_visited(position)
     robot.step()
-    adjust_wall_distance(robot, debug_info, maze)
+    adjust_wall_distance(robot, logger, maze)
     robot.recognize_wall_token()
 
     # TODO-: swamp etc podem estar acessíveis apenas em certo quarter tile
@@ -195,18 +195,14 @@ def dfs(
         ]:
             maze.set_tile_type(position, SpecialTileType.AREA_4)
     if colored_tile and area != 4:
-        if DEBUG:
-            debug_info.send(
-                f"Cor do chão detectou {colored_tile}", System.check_tile_color
-            )
+        logger.info(f"Cor do chão detectou {colored_tile}", System.check_tile_color)
         maze.set_tile_type(position, colored_tile)
     else:
-        if DEBUG:
-            debug_info.send(f"Não detectou cor em {position}", System.check_tile_color)
+        logger.info(f"Não detectou cor em {position}", System.check_tile_color)
 
     if alley(robot, maze, position, start_angle):
         adjust_wall_distance(
-            robot, debug_info, maze, wall_max_x_error=0.1, wall_max_y_error=0.1
+            robot, logger, maze, wall_max_x_error=0.1, wall_max_y_error=0.1
         )
         robot.rotate_180()
 
@@ -233,15 +229,14 @@ def dfs(
         )
         new_robot_position = coordinate_after_move(position, movement_angle)
 
-        if DEBUG:
-            debug_info.send(
-                f"DFS de {position=}, olhando vizinho de ângulo:\n"
-                f"- {delta_angle_in_degree}° em relação ao ângulo inicial da DFS\n"
-                f"- {movement_angle}rad de direção em relação ao mapa\n"
-                f"- {movement_side_angle}rad em relação à frente do robô.\n"
-                f"Esse vizinho está na coordenada {new_robot_position}",
-                System.dfs_state,
-            )
+        logger.info(
+            f"DFS de {position=}, olhando vizinho de ângulo:\n"
+            f"- {delta_angle_in_degree}° em relação ao ângulo inicial da DFS\n"
+            f"- {movement_angle}rad de direção em relação ao mapa\n"
+            f"- {movement_side_angle}rad em relação à frente do robô.\n"
+            f"Esse vizinho está na coordenada {new_robot_position}",
+            System.dfs_state,
+        )
 
         # For each side of the tiles that would be used to go to new position,
         # map if there is a wall there or not
@@ -254,12 +249,11 @@ def dfs(
             movement_side_angle, field_of_view=20 * DEGREE_IN_RAD, use_min=True
         )
 
-        if DEBUG:
-            debug_info.send(
-                f"Distância das paredes no caminho para essa nova posição: {left_wall_distance=}m, "
-                f"{right_wall_distance=}m e {central_wall_distance=}m",
-                System.dfs_verification,
-            )
+        logger.info(
+            f"Distância das paredes no caminho para essa nova posição: {left_wall_distance=}m, "
+            f"{right_wall_distance=}m e {central_wall_distance=}m",
+            System.dfs_verification,
+        )
 
         left_wall_blocking = get_blocking_wall(
             left_wall_distance, delta_angle_in_degree
@@ -272,12 +266,11 @@ def dfs(
         )
 
         # blocked? don't move and map these walls
-        if DEBUG:
-            debug_info.send(
-                f"Paredes detectadas: {left_wall_blocking=}; {right_wall_blocking=} "
-                f"e {central_wall_blocking=}",
-                System.dfs_verification,
-            )
+        logger.info(
+            f"Paredes detectadas: {left_wall_blocking=}; {right_wall_blocking=} "
+            f"e {central_wall_blocking=}",
+            System.dfs_verification,
+        )
         if left_wall_blocking != -1:
             quarter_tile, side = calculate_wall_position(
                 position, "front_left", movement_angle, left_wall_blocking
@@ -289,11 +282,10 @@ def dfs(
             )
             maze.add_wall(quarter_tile, side)
         if left_wall_blocking != -1 or right_wall_blocking != -1:
-            if DEBUG:
-                debug_info.send(
-                    "Há paredes no caminho para o vizinho: não será visitado",
-                    System.dfs_decision,
-                )
+            logger.info(
+                "Há paredes no caminho para o vizinho: não será visitado",
+                System.dfs_decision,
+            )
             continue
 
         if (
@@ -305,11 +297,10 @@ def dfs(
                 position, "front_center", movement_angle, central_wall_blocking
             )
             maze.add_wall(quarter_tile, side)
-            if DEBUG:
-                debug_info.send(
-                    "Há parede central no caminho para o vizinho: não será visitado",
-                    System.dfs_decision,
-                )
+            logger.info(
+                "Há parede central no caminho para o vizinho: não será visitado",
+                System.dfs_decision,
+            )
             continue
 
         # visited? don't move
@@ -317,16 +308,14 @@ def dfs(
             maze.is_visited(new_robot_position + delta)
             for delta in QUADRANT_OF_DELTA.keys()
         ):
-            if DEBUG:
-                debug_info.send(
-                    "Vizinho já foi visitado: não será visitado novamente",
-                    System.dfs_decision,
-                )
+            logger.info(
+                "Vizinho já foi visitado: não será visitado novamente",
+                System.dfs_decision,
+            )
             continue
 
         # otherwise, visit it recursively (with dfs)
-        if DEBUG:
-            debug_info.send("Movendo para o vizinho", System.dfs_decision)
+        logger.info("Movendo para o vizinho", System.dfs_decision)
         new_position_distance = (
             TILE_SIZE / 2 * (1.44 if delta_angle_in_degree in [45, -45] else 1)
         )
@@ -362,10 +351,9 @@ def dfs(
             elif movement_result == MovementResult.moved:
                 pass
             elif DEBUG:
-                debug_info.send(
+                logger.error(
                     f"Resultado inesperado para movimento: {movement_result}",
                     System.unknown_error,
-                    "error",
                 )
                 raise Exception(f"Resultado de movimento inesperado: {movement_result}")
         except WallColisionError:
@@ -376,14 +364,13 @@ def dfs(
                 new_robot_position,
                 maze,
                 robot,
-                debug_info,
+                logger,
                 area,
                 moves_before=viz_moves,
             )
         )
 
-        if DEBUG:
-            debug_info.send("Retornando do vizinho", System.dfs_decision)
+        logger.info("Retornando do vizinho", System.dfs_decision)
         # print("rotarna do vizinho")
         robot.move(
             "backward",
@@ -392,18 +379,19 @@ def dfs(
             slow_down_dist=SLOW_DOWN_DIST / 3,
         )
 
-    if DEBUG:
-        debug_info.send(
-            f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
-            System.dfs_decision,
-        )
+    logger.info(
+        f"Finalizando DFS de {position=}. Voltando para {start_angle=}",
+        System.dfs_decision,
+    )
 
     # ? important to ensure that when last dfs move backward with robot
     # it is in the same direction and will properly "undo" the movement to
     # this tile, coming back to the last tile.
     robot.step()
-    adjust_wall_distance(robot, debug_info, maze)
+    adjust_wall_distance(robot, logger, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
     print(f"sai DFS {position=}")
+    for line in maze.get_answer_maze():
+        print("".join(line))
     return transitions

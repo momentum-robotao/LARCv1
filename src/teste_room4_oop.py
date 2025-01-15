@@ -6,7 +6,7 @@ try:
 
     from controller import Robot as WebotsRobot  # type: ignore
 
-    from debugging import ALL_SYSTEMS, DebugInfo, HttpHandler, System
+    from debugging import ALL_SYSTEMS, HttpHandler, RobotLogger, System
     from devices import (
         GPS,
         IMU,
@@ -135,7 +135,7 @@ try:
             logger.info(f"Começando nova execução: {datetime.now()}")
 
         try:
-            # debug_info = DebugInfo(
+            # logger = DebugInfo(
             #     systems_to_debug=[
             #         e for e in ALL_SYSTEMS if str(e) not in [str(System.lidar_measures)]
             #     ],
@@ -151,11 +151,11 @@ try:
                 System.unknown_error,
                 # System.maze_snapshot,
             ]
-            global debug_info
-            debug_info = DebugInfo(
+            global logger
+            logger = RobotLogger(
                 logger,
-                systems_to_debug=want,
-                systems_to_ignore=[
+                logs_to_save_in_file=want,
+                logs_to_print=[
                     e for e in ALL_SYSTEMS if str(e) not in [str(w) for w in want]
                 ],
             )
@@ -171,18 +171,18 @@ try:
             webots_robot.step(int(os.getenv("TIME_STEP", 32)))
 
             global motor, lidar, gps, imu, color_sensor, communicator, distancesensor
-            gps = GPS(webots_robot, debug_info)
-            motor = Motor(webots_robot, debug_info)
-            lidar = Lidar(webots_robot, debug_info)
-            imu = IMU(webots_robot, debug_info)
-            color_sensor = ColorSensor(webots_robot, debug_info)
-            communicator = Communicator(webots_robot, debug_info)
-            distance_sensor = DistanceSensor(webots_robot, debug_info)
-            camera = Camera(webots_robot, debug_info)
+            gps = GPS(webots_robot, logger)
+            motor = Motor(webots_robot, logger)
+            lidar = Lidar(webots_robot, logger)
+            imu = IMU(webots_robot, logger)
+            color_sensor = ColorSensor(webots_robot, logger)
+            communicator = Communicator(webots_robot, logger)
+            distance_sensor = DistanceSensor(webots_robot, logger)
+            camera = Camera(webots_robot, logger)
 
         except Exception:
             if DEBUG:
-                debug_info.send(
+                logger.info(
                     "Erro durante inicialização dos devices",
                     System.initialization,
                     "error",
@@ -201,12 +201,12 @@ try:
                 communicator,
                 camera,
                 distance_sensor,
-                debug_info,
+                logger,
             )
             robot.step()
         except Exception:
             if DEBUG:
-                debug_info.send(
+                logger.info(
                     "Erro durante inicialização do robô", System.initialization, "error"
                 )
                 raise
@@ -340,10 +340,10 @@ try:
                 motor.set_velocity(-Pot0, -Pot0)
                 if tras != 0:
                     tempo = (tras) / (pot * radius)
-                    delay(webots_robot, debug_info, tempo)
+                    delay(webots_robot, logger, tempo)
                     motor.stop()
                 else:
-                    delay(webots_robot, debug_info, 120)
+                    delay(webots_robot, logger, 120)
                     motor.stop()
 
             def virar_max():
@@ -455,7 +455,7 @@ try:
                     # print("bostacolossal")
                     print("VI PAREDE FRENTE!")
                     voltar_tras(Pot0)
-                    delay(webots_robot, debug_info, 100)
+                    delay(webots_robot, logger, 100)
                     angle = virar_max()
                     if not tem_parede_esquerda():
                         robot.rotate("left", radians(angle))
@@ -472,13 +472,13 @@ try:
                     robot.recognize_wall_token()
 
                     # motor.set_velocity(Pot0, Pot0)
-                    # delay(webots_robot, debug_info, 100)
+                    # delay(webots_robot, logger, 100)
                     # motor.stop()
 
                     """    
                     motor.set_left_motor_power(Pot0)
                     motor.set_right_motor_power(Pot0)
-                    delay(webots_robot, debug_info, 50)
+                    delay(webots_robot, logger, 50)
                     motor.stop()
                     """
                     # print(f"d1 = {d1} ; d2 = {d2} ; d3 : {d3} ; d4: {d4}; d5:{d5}")
@@ -505,9 +505,9 @@ try:
                 global condicao_sala4
                 if color_sala4():
                     motor.set_velocity(Pot0, Pot0)
-                    delay(webots_robot, debug_info, 750)
+                    delay(webots_robot, logger, 750)
                     motor.stop()
-                    delay(webots_robot, debug_info, 2000)
+                    delay(webots_robot, logger, 2000)
 
                     if not tem_parede_frente() or not lidar.has_wall("front"):
                         print(
@@ -557,11 +557,11 @@ try:
                 # ax.scatter(x_total,y_total)
                 # fig.savefig(f"C:\\Users\\goten\\Desktop\\LARCv1\\LARC_Simulation_Codes\\images\\mapa_total.png")
                 # plt.close(fig)
-                delay(webots_robot, debug_info, 100)
+                delay(webots_robot, logger, 100)
 
         except Exception:
             if DEBUG:
-                debug_info.send(
+                logger.info(
                     "Erro inesperado enquanto resolvia o mapa",
                     System.unknown_error,
                     "critical",

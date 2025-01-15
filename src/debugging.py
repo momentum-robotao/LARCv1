@@ -2,13 +2,20 @@ import logging
 import os
 import time
 from enum import Enum
+from functools import partial
 from logging import Logger, LogRecord
-from typing import Literal
+from typing import Literal, Protocol
 
 from types_and_constants import DEBUG
 
 if DEBUG:
     import requests  # type: ignore
+
+
+LogLevel = Literal["info", "error", "debug", "warning", "critical"]
+
+
+ALL_LOG_LEVELS: list[LogLevel] = ["info", "error", "debug", "warning", "critical"]
 
 
 class System(Enum):
@@ -21,7 +28,7 @@ class System(Enum):
     lidar_wall_detection = "lidar wall detection"
     gps_measures = "gps measures"
     imu_measures = "imu measures"
-    motor_rotation = "motor rotation"
+    rotation = "motor rotation"
     motor_movement = "motor movement"
     motor_velocity = "motor velocity"
     rotation_angle_correction = "rotation angle correction"
@@ -32,7 +39,6 @@ class System(Enum):
     dfs_state = "dfs state"
     dfs_verification = "dfs verification"
     dfs_decision = "dfs decision"
-    debug_info = "debug info"
     maze_visited = "maze visited"
     maze_answer = "maze answer"
     communicator_send_messages = "communicator send messages"
@@ -51,42 +57,19 @@ class System(Enum):
 ALL_SYSTEMS = [system for system in System]
 
 
-class DebugInfo:
-    def __init__(
-        self,
-        logger: Logger | None,
-        systems_to_debug: list[System] | None = None,
-        systems_to_ignore: list[System] | None = None,
+class LogCallable(Protocol):
+    def __call__(
+        self, message: str, system_being_debugged: System, exc_info: bool | None = None
     ) -> None:
-        self.systems_to_debug = systems_to_debug or []
-        self.systems_to_ignore = systems_to_ignore or []
-        self.logger = logger
-        if DEBUG:
-            self.send(
-                "Inicializado `DebugInfo`.\n"
-                f"Debugar: {self.systems_to_debug}\nIgnorar: {self.systems_to_ignore}",
-                System.debug_info,
-            )
+        """
+        Callable for logging a message at a specific level.
 
-    def send(
-        self,
-        message: str,
-        system_being_debugged: System,
-        level: Literal["info", "error", "debug", "warning", "critical"] = "info",
-    ) -> None:
-        if not DEBUG or self.logger is None:
-            return
-
-        if system_being_debugged not in self.systems_to_debug:
-            if system_being_debugged not in self.systems_to_ignore:
-                self.logger.debug(f"{system_being_debugged} => {message}")
-            return
-        if level in ["error", "critical"]:
-            getattr(self.logger, level)(
-                f"{system_being_debugged} => {message}", exc_info=True
-            )
-        else:
-            getattr(self.logger, level)(f"{system_being_debugged} => {message}")
+        Parameters:
+        - message: The log message to be recorded.
+        - system_being_debugged: The system associated with the message.
+        - exc_info: If traceback from current exceptions should be logged.
+        """
+        ...
 
 
 class HttpHandler(logging.Handler):
@@ -94,30 +77,176 @@ class HttpHandler(logging.Handler):
         self,
         url: str,
         entries_between_sends: int = int(os.getenv("ENTRIES_BETWEEN_SENDS", "30")),
-    ):
-        self.url = url
-        logging.Handler.__init__(self=self)
-        self.log_queue = ""
-        self.log_counter = 0
-        self.entries_between_sends = entries_between_sends
-
-    def send_queue_data(self):
+        systems_to_log: set[System] | None = None,
+        levels_to_log: set[LogLevel] | None = None,
+    ) -> None:
         if not DEBUG:
             return
-        response = requests.post(self.url, json={"new_entries": self.log_queue})
+
+        logging.Handler.__init__(self=self)
+
+        self.url = url
+        self.new_logs_queue: list[LogRecord] = []
+        self.entries_between_sends = entries_between_sends
+        self.systems_to_log = systems_to_log or set()
+        self.levels_to_log = levels_to_log or set()
+
+    def flush(self):
+        if not DEBUG:
+            return
+
+        response = requests.post(
+            self.url,
+            json={
+                "new_entries": "\n".join(str(record) for record in self.new_logs_queue)
+            },
+        )
         if response.text != "ok":
             print(
                 f"Erro na requisição ao logger: {response.text}. "
                 f"Status code: {response.status_code}"
             )
-            time.sleep(60)
-            self.send_queue_data()
-        self.log_queue = ""
+            time.sleep(20)
+            self.flush()
+        self.new_logs_queue.clear()
 
     def emit(self, record: LogRecord) -> None:
         if not DEBUG:
             return
-        self.log_queue += f"{self.format(record)}\n"
-        self.log_counter += 1
-        if self.log_counter % self.entries_between_sends == 0:
-            self.send_queue_data()
+
+        try:
+            if (
+                record.levelname not in self.levels_to_log
+                or record.system not in self.systems_to_log  # type: ignore[attr-defined]
+            ):
+                return
+
+            self.new_logs_queue.append(record)
+            if len(self.new_logs_queue) >= self.entries_between_sends:
+                self.flush()
+        except Exception:
+            self.handleError(record)
+
+
+class PrintHandler(logging.Handler):
+    def __init__(
+        self,
+        systems_to_log: set[System] | None = None,
+        levels_to_log: set[LogLevel] | None = None,
+    ):
+        if not DEBUG:
+            return
+
+        logging.Handler.__init__(self=self)
+
+        self.systems_to_log = systems_to_log or set()
+        self.levels_to_log = levels_to_log or set()
+
+    def emit(self, record):
+        """
+        Emit a record using the print function.
+        """
+        try:
+            if (
+                record.levelname not in self.levels_to_log
+                or record.system not in self.systems_to_log
+            ):
+                return
+
+            msg = self.format(record)
+            print(msg)
+            self.flush()
+        except Exception:
+            self.handleError(record)
+
+    def flush(self):
+        print("", end="", flush=True)
+
+
+class RobotLogger:
+    def __init__(
+        self,
+        logger: Logger | None = None,
+        logger_name: str = "Robo LARC v1",
+        systems_to_log_in_file: set[System] | None = None,
+        levels_to_log_in_file: set[LogLevel] | None = None,
+        systems_to_print_logs: set[System] | None = None,
+        levels_to_print_logs: set[LogLevel] | None = None,
+    ) -> None:
+        if not DEBUG:
+            return
+
+        if logger is None:
+            logger = logging.getLogger(logger_name)
+            formatter = logging.Formatter("%(levelname)s %(system)s => %(message)s")
+
+            print_handler = PrintHandler(
+                systems_to_log=systems_to_print_logs, levels_to_log=levels_to_print_logs
+            )
+            print_handler.setLevel(logging.DEBUG)
+            print_handler.setFormatter(formatter)
+
+            logger.addHandler(print_handler)
+
+            with open("./ngrok.txt", "r") as file:
+                NGROK_URL = file.readline()
+
+            http_handler = HttpHandler(
+                f"{NGROK_URL}/send",
+                systems_to_log=systems_to_log_in_file,
+                levels_to_log=levels_to_log_in_file,
+            )
+            http_handler.setLevel(logging.DEBUG)
+            http_handler.setFormatter(formatter)
+
+            requests.post(f"{NGROK_URL}/start_simulation")
+            print(f"Connected to Ngrok: {NGROK_URL}")
+
+            logger.addHandler(http_handler)
+        self.logger = logger
+
+        self.info(
+            "Initialized `RobotLogger`.",
+            System.initialization,
+        )
+        if logger is None:
+            self.info(
+                f" - {systems_to_log_in_file=}\n - {levels_to_log_in_file=}\n"
+                f" - {systems_to_print_logs=}\n - {levels_to_print_logs=}",
+                System.initialization,
+            )
+
+    def __getattr__(self, attribute_name: str) -> LogCallable:
+        if attribute_name not in ALL_LOG_LEVELS:
+            raise AttributeError()
+
+        level: LogLevel = attribute_name  # type: ignore
+
+        return partial(
+            self._log,
+            level,
+        )
+
+    def _log(
+        self,
+        level: LogLevel,
+        message: str,
+        system_being_debugged: System,
+        exc_info: bool | None = None,
+    ) -> None:
+        if not DEBUG:
+            return
+
+        if exc_info is None:
+            exc_info = level in ["error", "critical"]
+
+        getattr(self.logger, level)(
+            message, exc_info=exc_info, extra={"system": system_being_debugged}
+        )
+
+    def flush(self) -> None:
+        if not DEBUG:
+            return
+
+        for handler in self.logger.handlers:
+            handler.flush()

@@ -1,12 +1,8 @@
 import math
-import os
-import sys
 
 import pytest
 
-sys.path.append(os.path.join(os.getcwd(), "src"))
-
-from helpers import cyclic_angle_difference
+from src.helpers import cyclic_angle_difference
 
 DEGREE_IN_RAD = math.pi / 180
 
