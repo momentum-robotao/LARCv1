@@ -89,7 +89,6 @@ def adjust_wall_distance(
     ):
         return
 
-    # print(f"{angle_error=}")
     if angle_error <= -angle_max_error:
         robot.rotate("right", abs(angle_error), correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
@@ -97,7 +96,6 @@ def adjust_wall_distance(
         robot.rotate("left", angle_error, correction_rotation=True)
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
-    # print(f"{y_error=}")
     if y_error <= -wall_max_y_error:
         robot.move(
             "backward",
@@ -115,7 +113,6 @@ def adjust_wall_distance(
         )
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
-    # print(f"{x_error=}")
     if x_error <= -wall_max_x_error:
         robot.rotate_90_left()
         robot.move(
@@ -168,10 +165,12 @@ def dfs(
     Map all the specified `area`, then return transitions to next area.
     Robot position is specified by the lower left coordinate.
     """
-    for line in maze.get_answer_maze():
-        print("".join(line))
+
+    if DEBUG:
+        answer_map = "\n".join("".join(line) for line in maze.get_answer_maze())
+        logger.debug(answer_map, System.maze_answer_str)
     transitions: list[tuple[Coordinate, SpecialTileType, list[tuple[str, tuple]]]] = []
-    print(f"entra DFS {position=}")
+
     logger.info(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 
     start_angle = robot.expected_angle
@@ -371,7 +370,6 @@ def dfs(
         )
 
         logger.info("Retornando do vizinho", System.dfs_decision)
-        # print("rotarna do vizinho")
         robot.move(
             "backward",
             maze,
@@ -391,7 +389,9 @@ def dfs(
     adjust_wall_distance(robot, logger, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
-    print(f"sai DFS {position=}")
-    for line in maze.get_answer_maze():
-        print("".join(line))
+
+    if DEBUG:
+        answer_map = "\n".join("".join(line) for line in maze.get_answer_maze())
+        logger.debug(answer_map, System.maze_answer_str)
+
     return transitions

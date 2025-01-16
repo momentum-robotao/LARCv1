@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import RobotLogger, System
+from debugging import RobotLogger, System, log_process
 from devices import (
     GPS,
     IMU,
@@ -477,6 +477,7 @@ class Robot:
                 low_speed=low_speed,
             )
 
+    @log_process(["direction", "dist"], System.motor_movement)
     def move(
         self,
         direction: Literal["forward", "backward"],
