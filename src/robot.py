@@ -15,7 +15,6 @@ from devices import (
     Lidar,
     Motor,
 )
-from helpers import cyclic_angle, delay, round_if_almost_0
 from maze import Maze
 from recognize_wall_token import reconhece_lado
 from types_and_constants import (
@@ -37,6 +36,7 @@ from types_and_constants import (
     MovementResult,
     WallColisionError,
 )
+from utils import cyclic_angle, delay, round_if_almost_0
 
 POSSIBLE_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315, 360]
 SQRT_2 = 1.414213562373
@@ -294,7 +294,7 @@ class Robot:
                             "right", use_min=True, field_of_view=40 * DEGREE_IN_RAD
                         )
                         self.rotate_90_right(just_rotate=True)
-                    # print("avança vítima")
+                    logger.info("go to wall token", System.movement_reason)
                     self.move(
                         "forward",
                         Maze(),
@@ -306,7 +306,7 @@ class Robot:
                     self.gps.get_position(), wall_token
                 )
                 if wall_token_approximation:
-                    # print("retorna vítima")
+                    logger.info("return from wall token", System.movement_reason)
                     self.move(
                         "backward",
                         Maze(),
@@ -472,7 +472,17 @@ class Robot:
                 low_speed=low_speed,
             )
 
-    @log_process(["direction", "dist"], System.motor_movement)
+    @log_process(
+        [
+            "direction",
+            "dist",
+            "returning_to_safe_position",
+            "correction_move",
+            "just_move",
+            "dfs_move",
+        ],
+        System.motor_movement,
+    )
     def move(
         self,
         direction: Literal["forward", "backward"],
@@ -486,7 +496,7 @@ class Robot:
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
         correction_move: bool = False,
-        just_move: bool = False,
+        just_move: bool = False,  # TODO: refactor all these cases
         dfs_move: bool = True,
     ) -> MovementResult:
         """
@@ -533,8 +543,7 @@ class Robot:
             slow_down_speed = MAX_SPEED / 2
         found_wall_token = False
         initial_position = self.gps.get_position()
-        # if self.expected_raw_angle is None:
-        #     self.expected_raw_angle = imu.get_rotation_angle(raw=True)
+
         if not correction_move and dfs_move and not just_move:
             initial_expected_position = self.expected_position
             imu_expected_angle = cyclic_angle(
@@ -552,7 +561,7 @@ class Robot:
                 )
 
         logger.info(
-            f"Começando a mover {dist} para {direction}. Chegará: {self.expected_position}",
+            f"Target: {self.expected_position} from {initial_position=}",
             System.motor_movement,
         )
 
@@ -560,28 +569,17 @@ class Robot:
         found_hole_type = None
         blocking = False
 
-        print(f"  Movendo {dist=} em {direction}")
-        print(
-            f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}"
-        )
-        print(f"  {initial_position=}; {self.expected_position=}")
-
         while self.step() != -1:
-            actual_position = self.gps.get_position()
+            current_position = self.gps.get_position()
 
             rotation_angle_error = self.lidar.get_rotation_angle_error(
                 expected_wall_distance, kp
             )
 
-            logger.info(
-                f"Já moveu até {actual_position}.",
-                System.motor_movement,
-            )
-
             left_velocity, right_velocity = movement_velocity_controller(
                 max(
-                    abs(self.expected_position.x - actual_position.x),
-                    abs(self.expected_position.y - actual_position.y),
+                    abs(self.expected_position.x - current_position.x),
+                    abs(self.expected_position.y - current_position.y),
                 ),
                 direction,
                 rotation_angle_error,
@@ -591,17 +589,17 @@ class Robot:
             )
             self.motor.set_velocity(left_velocity, right_velocity)
 
-            x_traversed, y_traversed = False, False
+            is_x_traversed, is_y_traversed = False, False
             if not correction_move and dfs_move and not just_move:
-                x_traversed = (
-                    self.expected_position.x < actual_position.x
+                is_x_traversed = (
+                    self.expected_position.x < current_position.x
                     if self.expected_position.x > initial_position.x
-                    else self.expected_position.x > actual_position.x
+                    else self.expected_position.x > current_position.x
                 ) or delta[0] == 0
-                y_traversed = (
-                    self.expected_position.y < actual_position.y
+                is_y_traversed = (
+                    self.expected_position.y < current_position.y
                     if self.expected_position.y > initial_position.y
-                    else self.expected_position.y > actual_position.y
+                    else self.expected_position.y > current_position.y
                 ) or delta[1] == 0
 
             if dfs_move and not just_move:
@@ -621,7 +619,10 @@ class Robot:
                     field_of_view=30 * DEGREE_IN_RAD,
                     use_min=True,
                 )
-                # print("diagonais", left_diagonal_distance, right_diagonal_distance)
+                logger.info(
+                    f"Diagonal distances: ({left_diagonal_distance}; {right_diagonal_distance})",
+                    System.obstacle_detection,
+                )
                 left_diagonal = left_diagonal_distance <= 0.007
                 right_diagonal = right_diagonal_distance <= 0.007
 
@@ -641,16 +642,17 @@ class Robot:
                     field_of_view=30 * DEGREE_IN_RAD,
                     use_min=True,
                 )
-                # print("laterais", left_side_distance, right_side_distance)
+                logger.info(
+                    f"Side distances: ({left_diagonal_distance}; {right_side_distance})",
+                    System.obstacle_detection,
+                )
                 left_side = left_side_distance <= 0.006
                 right_side = right_side_distance <= 0.006
 
-                if (
-                    (left_diagonal or left_side)
-                    and (right_side or right_diagonal)
-                    and DEBUG
-                ):
-                    print("obstáculo duplo")
+                if (left_diagonal or left_side) and (right_side or right_diagonal):
+                    logger.info(
+                        "Both sides/diagonals with obstacles", System.obstacle_detection
+                    )
                 if (
                     (left_diagonal or left_side)
                     and (right_side or right_diagonal)
@@ -662,7 +664,7 @@ class Robot:
                     break
 
                 if left_diagonal or left_side:
-                    # print("ajusta obstáculo esquerdo")
+                    logger.info("Left obstacle: correction", System.obstacle_avoidance)
                     self.motor.stop()
                     self.rotate_90_right()
                     self.move(
@@ -673,29 +675,32 @@ class Robot:
                     )
                     self.rotate_90_left()
                     found_obstacle = True
-                # TODO+: tirar obstáculo etc pra área 4
+                # TODO: tirar obstáculo etc pra área 4
                 if right_diagonal or right_side:
-                    # print("ajusta obstáculo direito")
+                    logger.info("Right obstacle: correction", System.obstacle_avoidance)
                     self.motor.stop()
                     self.rotate_90_left()
                     self.move(
                         direction,
                         maze,
-                        dist=0.001,  # TODO-: proporcional a quao perto está
+                        dist=0.001,  # TODO: proporcional a quao perto está
                         correction_move=True,
                     )
                     self.rotate_90_right()
                     found_obstacle = True
 
-            x_delta = round_if_almost_0(abs(actual_position.x - initial_position.x))
-            y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
+            x_delta = round_if_almost_0(abs(current_position.x - initial_position.x))
+            y_delta = round_if_almost_0(abs(current_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
 
-            print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
-            print(f"    {actual_position=}")
+            logger.debug(
+                "Current move status: "
+                f"{traversed_dist=}. ({is_x_traversed}; {is_y_traversed}). {current_position=}.",
+                System.movement_step_by_step,
+            )
 
             if (
-                (x_traversed and y_traversed)
+                (is_x_traversed and is_y_traversed)
                 if not correction_move
                 and not found_obstacle
                 and dfs_move
@@ -705,31 +710,24 @@ class Robot:
                 self.motor.stop()
 
                 logger.info(
-                    f"Fim do movimento, andou para {actual_position}",
+                    f"New position: {current_position}",
                     System.motor_movement,
                 )
 
                 break
 
-            if DEBUG and self.lidar.wall_collision(
-                "front" if direction == "forward" else "back"
-            ):
-                print("seria colisão")
+            if self.lidar.wall_collision("front" if direction == "forward" else "back"):
+                if not returning_to_safe_position and dfs_move and not just_move:
+                    blocking = True
 
-            if (
-                self.lidar.wall_collision("front" if direction == "forward" else "back")
-                and not returning_to_safe_position
-                and dfs_move
-                and not just_move
-            ):
-                blocking = True
+                    logger.info(
+                        "Detected collision: will return to last position",
+                        System.lidar_wall_detection,
+                    )
 
-                logger.info(
-                    "Retornará à posição antiga após colidir com parede.",
-                    System.lidar_wall_detection,
-                )
-
-                break
+                    break
+                else:
+                    logger.warning("would be a collision", System.lidar_wall_detection)
 
             hole = self.distance_sensor.detect_hole()
             if (
@@ -762,7 +760,7 @@ class Robot:
         if blocking:  # ? hole, obstacle or unexpected wall collision
             self.motor.stop()
             self.expected_position = initial_expected_position
-            # print("bloquado, retorna")
+            logger.info("Blocked: return to initial position", System.movement_reason)
             self.move(
                 "backward" if direction == "forward" else "forward",
                 maze,
@@ -777,7 +775,8 @@ class Robot:
             if found_hole_type:
                 return found_hole_type
             if DEBUG and found_obstacle:
-                print("TODO-: deixar 'branco' no mapa")
+                # TODO: deixar 'branco' no mapa
+                pass
             raise WallColisionError()
 
         return MovementResult.moved

@@ -1,14 +1,4 @@
 from debugging import System, logger
-from helpers import (
-    calculate_wall_position,
-    coordinate_after_move,
-    cyclic_angle,
-    cyclic_angle_difference,
-    get_blocking_wall,
-    get_central_blocking_wall,
-    side_angle_from_map_angle,
-    tile_pos_with_quarter_tile,
-)
 from maze import Maze
 from robot import Robot
 from types_and_constants import (
@@ -23,6 +13,16 @@ from types_and_constants import (
     MovementResult,
     SpecialTileType,
     WallColisionError,
+)
+from utils import (
+    calculate_wall_position,
+    coordinate_after_move,
+    cyclic_angle,
+    cyclic_angle_difference,
+    get_blocking_wall,
+    get_central_blocking_wall,
+    side_angle_from_map_angle,
+    tile_pos_with_quarter_tile,
 )
 
 

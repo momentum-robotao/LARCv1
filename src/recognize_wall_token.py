@@ -19,7 +19,6 @@ import numpy as np
 from debugging import System, logger
 from devices import Lidar
 from types_and_constants import (
-    DEBUG,
     DEGREE_IN_RAD,
     ROBOT_RADIUS,
     HazmatSign,
@@ -466,17 +465,13 @@ def classify_wall_token(
     (dist_branco, qty_preto, hazmat) = image_information
     wall_token: WallToken | None = None
 
-    # print(image_metrics, image_information)
-
     if check_organic_peroxide(raw_image, side, lidar):
         # esse range pode ser mais suave, pq a cor eh facil de reconhecer
-        # print('O')
+        logger.info("O (peroxide)", System.wall_token_classification)
         wall_token = HazmatSign.ORGANIC_PEROXIDE
-        # print("peroxide")
     elif check_flamable_gas(raw_image, side, lidar):
-        # print('F')
+        logger.info("F (gas)", System.wall_token_classification)
         wall_token = HazmatSign.FLAMMABLE_GAS
-        # print("gas")
     elif image_metrics is None:
         pass
     elif (
@@ -485,42 +480,43 @@ def classify_wall_token(
         and (preto_meio > 500 or qty_preto > 0)
     ):
         if qty_preto < 50:
-            # print('P')
+            logger.info("P (poison)", System.wall_token_classification)
             wall_token = HazmatSign.POISON
-            # print("poison")
         elif qty_preto > 0:
-            # print('C')
+            logger.info("C (corrosive)", System.wall_token_classification)
             wall_token = HazmatSign.CORROSIVE
-            # print("corrosive")
     elif (
         dist_branco < MIN_DIST_TO_RECOGNIZE_WALL_TOKEN
         and dist_branco > 0.053
         and qty_preto > 0
     ):
         if classify_H_S_U(margem, image_metrics) == "H":
-            # print("h")
+            logger.info("H", System.wall_token_classification)
             wall_token = Victim.HARMED
         elif classify_H_S_U(margem, image_metrics) == "S":
-            # print("s")
+            logger.info("S", System.wall_token_classification)
             wall_token = Victim.STABLE
         elif classify_H_S_U(margem, image_metrics) == "U":
-            # print("u")
+            logger.info("U", System.wall_token_classification)
             wall_token = Victim.UNHARMED
-        elif DEBUG:
-            print("TODO-: há vítima, fazer estratégia pra 'encaixá-la'")
+        else:
+            logger.warning(
+                "TODO: há vítima, fazer estratégia pra 'encaixá-la'",
+                System.wall_token_classification,
+            )
     elif dist_branco < 0.053 and qty_preto > 0:
         if H_S_U_perto(raw_image) == "H":
-            # print("h perto")
+            logger.info("H perto", System.wall_token_classification)
             wall_token = Victim.HARMED
         if H_S_U_perto(raw_image) == "S":
-            # print("s perto")
+            logger.info("S perto", System.wall_token_classification)
             wall_token = Victim.STABLE
         if H_S_U_perto(raw_image) == "U":
-            # print("u perto")
+            logger.info("U perto", System.wall_token_classification)
             wall_token = Victim.UNHARMED
-    else:  # ? não tem vítima nenhuma na imagem
-        pass
-    logger.info(f"{wall_token=}", System.wall_token_classification)
+    logger.info(
+        f"Final classification: {wall_token=}", System.wall_token_classification
+    )
     return wall_token
 
 

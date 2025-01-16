@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from src.helpers import cyclic_angle_difference
+from utils import cyclic_angle_difference
 
 DEGREE_IN_RAD = math.pi / 180
 

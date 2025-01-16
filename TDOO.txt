@@ -11,7 +11,7 @@ Sala 4: SLAM ou outra estratégia (sem tiles).
     Navegação
     Mapeamento
 
-Estratégia
+Estratégia (pensar, testar, fazer logs)
     Ordem das áreas
     LoP
 

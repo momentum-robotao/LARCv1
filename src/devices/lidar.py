@@ -4,7 +4,6 @@ from typing import Literal
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import System, logger
-from helpers import cyclic_angle
 from types_and_constants import (
     CENTRAL_SIDE_ANGLE_OF_SIDE,
     DEGREE_IN_RAD,
@@ -16,6 +15,7 @@ from types_and_constants import (
     Numeric,
     Side,
 )
+from utils import cyclic_angle
 
 from .device import Device
 

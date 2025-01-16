@@ -1,8 +1,8 @@
 from debugging import System, logger
-from helpers import delay
 from maze import Maze
 from robot import Robot
 from types_and_constants import DEBUG
+from utils import delay
 
 
 def end_of_play_routine(robot: Robot, maze: Maze):

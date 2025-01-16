@@ -6,9 +6,9 @@ from typing import NamedTuple
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import System, logger
-from helpers import delay
 from maze import AnswerMaze
 from types_and_constants import METER_TO_CM, Coordinate, LackOfProgressError, WallToken
+from utils import delay
 
 from .device import Device
 

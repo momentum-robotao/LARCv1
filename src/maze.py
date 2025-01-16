@@ -2,7 +2,6 @@ from functools import wraps
 from typing import Any, Callable
 
 from debugging import System, logger
-from helpers import quarter_tile_quadrant, tile_pos_with_quarter_tile
 from types_and_constants import (
     ALL_QUADRANTS,
     DEBUG,
@@ -15,6 +14,7 @@ from types_and_constants import (
     SpecialTileType,
     Tile,
 )
+from utils import quarter_tile_quadrant, tile_pos_with_quarter_tile
 
 MARK_TILES_OF_WALL_SIDE: dict[Side, list[Coordinate]] = {
     "front": [Coordinate(0, 0), Coordinate(1, 0), Coordinate(2, 0)],

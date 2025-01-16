@@ -3,8 +3,8 @@ import os
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import System, logger
-from helpers import cyclic_angle
 from types_and_constants import PI
+from utils import cyclic_angle
 
 from .device import Device
 

@@ -28,7 +28,7 @@ def delay(
     time_ms: Numeric,
     time_step: int = int(os.getenv("TIME_STEP", 32)),
 ):
-    logger.info(f"Esperando: {time_ms}ms", System.delay)
+    logger.debug(f"Esperando: {time_ms}ms", System.delay)
 
     init_time = robot.getTime()
     while robot.step(time_step) != -1:

@@ -18,7 +18,6 @@ try:
         Motor,
     )
     from dfs import dfs
-    from helpers import delay
     from maze import Maze
 
     # import matplotlib.pyplot as plt
@@ -32,6 +31,7 @@ try:
         Coordinate,
         SpecialTileType,
     )
+    from utils import delay
 
     radius = (0.071 / 2) + 0.005
 

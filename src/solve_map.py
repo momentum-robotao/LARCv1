@@ -22,7 +22,6 @@ def solve_map(robot: Robot, maze: Maze) -> None:
         SpecialTileType.PASSAGE_1_4,
         None,
     ]
-    # print(transitions)
     for transition_pos, transition, moves_before in transitions:
         if priority.index(transition) < priority.index(best_transition):
             best_transition_pos, best_transition, best_moves_before = (
@@ -30,7 +29,6 @@ def solve_map(robot: Robot, maze: Maze) -> None:
                 transition,
                 moves_before,
             )
-    # print(f"Melhor: {best_transition}")
     if best_transition is None:
         return
 
@@ -47,7 +45,7 @@ def solve_map(robot: Robot, maze: Maze) -> None:
                 slow_down_dist=SLOW_DOWN_DIST / 3,
             )
 
-    dfs(
+    dfs(  # TODO: improve strategy, refactor(type hint, log...)
         best_transition_pos,
         maze,
         robot,
