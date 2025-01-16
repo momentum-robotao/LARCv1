@@ -1,4 +1,4 @@
-from debugging import RobotLogger, System
+from debugging import System, logger
 from helpers import (
     calculate_wall_position,
     coordinate_after_move,
@@ -63,7 +63,6 @@ def get_errors(robot: Robot, field_of_view: float):
 
 def adjust_wall_distance(
     robot: Robot,
-    logger: RobotLogger,
     maze: Maze,
     angle_max_error: float = 2 * DEGREE_IN_RAD,
     field_of_view: float = 30 * DEGREE_IN_RAD,
@@ -156,7 +155,6 @@ def dfs(
     position: Coordinate,
     maze: Maze,
     robot: Robot,
-    logger: RobotLogger,
     area: AreaDFSMappable,
     moves_before: list[tuple[str, tuple]],
     starting: bool = False,
@@ -180,7 +178,7 @@ def dfs(
 
     maze.mark_visited(position)
     robot.step()
-    adjust_wall_distance(robot, logger, maze)
+    adjust_wall_distance(robot, maze)
     robot.recognize_wall_token()
 
     # TODO-: swamp etc podem estar acessíveis apenas em certo quarter tile
@@ -200,9 +198,7 @@ def dfs(
         logger.info(f"Não detectou cor em {position}", System.check_tile_color)
 
     if alley(robot, maze, position, start_angle):
-        adjust_wall_distance(
-            robot, logger, maze, wall_max_x_error=0.1, wall_max_y_error=0.1
-        )
+        adjust_wall_distance(robot, maze, wall_max_x_error=0.1, wall_max_y_error=0.1)
         robot.rotate_180()
 
     if colored_tile in [
@@ -363,7 +359,6 @@ def dfs(
                 new_robot_position,
                 maze,
                 robot,
-                logger,
                 area,
                 moves_before=viz_moves,
             )
@@ -386,7 +381,7 @@ def dfs(
     # it is in the same direction and will properly "undo" the movement to
     # this tile, coming back to the last tile.
     robot.step()
-    adjust_wall_distance(robot, logger, maze)
+    adjust_wall_distance(robot, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
 

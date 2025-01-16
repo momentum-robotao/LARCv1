@@ -2,7 +2,7 @@ import os
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import RobotLogger, System
+from debugging import System, logger
 from helpers import cyclic_angle
 from types_and_constants import PI
 
@@ -13,14 +13,11 @@ class IMU(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        logger: RobotLogger,
         imu_name: str = "inertial_unit",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ) -> None:
         self._imu = robot.getDevice(imu_name)
         self._imu.enable(time_step)
-
-        self.logger = logger
 
         self.start_rotation_angle = None
 
@@ -28,7 +25,7 @@ class IMU(Device):
         rotation_angle = self._imu.getRollPitchYaw()[2]
         if self.start_rotation_angle is None:
             self.start_rotation_angle = rotation_angle
-            self.logger.info(
+            logger.info(
                 f"Ângulo de rotação inicial do robô, que virará o ângulo 0: {rotation_angle}",
                 System.initialization,
             )
@@ -41,7 +38,7 @@ class IMU(Device):
         rotation_angle = cyclic_angle(
             2 * PI - (rotation_angle - self.start_rotation_angle)
         )
-        self.logger.info(f"Ângulo do robô: {rotation_angle}", System.imu_measures)
+        logger.info(f"Ângulo do robô: {rotation_angle}", System.imu_measures)
         return rotation_angle
 
     @staticmethod

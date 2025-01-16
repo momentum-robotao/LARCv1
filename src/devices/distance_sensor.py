@@ -3,7 +3,7 @@ from typing import Literal
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import RobotLogger, System
+from debugging import System, logger
 
 from .device import Device
 
@@ -15,7 +15,6 @@ class DistanceSensor(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        logger: RobotLogger,
         left_name: str = "ds2",
         right_name: str = "ds1",
         front_name: str = "ds3",
@@ -23,8 +22,6 @@ class DistanceSensor(Device):
         back_right: str = "ds5",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ) -> None:
-        self.logger = logger
-
         self._left = robot.getDevice(left_name)
         self._left.enable(time_step)
         self._right = robot.getDevice(right_name)
@@ -45,15 +42,15 @@ class DistanceSensor(Device):
 
     def detect_hole(self) -> HolePosition | None:
         if self.get_distance("left") > 0.2 and self.get_distance("right") > 0.2:
-            self.logger.info("Buraco central", System.hole_detection)
+            logger.info("Buraco central", System.hole_detection)
             return "central"
 
         if self.get_distance("left") > 0.2:
-            self.logger.info("Buraco esquerda", System.hole_detection)
+            logger.info("Buraco esquerda", System.hole_detection)
             return "left"
         elif self.get_distance("right") > 0.2:
-            self.logger.info("Buraco direita", System.hole_detection)
+            logger.info("Buraco direita", System.hole_detection)
             return "right"
 
-        self.logger.info("Buraco não encontrado", System.hole_detection)
+        logger.info("Buraco não encontrado", System.hole_detection)
         return None

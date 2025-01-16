@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Any, Callable
 
-from debugging import RobotLogger, System
+from debugging import System, logger
 from helpers import quarter_tile_quadrant, tile_pos_with_quarter_tile
 from types_and_constants import (
     ALL_QUADRANTS,
@@ -53,7 +53,7 @@ def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
         map_after = str(self)
 
         if map_before != map_after:
-            self.logger.info(
+            logger.info(
                 f"Mapa modificado para: {map_after}",
                 System.maze_snapshot,
             )
@@ -62,7 +62,7 @@ def log_map_change(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def reindex_maze(objects: ObjectsMaze, logger: RobotLogger) -> ObjectsMaze:
+def reindex_maze(objects: ObjectsMaze) -> ObjectsMaze:
     """Reindex maze in order to match a matrix coordinate instead of plane coordinates.
     All objects in maze has their coordinates reindexed in order to make all coordinates positive.
     The smallest coordinate in each axis is considered the new 0/origin.
@@ -165,10 +165,9 @@ class Maze:
     logic is internal to the class.
     """
 
-    def __init__(self, logger: RobotLogger) -> None:
+    def __init__(self) -> None:
         self.objects: ObjectsMaze = dict()
         self.wall_tokens: list[tuple[Coordinate, Side]] = []
-        self.logger = logger
 
     @staticmethod
     def check_position(quarter_tile_pos: Coordinate) -> Coordinate:
@@ -223,13 +222,13 @@ class Maze:
 
         tile_pos = tile_pos_with_quarter_tile(quarter_tile_pos)
         quadrant = quarter_tile_quadrant(quarter_tile_pos)
-        self.logger.info(
+        logger.info(
             f"Checking if tile {tile_pos} is visited in {quadrant=}.",
             System.maze_visited,
         )
-        self.logger.info(f"Already visited in x={tile_pos.x}:", System.maze_visited)
+        logger.info(f"Already visited in x={tile_pos.x}:", System.maze_visited)
         for y, visited_tile in self.objects.get(tile_pos.x, {}).items():  # type: ignore
-            self.logger.info(f" - {y=}: {visited_tile}", System.maze_visited)
+            logger.info(f" - {y=}: {visited_tile}", System.maze_visited)
         return (
             quadrant
             in self.objects.get(tile_pos.x, {}).get(tile_pos.y, Tile()).quadrants  # type: ignore
@@ -245,7 +244,7 @@ class Maze:
             quarter_tile_quadrant(quarter_tile_pos)
         ].walls.add(side)
 
-        self.logger.info(
+        logger.info(
             f"Adicionada parede: {quarter_tile_pos=} e {side=}", System.maze_changes
         )
 
@@ -262,7 +261,7 @@ class Maze:
         old_tile_type = self.objects[tile_pos.x][tile_pos.y].special_type  # type: ignore[index]
         if old_tile_type is not None and old_tile_type != tile_type:
             if DEBUG:
-                self.logger.error(
+                logger.error(
                     f"Tipo do tile que contém {quarter_tile_pos} "
                     f"era {old_tile_type} e virou {tile_type}",
                     System.maze_changes,
@@ -284,13 +283,13 @@ class Maze:
         - Cada tile 5x5
         * Índice do começo dos tiles é de 5 e 5 por ter borda comum entre eles
         """
-        objects = reindex_maze(self.objects, self.logger)
+        objects = reindex_maze(self.objects)
         map_size = get_needed_map_size(self.objects)
         answer_maze: AnswerMaze = [
             [MappingEncode.DEFAULT.value for i in range(map_size[1])]
             for j in range(map_size[0])
         ]
-        self.logger.info(
+        logger.info(
             f"Mapa default: {answer_maze}",
             System.maze_answer,
         )
@@ -327,9 +326,7 @@ class Maze:
                             answer_maze[answer_pos.y][  # type: ignore[index]
                                 answer_pos.x  # type: ignore[index]
                             ] = MappingEncode.WALL.value
-        self.logger.info(
-            f"Mapa após paredes externas: {answer_maze}", System.maze_answer
-        )
+        logger.info(f"Mapa após paredes externas: {answer_maze}", System.maze_answer)
 
         for inserter in ELEMENT_INSERTERS:
             for x in objects:
@@ -337,7 +334,7 @@ class Maze:
                     tile_pos = Coordinate(x, y) * 4
                     tile = objects[x][y]
                     answer_maze = inserter(answer_maze, tile_pos, tile)
-            self.logger.info(
+            logger.info(
                 f"Mapa após {inserter.__name__}: {answer_maze}", System.maze_answer
             )
 

@@ -3,7 +3,7 @@ from typing import Literal
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import RobotLogger, System
+from debugging import System, logger
 from helpers import cyclic_angle
 from types_and_constants import (
     CENTRAL_SIDE_ANGLE_OF_SIDE,
@@ -24,7 +24,6 @@ class Lidar(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        logger: RobotLogger,
         lidar_name: str = "lidar",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ) -> None:
@@ -37,8 +36,6 @@ class Lidar(Device):
         self.min_range = self._lidar.getMinRange()
         self.max_range = self._lidar.getMaxRange()
         self.field_of_view = self._lidar.getFov()
-
-        self.logger = logger
 
     def _get_line_distances(self, line: int) -> list[float]:
         """
@@ -62,7 +59,7 @@ Sobre o LIDAR
     Há {self.horizontal_resolution} medições horizontais e {self.number_of_layers} layers verticais
     O FOV (entre 0 e 2*PI) é: {self.field_of_view}"""
 
-        self.logger.info(message, System.initialization)
+        logger.info(message, System.initialization)
 
     def get_distances(self) -> list[float]:
         """
@@ -83,7 +80,7 @@ Sobre o LIDAR
             for col in range(self.horizontal_resolution):
                 distances[col] = min(distances[col], line_distances[col] - ROBOT_RADIUS)
 
-        self.logger.info(f"{distances=}", System.lidar_measures)
+        logger.info(f"{distances=}", System.lidar_measures)
         return distances
 
     def get_distances_by_side_angle(self) -> dict[float, float]:
@@ -96,7 +93,7 @@ Sobre o LIDAR
             side_angle = round(self._get_measure_side_angle(measure_idx), 2)
             distances_by_side_angle[side_angle] = dist
 
-        self.logger.info(
+        logger.info(
             f"Medições da distância em função do ângulo lateral: {distances_by_side_angle}",
             System.lidar_measures,
         )
@@ -137,7 +134,7 @@ Sobre o LIDAR
                 if side_angle <= end_side_angle:
                     distances_of_range.append(dist)
 
-        self.logger.info(
+        logger.info(
             f"Pegas medições do intervalo cíclico baseado nos ângulos: "
             f"[{initial_side_angle};{end_side_angle}]. Medições: {distances_of_range}",
             System.lidar_range_measures,
@@ -186,7 +183,7 @@ Sobre o LIDAR
             if len(distances) >= 3:
                 average_distance = list(sorted(distances))[2]
 
-        self.logger.info(
+        logger.info(
             f"Medidas correspondentes à {side} "
             f"(com campo de visão de {field_of_view} rad): {distances}; "
             f"Dando média de: {average_distance}m",
@@ -211,7 +208,7 @@ Sobre o LIDAR
         )
         has_wall = side_distance <= max_wall_distance
 
-        self.logger.info(
+        logger.info(
             f"{'Tem' if has_wall else 'Não tem'} parede em {side}. "
             f"Limite de parede: {max_wall_distance}.",
             System.lidar_wall_detection,
@@ -227,7 +224,7 @@ Sobre o LIDAR
         wall_dist = self.get_side_distance(side, use_min=True)
         wall_collision = wall_dist <= wall_collision_dist
         if wall_collision:
-            self.logger.info(
+            logger.info(
                 f"Colisão com parede detectada há: {wall_dist}m",
                 System.lidar_wall_detection,
             )
@@ -248,7 +245,7 @@ Sobre o LIDAR
                 (self.get_side_distance("right") - expected_wall_distance) * kp * -1
             )
 
-        self.logger.info(
+        logger.info(
             "Erro do ângulo de rotação do robô para ser corrigido: "
             f"{rotation_angle_error}. Com {kp=}, com distância alvo "
             f"da parede de: {expected_wall_distance}",

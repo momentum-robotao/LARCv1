@@ -2,7 +2,7 @@ import os
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import RobotLogger, System
+from debugging import System, logger
 
 from .device import Device
 
@@ -11,13 +11,10 @@ class Motor(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        logger: RobotLogger,
         left_motor_name: str = "left motor",
         right_motor_name: str = "right motor",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
     ) -> None:
-        self.logger = logger
-
         self._robot = robot
         self._time_step = time_step
         self._left_motor = robot.getDevice(left_motor_name)
@@ -29,14 +26,14 @@ class Motor(Device):
 
     def set_left_velocity(self, velocity: float) -> None:
         self._left_motor.setVelocity(velocity)
-        self.logger.info(
+        logger.info(
             f"- Definindo velocidade do motor esquerdo: {velocity}",
             System.motor_velocity,
         )
 
     def set_right_velocity(self, velocity: float) -> None:
         self._right_motor.setVelocity(velocity)
-        self.logger.info(
+        logger.info(
             f"- Definindo velocidade do motor direito: {velocity}",
             System.motor_velocity,
         )
@@ -46,5 +43,5 @@ class Motor(Device):
         self.set_right_velocity(right_velocity)
 
     def stop(self) -> None:
-        self.logger.info("Parar robô", System.motor_movement)
+        logger.info("Parar robô", System.motor_movement)
         self.set_velocity(0, 0)

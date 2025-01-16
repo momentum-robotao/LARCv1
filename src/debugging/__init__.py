@@ -1,12 +1,5 @@
-from .robot_logger import RobotLogger
-from .types_and_constants import ALL_LOG_LEVELS, ALL_SYSTEMS, LogLevel, System
+from .create_logger import logger
+from .types_and_constants import System
 from .utils import log_process
 
-__all__ = [
-    "LogLevel",
-    "ALL_LOG_LEVELS",
-    "System",
-    "ALL_SYSTEMS",
-    "RobotLogger",
-    "log_process",
-]
+__all__ = ["System", "log_process", "logger"]

@@ -1,18 +1,16 @@
-from debugging import RobotLogger
 from dfs import dfs
 from maze import Maze
 from robot import Robot
 from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 
 
-def solve_map(robot: Robot, logger: RobotLogger, maze: Maze) -> None:
+def solve_map(robot: Robot, maze: Maze) -> None:
     initial_position = Coordinate(0, 0)
     maze.set_tile_type(initial_position, SpecialTileType.STARTING)
     transitions = dfs(
         initial_position,
         maze,
         robot,
-        logger,
         area=1,
         moves_before=[],
         starting=True,
@@ -44,7 +42,7 @@ def solve_map(robot: Robot, logger: RobotLogger, maze: Maze) -> None:
         if command == "move":
             robot.move(
                 args[0],
-                Maze(logger),
+                Maze(),
                 dist=args[1],
                 slow_down_dist=SLOW_DOWN_DIST / 3,
             )
@@ -53,7 +51,6 @@ def solve_map(robot: Robot, logger: RobotLogger, maze: Maze) -> None:
         best_transition_pos,
         maze,
         robot,
-        logger,
         area=4,
         moves_before=[],
         starting=True,

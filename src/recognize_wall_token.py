@@ -16,7 +16,7 @@ from typing import Literal
 import cv2
 import numpy as np
 
-from debugging import RobotLogger, System
+from debugging import System, logger
 from devices import Lidar
 from types_and_constants import (
     DEBUG,
@@ -447,7 +447,6 @@ def classify_wall_token(
     image_information,
     raw_image,
     dist,
-    logger: RobotLogger,
     margem,
     side: Literal["left", "right"],
     lidar: Lidar,
@@ -527,7 +526,6 @@ def classify_wall_token(
 
 def reconhece_lado(
     camera,
-    logger,
     side: Literal["left", "right"],
     lidar: Lidar,
     rotating: bool = False,
@@ -561,6 +559,4 @@ def reconhece_lado(
             margem = 0.7
     else:
         margem = 0.16
-    return classify_wall_token(
-        image_information, raw_image, dist, logger, margem, side, lidar
-    )
+    return classify_wall_token(image_information, raw_image, dist, margem, side, lidar)

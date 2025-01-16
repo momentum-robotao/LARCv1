@@ -5,7 +5,7 @@ from typing import NamedTuple
 
 from controller import Robot as WebotsRobot  # type: ignore
 
-from debugging import RobotLogger, System
+from debugging import System, logger
 from helpers import delay
 from maze import AnswerMaze
 from types_and_constants import METER_TO_CM, Coordinate, LackOfProgressError, WallToken
@@ -32,7 +32,6 @@ class Communicator(Device):
     def __init__(
         self,
         robot: WebotsRobot,
-        logger: RobotLogger,
         emitter_name: str = "emitter",
         receiver_name: str = "receiver",
         time_step: int = int(os.getenv("TIME_STEP", 32)),
@@ -44,8 +43,7 @@ class Communicator(Device):
         self._emitter = robot.getDevice(emitter_name)
         self._receiver = robot.getDevice(receiver_name)
         self._receiver.enable(time_step)
-        self.logger = logger
-        self.robot_delay = partial(delay, robot, logger)
+        self.robot_delay = partial(delay, robot)
 
         self.LACK_OF_PROGRESS_CODE = lack_of_progress_code
         self.END_OF_PLAY_CODE = end_of_play_code
@@ -53,16 +51,12 @@ class Communicator(Device):
         self.MAP_EVALUATE_REQUEST_CODE = map_evaluate_request_code
 
     def send_message(self, message: bytes) -> None:
-        self.logger.info(
-            f"Enviando mensagem {message!r}", System.communicator_send_messages
-        )
+        logger.info(f"Enviando mensagem {message!r}", System.communicator_send_messages)
         self._emitter.info(message)
-        self.logger.info(
-            "Mensagem enviada com sucesso", System.communicator_send_messages
-        )
+        logger.info("Mensagem enviada com sucesso", System.communicator_send_messages)
 
     def get_received_data(self) -> bytes | None:
-        self.logger.info(
+        logger.info(
             f"Buscando dados recebidos. Há {self._receiver.getQueueLength()} elementos na fila",
             System.communicator_receive_data,
         )
@@ -71,7 +65,7 @@ class Communicator(Device):
 
         received_data = self._receiver.getBytes()
         self._receiver.nextPacket()  # ? Discard the current data packet
-        self.logger.info(
+        logger.info(
             f"Dados recebidos: {received_data}", System.communicator_receive_data
         )
         return received_data
@@ -83,7 +77,7 @@ class Communicator(Device):
         Used to report the position and the type of the victim letter or hazard map.
         If correct, points are earned for identifying the game element.
         """
-        self.logger.info(
+        logger.info(
             f"Recebido {wall_token} em {position}",
             System.communicator_send_wall_token,
         )
@@ -91,7 +85,7 @@ class Communicator(Device):
         x_cm = int(position.x * METER_TO_CM)
         y_cm = int(position.y * METER_TO_CM)
 
-        self.logger.info(
+        logger.info(
             f"Enviando: {wall_token_bytes.decode()} em {x_cm=} e {y_cm=}",
             System.communicator_send_wall_token,
         )
@@ -102,7 +96,7 @@ class Communicator(Device):
         """
         Call lack of progress autonomously.
         """
-        self.logger.info("Enviando LoP", System.communicator_send_lack_of_progress)
+        logger.info("Enviando LoP", System.communicator_send_lack_of_progress)
         message = struct.pack("c", self.LACK_OF_PROGRESS_CODE.encode())
         self.send_message(message)
         self.robot_delay(
@@ -113,14 +107,12 @@ class Communicator(Device):
         """
         Signal to the Main Supervisor the end of play in order to receive an exit bonus.
         """
-        self.logger.info("Enviando end of play", System.communicator_send_end_of_play)
+        logger.info("Enviando end of play", System.communicator_send_end_of_play)
         message = bytes(self.END_OF_PLAY_CODE, "utf-8")
         self.send_message(message)
 
     def send_maze(self, maze: AnswerMaze) -> None:
-        self.logger.info(
-            "Convertendo mapa para enviá-lo", System.communicator_send_maze
-        )
+        logger.info("Convertendo mapa para enviá-lo", System.communicator_send_maze)
         maze_shape = (len(maze), 0 if len(maze) == 0 else len(maze[0]))
         flat_maze = ",".join([elm for line in maze for elm in line])
 
@@ -130,7 +122,7 @@ class Communicator(Device):
         all_bytes = parsed_shape + parsed_maze
         self.send_message(all_bytes)
 
-        self.logger.info(
+        logger.info(
             "Enviando pedido de análise do mapa enviado",
             System.communicator_send_maze,
         )
@@ -147,11 +139,11 @@ class Communicator(Device):
         return False
 
     def get_game_information(self) -> GameInformation:
-        self.logger.info(
+        logger.info(
             "Pegando informações da rodada",
             System.communicator_get_game_information,
         )
-        self.logger.info(
+        logger.info(
             "Checando por lack of progress na fila do receiver",
             System.communicator_get_game_information,
         )
@@ -160,7 +152,7 @@ class Communicator(Device):
             # in order to avoid erasing one from the receiver queue
             raise LackOfProgressError()
 
-        self.logger.info(
+        logger.info(
             "Enviando pedido das informações da rodada",
             System.communicator_get_game_information,
         )
@@ -174,7 +166,7 @@ class Communicator(Device):
             received_data = self.get_received_data()
 
             if not received_data or len(received_data) != 16:
-                self.logger.info(
+                logger.info(
                     f"Dados inválidos ou não recebidos: {received_data!r}",
                     System.communicator_get_game_information,
                 )
@@ -182,7 +174,7 @@ class Communicator(Device):
                 counter += 1
 
                 if counter == 10:
-                    self.logger.info(
+                    logger.info(
                         "Reenviando pedido das informações",
                         System.communicator_get_game_information,
                     )
@@ -199,7 +191,7 @@ class Communicator(Device):
             if event_code == self.GAME_INFORMATION:
                 game_information = GameInformation(*other_data_received)
 
-        self.logger.info(
+        logger.info(
             f"Dados recuperados sobre a partida: {game_information}",
             System.communicator_get_game_information,
         )
