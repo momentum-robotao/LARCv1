@@ -1,6 +1,6 @@
 from dfs import dfs
 from maze import Maze
-from robot import Robot
+from robot import Robot, create_movement_velocity_controller
 from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 
 
@@ -40,9 +40,11 @@ def solve_map(robot: Robot, maze: Maze) -> None:
         if command == "move":
             robot.move(
                 args[0],
-                Maze(),
-                dist=args[1],
-                slow_down_dist=SLOW_DOWN_DIST / 3,
+                args[1],
+                maze=Maze(),
+                speed_controller=create_movement_velocity_controller(
+                    slow_down_dist=SLOW_DOWN_DIST / 3
+                ),
             )
 
     dfs(  # TODO: improve strategy, refactor(type hint, log...)
@@ -63,7 +65,7 @@ def solve_map(robot: Robot, maze: Maze) -> None:
     #     if command == "move":
     #         robot.move(
     #             "backward",
+    #             args[1],
     #             Maze(logger),
-    #             dist=args[1],
     #             slow_down_dist=SLOW_DOWN_DIST / 3,
     #         )

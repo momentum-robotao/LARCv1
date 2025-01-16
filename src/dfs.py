@@ -1,6 +1,6 @@
 from debugging import System, logger
 from maze import Maze
-from robot import Robot
+from robot import Robot, create_movement_velocity_controller
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
@@ -98,16 +98,16 @@ def adjust_wall_distance(
     if y_error <= -wall_max_y_error:
         robot.move(
             "backward",
-            maze,
-            dist=abs(y_error),
+            abs(y_error),
+            maze=maze,
             correction_move=True,
         )
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
     if y_error >= wall_max_y_error:
         robot.move(
             "forward",
-            maze,
-            dist=y_error,
+            y_error,
+            maze=maze,
             correction_move=True,
         )
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
@@ -116,8 +116,8 @@ def adjust_wall_distance(
         robot.rotate_90_left()
         robot.move(
             "backward",
-            maze,
-            dist=abs(x_error),
+            abs(x_error),
+            maze=maze,
             correction_move=True,
         )
         robot.rotate_90_right()
@@ -125,8 +125,8 @@ def adjust_wall_distance(
         robot.rotate_90_left()
         robot.move(
             "forward",
-            maze,
-            dist=x_error,
+            x_error,
+            maze=maze,
             correction_move=True,
         )
         robot.rotate_90_right()
@@ -322,9 +322,11 @@ def dfs(
             viz_moves.append(("move", ("forward", new_position_distance)))
             movement_result = robot.move(
                 "forward",
-                maze,
-                dist=new_position_distance,
-                slow_down_dist=SLOW_DOWN_DIST / 3,
+                new_position_distance,
+                maze=maze,
+                speed_controller=create_movement_velocity_controller(
+                    slow_down_dist=SLOW_DOWN_DIST / 3
+                ),
             )
 
             angle_to_hole = None
@@ -367,9 +369,11 @@ def dfs(
         logger.info("Retornando do vizinho", System.dfs_decision)
         robot.move(
             "backward",
-            maze,
-            dist=new_position_distance,
-            slow_down_dist=SLOW_DOWN_DIST / 3,
+            new_position_distance,
+            maze=maze,
+            speed_controller=create_movement_velocity_controller(
+                slow_down_dist=SLOW_DOWN_DIST / 3
+            ),
         )
 
     logger.info(

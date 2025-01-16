@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 
 from controller import Robot as WebotsRobot  # type: ignore
 
@@ -27,8 +27,8 @@ from types_and_constants import (
     PI,
     SLOW_DOWN_ANGLE,
     SLOW_DOWN_DIST,
+    SLOW_DOWN_MOVE_SPEED,
     SLOW_DOWN_ROTATE_SPEED,
-    SLOW_DOWN_SPEED,
     TILE_SIZE,
     Coordinate,
     EndOfTimeError,
@@ -113,74 +113,108 @@ def expected_gps_after_move(
     )
 
 
-def rotation_velocity_controller(
-    angle_to_rotate: float,
-    direction: Literal["left", "right"],
+class RotationVelocityController(Protocol):
+    def __call__(
+        self, remaining_angle: float, direction: Literal["left", "right"]
+    ) -> tuple[float, float]:
+        """
+        Speed is `high_speed` if the robot has to rotate a lot yet
+        (more than `slow_down_angle`), else it is `slow_down_speed`.
+
+        :param remaining_angle: The angle that the robot hasn't rotated yet.
+        :param direction: In which direction the robot is rotating.
+
+        :return: A tuple `(left velocity, right velocity)`.
+        The signal of those values is defined by `direction`.
+        """
+        ...
+
+
+def create_rotation_velocity_controller(
     slow_down_angle: float = SLOW_DOWN_ANGLE,
     high_speed: float = MAX_SPEED,
-    low_speed: float = SLOW_DOWN_ROTATE_SPEED,
-) -> tuple[float, float]:
-    """
-    It returns the `high_speed` if the robot has already to rotate a lot
-    (more than `slow_down_angle`), else it returns the `low_speed`.
+    slow_down_speed: float = SLOW_DOWN_ROTATE_SPEED,
+) -> RotationVelocityController:
+    def rotation_velocity_controller(
+        remaining_angle: float, direction: Literal["left", "right"]
+    ) -> tuple[float, float]:
+        speed = high_speed if remaining_angle > slow_down_angle else slow_down_speed
+        if direction == "left":
+            left_velocity = -1 * speed
+            right_velocity = speed
+        elif direction == "right":
+            left_velocity = speed
+            right_velocity = -1 * speed
+        return left_velocity, right_velocity
 
-    :param angle_to_rotate: The angle that the robot haven't rotated yet
-                            and is going to rotate.
-
-    :return: A tuple with (left velocity, right velocity) according to the
-    angle it didn't rotate yet, the direction that each motor should rotate
-    is indicated by the signal of these values.
-    """
-    speed = high_speed if angle_to_rotate > slow_down_angle else low_speed
-    if direction == "left":
-        left_velocity = -1 * speed
-        right_velocity = speed
-    elif direction == "right":
-        left_velocity = speed
-        right_velocity = -1 * speed
-    return left_velocity, right_velocity
+    return rotation_velocity_controller
 
 
-def movement_velocity_controller(
-    dist_to_move: float,
-    direction: Literal["forward", "backward"],
-    rotation_angle_error: float,
+class MovementVelocityController(Protocol):
+    def __call__(
+        self,
+        remaining_distance: float,
+        wall_distance: float,
+        direction: Literal["forward", "backward"],
+        rotation_angle_error: float,
+    ) -> tuple[float, float]:
+        """
+        Speed is `high_speed` if the robot has to move a lot yet
+        (more than `slow_down_dist`), else it is `slow_down_speed`.
+
+        :param remaining_distance: The distance that the robot hasn't moved yet.
+        :param direction: In which direction the robot is moving.
+
+        :return: A tuple `(left velocity, right velocity)`.
+        The signal of those values is defined by `direction`.
+        """
+        ...
+
+
+def create_movement_velocity_controller(
     slow_down_dist: float = SLOW_DOWN_DIST,
     high_speed: float = MAX_SPEED,
-    low_speed: float = MAX_SPEED / 100,
-) -> tuple[float, float]:
-    """
-    It returns the `high_speed` if the robot has already to move a lot
-    (more than `slow_down_dist`), else it returns the `low_speed`.
+    slow_down_speed: float = SLOW_DOWN_MOVE_SPEED,
+    wall_distance_if_wall: float = TILE_SIZE,
+    slow_down_dist_if_wall: float = TILE_SIZE / 6,
+    slow_down_speed_if_wall: float = MAX_SPEED / 2,
+) -> MovementVelocityController:
+    def movement_velocity_controller(
+        remaining_distance: float,
+        wall_distance: float,
+        direction: Literal["forward", "backward"],
+        rotation_angle_error: float,
+    ) -> tuple[float, float]:
+        if 2 * abs(rotation_angle_error) > MAX_SPEED:
+            logger.warning(
+                "No PID, o erro para ser corrigido da rotação do "
+                f"robô é: {rotation_angle_error}, maior do que a "
+                f"maior velocidade do robô: {MAX_SPEED}",
+                System.motor_velocity,
+            )
 
-    :param dist_to_move: The distance that the robot haven't moved yet
-                            and is going to move.
+        speed = high_speed
+        if remaining_distance <= slow_down_dist:
+            speed = slow_down_speed
+        elif (
+            wall_distance <= wall_distance_if_wall
+            and remaining_distance <= slow_down_dist_if_wall
+        ):
+            speed = slow_down_speed_if_wall
 
-    :return: A tuple with (left velocity, right velocity) to the motor
-    according to the distance it haven't moved yet and considering the
-    `direction` to decide the direction that motors should turn.
-    """
-    # Recalculate `high_speed` so it is possible to maintain a motor
-    # `rotation_angle_error` faster than the other to correct it
-    high_speed = min(high_speed, MAX_SPEED - abs(rotation_angle_error))
+        speed_limit = MAX_SPEED - abs(rotation_angle_error)
+        speed = min(speed_limit, speed)
 
-    if DEBUG and abs(rotation_angle_error) > MAX_SPEED:
-        logger.warning(
-            "No PID, o erro para ser corrigido da rotação do "
-            f"robô é: {rotation_angle_error}, maior do que a "
-            f"maior velocidade do robô: {MAX_SPEED}",
-            System.motor_velocity,
-        )
+        left_velocity = speed - rotation_angle_error
+        right_velocity = speed + rotation_angle_error
 
-    speed = high_speed if dist_to_move > slow_down_dist else low_speed
-    left_velocity = speed - rotation_angle_error
-    right_velocity = speed + rotation_angle_error
+        if direction == "backward":
+            left_velocity *= -1
+            right_velocity *= -1
 
-    if direction == "backward":
-        left_velocity *= -1
-        right_velocity *= -1
+        return left_velocity, right_velocity
 
-    return left_velocity, right_velocity
+    return movement_velocity_controller
 
 
 class Robot:
@@ -297,8 +331,8 @@ class Robot:
                     logger.info("go to wall token", System.movement_reason)
                     self.move(
                         "forward",
-                        Maze(),
-                        dist=to_move / 2,
+                        to_move / 2,
+                        maze=Maze(),
                         just_move=True,
                     )  # TODO-: test Maze
                 delay(self.webots_robot, 1300)
@@ -309,8 +343,8 @@ class Robot:
                     logger.info("return from wall token", System.movement_reason)
                     self.move(
                         "backward",
-                        Maze(),
-                        dist=to_move / 2,
+                        to_move / 2,
+                        maze=Maze(),
                         just_move=True,
                     )  # TODO-: test Maze
                     if side == "left":
@@ -330,9 +364,7 @@ class Robot:
         turn_angle: float,
         *,
         correction_rotation: bool = False,
-        slow_down_angle: float = SLOW_DOWN_ANGLE,
-        high_speed: float = MAX_SPEED,
-        low_speed: float = SLOW_DOWN_ROTATE_SPEED,
+        speed_controller: RotationVelocityController = create_rotation_velocity_controller(),
         just_rotate: bool = False,
         dfs_rotation: bool = True,
     ) -> None:
@@ -395,9 +427,7 @@ class Robot:
 
             rotation_angle = new_robot_angle
 
-            left_velocity, right_velocity = rotation_velocity_controller(
-                angle_to_rotate, direction, slow_down_angle, high_speed, low_speed
-            )
+            left_velocity, right_velocity = speed_controller(angle_to_rotate, direction)
             self.motor.set_velocity(left_velocity, right_velocity)
 
             if angle_accumulated_delta >= turn_angle:
@@ -418,7 +448,9 @@ class Robot:
                         "left" if direction == "right" else "right",
                         angle_accumulated_delta - turn_angle,
                         correction_rotation=True,
-                        slow_down_angle=angle_accumulated_delta - turn_angle + 1,
+                        speed_controller=create_rotation_velocity_controller(
+                            slow_down_angle=angle_accumulated_delta - turn_angle + 1
+                        ),
                     )
                     logger.info(
                         f"Girou demais, voltou {self.expected_angle=}. "
@@ -444,9 +476,7 @@ class Robot:
     def rotate_to_angle(
         self,
         angle: float,
-        slow_down_angle: float = 0.1,
-        high_speed: float = MAX_SPEED,
-        low_speed: float = MAX_SPEED / 100,
+        speed_controller: RotationVelocityController = create_rotation_velocity_controller(),
     ) -> None:
         """
         Rotate the robot to `angle`. It rotates to the direction that
@@ -459,17 +489,13 @@ class Robot:
             self.rotate(
                 "right",
                 angle_rotating_right,
-                slow_down_angle=slow_down_angle,
-                high_speed=high_speed,
-                low_speed=low_speed,
+                speed_controller=speed_controller,
             )
         else:
             self.rotate(
                 "left",
                 angle_rotating_left,
-                slow_down_angle=slow_down_angle,
-                high_speed=high_speed,
-                low_speed=low_speed,
+                speed_controller=speed_controller,
             )
 
     @log_process(
@@ -486,12 +512,10 @@ class Robot:
     def move(
         self,
         direction: Literal["forward", "backward"],
-        maze: Maze,
+        dist: float,
         *,
-        dist: float = TILE_SIZE,
-        slow_down_dist: float = SLOW_DOWN_DIST,
-        high_speed: float = MAX_SPEED,
-        slow_down_speed: float = SLOW_DOWN_SPEED,
+        maze: Maze,
+        speed_controller: MovementVelocityController = create_movement_velocity_controller(),
         kp: float = KP,
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
@@ -531,16 +555,6 @@ class Robot:
         slower in the end of the movement.
         - Holes are not detected when moving backward.
         """
-        if (
-            self.lidar.get_side_distance(
-                "front" if direction == "forward" else "back",
-                field_of_view=20 * DEGREE_IN_RAD,
-                use_min=True,
-            )
-            <= TILE_SIZE
-        ):
-            slow_down_dist = TILE_SIZE / 2 / 3
-            slow_down_speed = MAX_SPEED / 2
         found_wall_token = False
         initial_position = self.gps.get_position()
 
@@ -576,16 +590,18 @@ class Robot:
                 expected_wall_distance, kp
             )
 
-            left_velocity, right_velocity = movement_velocity_controller(
+            left_velocity, right_velocity = speed_controller(
                 max(
                     abs(self.expected_position.x - current_position.x),
                     abs(self.expected_position.y - current_position.y),
                 ),
+                self.lidar.get_side_distance(
+                    "front" if direction == "forward" else "back",
+                    field_of_view=20 * DEGREE_IN_RAD,
+                    use_min=True,
+                ),
                 direction,
                 rotation_angle_error,
-                slow_down_dist,
-                high_speed,
-                slow_down_speed,
             )
             self.motor.set_velocity(left_velocity, right_velocity)
 
@@ -669,8 +685,8 @@ class Robot:
                     self.rotate_90_right()
                     self.move(
                         direction,
-                        maze,
-                        dist=0.001,
+                        0.001,
+                        maze=maze,
                         correction_move=True,
                     )
                     self.rotate_90_left()
@@ -682,8 +698,8 @@ class Robot:
                     self.rotate_90_left()
                     self.move(
                         direction,
-                        maze,
-                        dist=0.001,  # TODO: proporcional a quao perto está
+                        0.001,  # TODO: proporcional a quao perto está
+                        maze=maze,
                         correction_move=True,
                     )
                     self.rotate_90_right()
@@ -763,11 +779,9 @@ class Robot:
             logger.info("Blocked: return to initial position", System.movement_reason)
             self.move(
                 "backward" if direction == "forward" else "forward",
-                maze,
-                dist=traversed_dist,
-                slow_down_dist=slow_down_dist,
-                high_speed=high_speed,
-                slow_down_speed=slow_down_speed,
+                traversed_dist,
+                maze=maze,
+                speed_controller=speed_controller,
                 kp=kp,
                 expected_wall_distance=expected_wall_distance,
                 returning_to_safe_position=True,

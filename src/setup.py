@@ -63,32 +63,32 @@ def setup_delta_coordinate_mapper(robot: Robot, maze: Maze):
     initial_position = robot.gps.get_position()
     robot.move(
         "forward",
-        maze,
-        dist=0.01,
+        0.01,
+        maze=maze,
         correction_move=True,
     )
     delta_0_cord = robot.gps.get_position() - initial_position
     delta_0 = (delta_0_cord.x, delta_0_cord.y)
     robot.move(
         "backward",
-        maze,
-        dist=0.01,
+        0.01,
+        maze=maze,
         correction_move=True,
     )
     robot.rotate("right", 45 * DEGREE_IN_RAD, correction_rotation=True)
     initial_position = robot.gps.get_position()
     robot.move(
         "forward",
-        maze,
-        dist=0.01,
+        0.01,
+        maze=maze,
         correction_move=True,
     )
     delta_45_cord = robot.gps.get_position() - initial_position
     delta_45 = (delta_45_cord.x, delta_45_cord.y)
     robot.move(
         "backward",
-        maze,
-        dist=0.01,
+        0.01,
+        maze=maze,
         correction_move=True,
     )
     robot.rotate("left", 45 * DEGREE_IN_RAD, correction_rotation=True)
