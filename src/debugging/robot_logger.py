@@ -100,6 +100,9 @@ class RobotLogger:
         system_being_debugged: System,
         exc_info: bool | None = None,
     ):
+        if not DEBUG:
+            return
+
         self._log("info", message, system_being_debugged, exc_info=exc_info)
         self.indentation += "\t"
 
@@ -109,6 +112,9 @@ class RobotLogger:
         system_being_debugged: System,
         exc_info: bool | None = None,
     ):
+        if not DEBUG:
+            return
+
         self.indentation = self.indentation.removesuffix("\t")
         self._log("info", message, system_being_debugged, exc_info=exc_info)
 

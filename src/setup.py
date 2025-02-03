@@ -14,7 +14,7 @@ from devices import (
     Motor,
 )
 from maze import Maze
-from robot import Robot, set_dist_change_mapper
+from robot import Move, Robot, Rotate, set_dist_change_mapper
 from types_and_constants import DEBUG, DEGREE_IN_RAD
 
 
@@ -61,35 +61,15 @@ def setup_robot() -> Robot:
 def setup_delta_coordinate_mapper(robot: Robot, maze: Maze):
     robot.imu.get_rotation_angle()
     initial_position = robot.gps.get_position()
-    robot.move(
-        "forward",
-        0.01,
-        maze=maze,
-        correction_move=True,
-    )
+    robot.run(Move("forward", 0.01, maze=maze, correction_move=True))
     delta_0_cord = robot.gps.get_position() - initial_position
     delta_0 = (delta_0_cord.x, delta_0_cord.y)
-    robot.move(
-        "backward",
-        0.01,
-        maze=maze,
-        correction_move=True,
-    )
-    robot.rotate("right", 45 * DEGREE_IN_RAD, correction_rotation=True)
+    robot.run(Move("backward", 0.01, maze=maze, correction_move=True))
+    robot.run(Rotate("right", 45 * DEGREE_IN_RAD, correction_rotation=True))
     initial_position = robot.gps.get_position()
-    robot.move(
-        "forward",
-        0.01,
-        maze=maze,
-        correction_move=True,
-    )
+    robot.run(Move("forward", 0.01, maze=maze, correction_move=True))
     delta_45_cord = robot.gps.get_position() - initial_position
     delta_45 = (delta_45_cord.x, delta_45_cord.y)
-    robot.move(
-        "backward",
-        0.01,
-        maze=maze,
-        correction_move=True,
-    )
-    robot.rotate("left", 45 * DEGREE_IN_RAD, correction_rotation=True)
+    robot.run(Move("backward", 0.01, maze=maze, correction_move=True))
+    robot.run(Rotate("left", 45 * DEGREE_IN_RAD, correction_rotation=True))
     set_dist_change_mapper(delta_0, delta_45)

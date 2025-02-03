@@ -52,7 +52,7 @@ class Communicator(Device):
 
     def send_message(self, message: bytes) -> None:
         logger.info(f"Enviando mensagem {message!r}", System.communicator_send_messages)
-        self._emitter.info(message)
+        self._emitter.send(message)
         logger.info("Mensagem enviada com sucesso", System.communicator_send_messages)
 
     def get_received_data(self) -> bytes | None:

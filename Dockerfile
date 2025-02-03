@@ -20,7 +20,7 @@ ENV TIME_STEP=32
 COPY ./ngrok.txt ./ngrok.txt
 ENV ENTRIES_BETWEEN_SENDS=1000
 ENV LOG_PATH=/usr/local/controller/.logs/robo.log
-ENV DEBUG=True
+ENV DEBUG=False
 
 # Run controller (using extern controller helper)
 CMD webots-controller --protocol=tcp --ip-address=$EREBUS_SERVER --port=1234 --robot-name=Erebus_Bot --stdout-redirect --stderr-redirect main.py
