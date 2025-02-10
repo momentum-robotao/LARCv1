@@ -24,7 +24,7 @@ from types_and_constants import (
     SpecialTileType,
     WallColisionError,
 )
-
+from slam import slam
 
 def get_errors(robot: Robot, field_of_view: float):
     y_error = 0.0
@@ -179,6 +179,8 @@ def dfs(
             f"DFS de {position=} começou com {start_angle=}rad", System.dfs_verification
         )
 
+    
+    slam.take_snapshot(robot.gps.get_position(), robot.lidar.get_distances_by_side_angle())
     maze.mark_visited(position)
     robot.step()
     adjust_wall_distance(robot, debug_info, maze)
