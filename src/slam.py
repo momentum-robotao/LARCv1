@@ -1,5 +1,6 @@
 import numpy as np
 from types_and_constants import Coordinate
+#from GUI import gui
 
 
 
@@ -7,7 +8,7 @@ class Slam:
     def __init__(self) -> None:
         self.list_x = []
         self.list_y = []
-
+        
     def take_snapshot(self, gps_position: Coordinate, side_angle_to_distance_mapper: dict[float, float]) -> None:
         x0 = gps_position.x
         y0 = gps_position.y
@@ -20,10 +21,8 @@ class Slam:
             distance_y = distance*np.sin(side_angle) + y0
             self.list_x.append(distance_x)
             self.list_y.append(distance_y)
-
-
-        print(self.list_x)
-        print(self.list_y)
-
+        gui.plot(self.list_x, self.list_y)
+        
+        
 
 slam = Slam()

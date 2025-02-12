@@ -180,7 +180,8 @@ def dfs(
         )
 
     
-    slam.take_snapshot(robot.gps.get_position(), robot.lidar.get_distances_by_side_angle())
+    #slam.take_snapshot(robot.gps.get_position(), robot.lidar.get_distances_by_side_angle())
+
     maze.mark_visited(position)
     robot.step()
     adjust_wall_distance(robot, debug_info, maze)
