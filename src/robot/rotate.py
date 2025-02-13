@@ -1,6 +1,6 @@
 from typing import Literal
 
-from debugging import System, logger
+from debugging import System, log_process, logger
 from devices import IMU
 from types_and_constants import DEGREE_IN_RAD, PI
 from utils import cyclic_angle
@@ -30,6 +30,17 @@ class Rotate(RobotCommand):
         self.just_rotate = just_rotate
         self.dfs_rotation = dfs_rotation
 
+    @log_process(
+        [
+            "direction",
+            "turn_angle",
+            "correction_rotation",
+            "just_rotate",
+            "dfs_rotation",
+        ],
+        System.rotation,
+        from_self=True,
+    )
     def execute(self, robot: Robot) -> None:
         """
         Rotate the robot in a direction by an angle, using the motors. Uses
@@ -43,7 +54,7 @@ class Rotate(RobotCommand):
 
         logger.info(
             f"     rotacionando {self.turn_angle / DEGREE_IN_RAD} para {self.direction}. "
-            "Era {robot.expected_angle / DEGREE_IN_RAD}",
+            f"Era {robot.expected_angle / DEGREE_IN_RAD}",
             System.rotation,
         )
         recognized_wall_token = False

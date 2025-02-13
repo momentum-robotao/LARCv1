@@ -1,7 +1,9 @@
+from typing import Literal
+
 from debugging import System, logger
 from maze import Maze
 from recognize_wall_token import reconhece_lado
-from types_and_constants import DEGREE_IN_RAD, PI
+from types_and_constants import DEGREE_IN_RAD, PI, WallToken
 from utils import delay
 
 from .robot import Robot, RobotCommand
@@ -25,8 +27,7 @@ class RecognizeWallToken(RobotCommand[bool]):
         from .move import Move
         from .rotate import Rotate
 
-        found = False
-        for side, wall_token in [
+        wall_tokens_by_side: list[tuple[Literal["left", "right"], WallToken | None]] = [
             (
                 "left",
                 reconhece_lado(
@@ -45,53 +46,43 @@ class RecognizeWallToken(RobotCommand[bool]):
                     rotating=self.rotating,
                 ),
             ),
-        ]:
-            if wall_token:
-                robot.motor.stop()
-                if self.wall_token_approximation:
-                    to_move = 0.0
-                    if side == "left":
-                        to_move = robot.lidar.get_side_distance(
-                            "left", use_min=True, field_of_view=40 * DEGREE_IN_RAD
-                        )
-                        robot.run(
-                            Rotate(
-                                direction="left", turn_angle=PI / 2, just_rotate=True
-                            )
-                        )
-                    if side == "right":
-                        to_move = robot.lidar.get_side_distance(
-                            "right", use_min=True, field_of_view=40 * DEGREE_IN_RAD
-                        )
-                        robot.run(
-                            Rotate(
-                                direction="right", turn_angle=PI / 2, just_rotate=True
-                            )
-                        )
-                    logger.info("go to wall token", System.movement_reason)
-                    robot.run(
-                        Move("forward", to_move / 2, maze=Maze(), just_move=True)
-                    )  # TODO-: test Maze
-                delay(robot.webots_robot, 1300)
-                robot.communicator.send_wall_token_information(
-                    robot.gps.get_position(), wall_token
+        ]
+
+        found = False
+
+        for side, wall_token in wall_tokens_by_side:
+            if not wall_token:
+                continue
+            robot.motor.stop()
+            if self.wall_token_approximation:
+                to_move = 0.0
+                to_move = robot.lidar.get_side_distance(
+                    side, use_min=True, field_of_view=40 * DEGREE_IN_RAD
                 )
-                if self.wall_token_approximation:
-                    logger.info("return from wall token", System.movement_reason)
-                    robot.run(
-                        Move("backward", to_move / 2, maze=Maze(), just_move=True)
-                    )  # TODO-: test Maze
-                    if side == "left" or side == "right":
-                        robot.run(
-                            Rotate(
-                                direction=side,  # type: ignore[arg-type]
-                                turn_angle=PI / 2,
-                                just_rotate=True,
-                            )
-                        )
-                if self.move_after_found_wall_token:
-                    robot.motor.set_velocity(6.24 - 3.5, 6.24 - 3.5)
-                    delay(robot.webots_robot, 100)
-                    robot.motor.stop()
-                found = True
+                robot.run(Rotate(direction=side, turn_angle=PI / 2, just_rotate=True))
+                logger.info("go to wall token", System.movement_reason)
+                robot.run(
+                    Move("forward", to_move / 2, maze=Maze(), just_move=True)
+                )  # TODO-: test Maze
+            delay(robot.webots_robot, 1300)
+            robot.communicator.send_wall_token_information(
+                robot.gps.get_position(), wall_token
+            )
+            if self.wall_token_approximation:
+                logger.info("return from wall token", System.movement_reason)
+                robot.run(
+                    Move("backward", to_move / 2, maze=Maze(), just_move=True)
+                )  # TODO-: test Maze
+                robot.run(
+                    Rotate(
+                        direction="right" if side == "left" else "left",
+                        turn_angle=PI / 2,
+                        just_rotate=True,
+                    )
+                )
+            if self.move_after_found_wall_token:
+                robot.motor.set_velocity(6.24 - 3.5, 6.24 - 3.5)
+                delay(robot.webots_robot, 100)
+                robot.motor.stop()
+            found = True
         return found

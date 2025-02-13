@@ -5,7 +5,9 @@ from .create_logger import logger
 from .types_and_constants import System
 
 
-def log_process(arguments_to_log: list[str], system_being_debugged: System):
+def log_process(
+    arguments_to_log: list[str], system_being_debugged: System, from_self: bool = False
+):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -19,6 +21,13 @@ def log_process(arguments_to_log: list[str], system_being_debugged: System):
                 for name, value in arguments_name_to_value_mapper.items()
                 if name in arguments_to_log
             }
+
+            if from_self:
+                self_instance = arguments_name_to_value_mapper["self"]
+                for argument_name in arguments_to_log:
+                    arguments_mapper_to_show[argument_name] = getattr(
+                        self_instance, argument_name
+                    )
 
             logger.begin(
                 f"Begin - {func.__name__}: {arguments_mapper_to_show}",

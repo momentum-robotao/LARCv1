@@ -131,6 +131,7 @@ class Move(RobotCommand[MovementResult]):
             "dfs_move",
         ],
         System.motor_movement,
+        from_self=True,
     )
     def execute(
         self,
