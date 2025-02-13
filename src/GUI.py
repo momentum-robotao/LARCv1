@@ -36,9 +36,13 @@ def impl_glfw_init():
 
 class GUI:
     def __init__(self):
-        self.window = impl_glfw_init()
-        imgui.create_context()
-        self.impl = GlfwRenderer(self.window)
+        try:
+            self.window = impl_glfw_init()  # Tenta inicializar a janela GLFW
+            imgui.create_context()  # Cria o contexto do ImGui
+            self.impl = GlfwRenderer(self.window)  # Inicializa o renderizador do ImGui
+        except Exception as e:
+            print(f"Erro durante a inicialização: {e}")
+            sys.exit(1)  # Finaliza o programa em caso de erro
 
     
     def plot(self, listX : list, listY : list):
@@ -79,13 +83,11 @@ class GUI:
 
         # Troca os buffers da janela, atualizando a tela com o conteúdo renderizado
         glfw.swap_buffers(self.window)
-
+    
     def __del__(self):
         # Quando a janela for fechada, finaliza o ImGui e o GLFW
         self.impl.shutdown()  # Finaliza o renderizador do ImGui
         glfw.terminate()  # Termina a execução do GLFW (libera recursos)
-
-
-
+    
 
 gui = GUI()

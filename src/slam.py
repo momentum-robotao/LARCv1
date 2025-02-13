@@ -1,6 +1,6 @@
 import numpy as np
 from types_and_constants import Coordinate
-#from GUI import gui
+from GUI import gui
 
 
 
@@ -21,7 +21,7 @@ class Slam:
             distance_y = distance*np.sin(side_angle) + y0
             self.list_x.append(distance_x)
             self.list_y.append(distance_y)
-        gui.plot(self.list_x, self.list_y)
+        #gui.plot(self.list_x, self.list_y)
         
         
 

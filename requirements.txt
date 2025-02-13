@@ -23,4 +23,5 @@ pypandoc==1.4
 git-lfs
 mock
 Pillow
+imgui[full]
 #-e.
