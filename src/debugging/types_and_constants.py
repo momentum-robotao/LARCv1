@@ -24,9 +24,12 @@ class System(Enum):
     gps_measures = "gps measures"
     imu_measures = "imu measures"
     rotation = "motor rotation"
-    motor_movement = "motor movement"
-    motor_velocity = "motor velocity"
+    rotation_step_by_step = "rotation step by step"
     rotation_angle_correction = "rotation angle correction"
+    rotation_angle_correction_kp = "rotation angle correction KP"
+    motor_movement = "motor movement"
+    movement_step_by_step = "movement step by step"
+    motor_velocity = "motor velocity"
     color_sensor_measures = "color sensor measures"
     color_sensor_detections = "color sensor detections"
     maze_snapshot = "maze_snapshot"
@@ -52,7 +55,6 @@ class System(Enum):
     movement_reason = "movement reason"
     obstacle_detection = "obstacle detection"
     obstacle_avoidance = "obstacle avoidance"
-    movement_step_by_step = "movement step by step"
 
 
 ALL_SYSTEMS = {system for system in System}

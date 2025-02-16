@@ -65,7 +65,7 @@ class Rotate(RobotCommand):
             )
             for test_angle_degree in [0, 45, 90, 135, 180, 225, 270, 315, 360]:
                 test_angle = test_angle_degree * DEGREE_IN_RAD
-                if abs(test_angle - robot.expected_angle) <= 0.05:
+                if abs(test_angle - robot.expected_angle) <= 0.3:
                     robot.expected_angle = test_angle
             if self.direction == "left":  # changed
                 if robot.expected_angle > rotation_angle:
@@ -97,9 +97,9 @@ class Rotate(RobotCommand):
             angle_to_rotate = self.turn_angle - angle_accumulated_delta
 
             logger.info(
-                f"- Já girou {angle_accumulated_delta} no total, falta "
-                f"{angle_to_rotate}",
-                System.rotation,
+                f"- Já girou {angle_accumulated_delta / DEGREE_IN_RAD} no total, falta "
+                f"{angle_to_rotate / DEGREE_IN_RAD}",
+                System.rotation_step_by_step,
             )
 
             rotation_angle = new_robot_angle
@@ -113,15 +113,21 @@ class Rotate(RobotCommand):
                 robot.motor.stop()
 
                 logger.info(
-                    f"=== Terminou de girar {angle_accumulated_delta} "
+                    f"=== Terminou de girar {angle_accumulated_delta / DEGREE_IN_RAD} "
                     f"para {self.direction}. ",
                     System.rotation,
+                )
+                logger.info(
+                    f"Esperado {robot.expected_angle / DEGREE_IN_RAD}. "
+                    f"Parou em: {robot.imu.get_rotation_angle() / DEGREE_IN_RAD}",
+                    System.rotation_angle_correction,
                 )
 
                 logger.info(
                     f"Girou a mais {(angle_accumulated_delta - self.turn_angle)/DEGREE_IN_RAD}",
                     System.rotation_angle_correction,
                 )
+
                 if angle_accumulated_delta - self.turn_angle >= 0.1:  # changed
                     robot.run(
                         Rotate(
@@ -136,8 +142,8 @@ class Rotate(RobotCommand):
                         )
                     )
                     logger.info(
-                        f"Girou demais, voltou {robot.expected_angle=}. "
-                        f"Parando em: {robot.imu.get_rotation_angle()}",
+                        f"Girou demais, esperado {robot.expected_angle / DEGREE_IN_RAD}. "
+                        f"Parando em: {robot.imu.get_rotation_angle() / DEGREE_IN_RAD}",
                         System.rotation_angle_correction,
                     )
 
@@ -160,8 +166,7 @@ class RotateToAngle(Rotate):
         self.speed_controller = speed_controller
 
     def execute(self, robot: Robot) -> None:
-        robot_rotation_angle = robot.imu.get_rotation_angle()
-        angle_rotating_right = cyclic_angle(2 * PI + self.angle - robot_rotation_angle)
+        angle_rotating_right = cyclic_angle(2 * PI + self.angle - robot.expected_angle)
         angle_rotating_left = 2 * PI - angle_rotating_right  # complementar angles
         if angle_rotating_right <= PI:
             return robot.run(

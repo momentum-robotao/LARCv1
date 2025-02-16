@@ -247,9 +247,9 @@ Sobre o LIDAR
 
         logger.info(
             "Erro do ângulo de rotação do robô para ser corrigido: "
-            f"{rotation_angle_error}. Com {kp=}, com distância alvo "
+            f"{rotation_angle_error / DEGREE_IN_RAD}. Com {kp=}, com distância alvo "
             f"da parede de: {expected_wall_distance}",
-            System.rotation_angle_correction,
+            System.rotation_angle_correction_kp,
         )
 
         return rotation_angle_error
