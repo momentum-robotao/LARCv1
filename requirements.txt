@@ -14,14 +14,6 @@
 requests==2.32.3
 opencv-python
 numpy
-Cython>=0.24,<0.30
-Sphinx==6.1.3
-#docutils<0.13.1
-PyOpenGL
-glfw
-pypandoc==1.4
-git-lfs
-mock
-Pillow
-imgui[full]
-#-e.
+matplotlib
+seaborn
+pandas
