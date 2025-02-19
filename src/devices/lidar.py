@@ -7,8 +7,6 @@ from debugging import System, logger
 from types_and_constants import (
     CENTRAL_SIDE_ANGLE_OF_SIDE,
     DEGREE_IN_RAD,
-    EXPECTED_WALL_DISTANCE,
-    KP,
     MAX_WALL_DISTANCE,
     ROBOT_RADIUS,
     WALL_COLLISION_DISTANCE,
@@ -229,27 +227,3 @@ Sobre o LIDAR
                 System.lidar_wall_detection,
             )
         return wall_collision
-
-    def get_rotation_angle_error(
-        self,
-        expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
-        kp: float = KP,
-    ) -> float:
-        rotation_angle_error = 0.0
-        if self.has_wall("left"):
-            rotation_angle_error = (
-                self.get_side_distance("left") - expected_wall_distance
-            ) * kp
-        if self.has_wall("right"):
-            rotation_angle_error = (
-                (self.get_side_distance("right") - expected_wall_distance) * kp * -1
-            )
-
-        logger.info(
-            "Erro do ângulo de rotação do robô para ser corrigido: "
-            f"{rotation_angle_error / DEGREE_IN_RAD}. Com {kp=}, com distância alvo "
-            f"da parede de: {expected_wall_distance}",
-            System.rotation_angle_correction_kp,
-        )
-
-        return rotation_angle_error

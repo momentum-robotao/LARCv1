@@ -26,7 +26,6 @@ class System(Enum):
     rotation = "motor rotation"
     rotation_step_by_step = "rotation step by step"
     rotation_angle_correction = "rotation angle correction"
-    rotation_angle_correction_kp = "rotation angle correction KP"
     motor_movement = "motor movement"
     movement_step_by_step = "movement step by step"
     motor_velocity = "motor velocity"

@@ -6,7 +6,6 @@ from types_and_constants import (
     DEGREE_IN_RAD,
     DIST_BEFORE_HOLE,
     EXPECTED_WALL_DISTANCE,
-    KP,
     PI,
     POSSIBLE_ANGLES,
     Coordinate,
@@ -103,7 +102,6 @@ class Move(RobotCommand[MovementResult]):
         *,
         maze: Maze,
         speed_controller: MovementVelocityController = create_movement_velocity_controller(),
-        kp: float = KP,
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
         correction_move: bool = False,
@@ -114,7 +112,6 @@ class Move(RobotCommand[MovementResult]):
         self.dist = dist
         self.maze = maze
         self.speed_controller = speed_controller
-        self.kp = kp
         self.expected_wall_distance = expected_wall_distance
         self.returning_to_safe_position = returning_to_safe_position
         self.correction_move = correction_move
@@ -149,7 +146,6 @@ class Move(RobotCommand[MovementResult]):
                       rotation angle.
         :param color_sensor: Used to recognize holes.
         :param dist: Distance that the robot should try to move.
-        :param kp: Intensity of robot rotation angle corrections.
         :param expected_wall_distance: The distance from the wall that the
                                        robot is going to try to maintain.
         :param returning_to_safe_position: If robot is returning to a safe
@@ -203,10 +199,6 @@ class Move(RobotCommand[MovementResult]):
         while robot.step() != -1:
             current_position = robot.gps.get_position()
 
-            rotation_angle_error = robot.lidar.get_rotation_angle_error(
-                self.expected_wall_distance, self.kp
-            )
-
             left_velocity, right_velocity = self.speed_controller(
                 max(
                     abs(robot.expected_position.x - current_position.x),
@@ -218,7 +210,6 @@ class Move(RobotCommand[MovementResult]):
                     use_min=True,
                 ),
                 self.direction,
-                rotation_angle_error,
             )
             robot.motor.set_velocity(left_velocity, right_velocity)
 
@@ -408,7 +399,6 @@ class Move(RobotCommand[MovementResult]):
                     traversed_dist,
                     maze=self.maze,
                     speed_controller=self.speed_controller,
-                    kp=self.kp,
                     expected_wall_distance=self.expected_wall_distance,
                     returning_to_safe_position=True,
                 )

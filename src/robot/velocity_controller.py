@@ -1,6 +1,5 @@
 from typing import Literal, Protocol
 
-from debugging import System, logger
 from types_and_constants import (
     MAX_SPEED,
     SLOW_DOWN_ANGLE,
@@ -54,7 +53,6 @@ class MovementVelocityController(Protocol):
         remaining_distance: float,
         wall_distance: float,
         direction: Literal["forward", "backward"],
-        rotation_angle_error: float,
     ) -> tuple[float, float]:
         """
         Speed is `high_speed` if the robot has to move a lot yet
@@ -81,16 +79,7 @@ def create_movement_velocity_controller(
         remaining_distance: float,
         wall_distance: float,
         direction: Literal["forward", "backward"],
-        rotation_angle_error: float,
     ) -> tuple[float, float]:
-        if 2 * abs(rotation_angle_error) > MAX_SPEED:
-            logger.warning(
-                "No PID, o erro para ser corrigido da rotação do "
-                f"robô é: {rotation_angle_error}, maior do que a "
-                f"maior velocidade do robô: {MAX_SPEED}",
-                System.motor_velocity,
-            )
-
         speed = high_speed
         if remaining_distance <= slow_down_dist:
             speed = slow_down_speed
@@ -100,11 +89,8 @@ def create_movement_velocity_controller(
         ):
             speed = slow_down_speed_if_wall
 
-        speed_limit = MAX_SPEED - abs(rotation_angle_error)
-        speed = min(speed_limit, speed)
-
-        left_velocity = speed - rotation_angle_error
-        right_velocity = speed + rotation_angle_error
+        left_velocity = speed
+        right_velocity = speed
 
         if direction == "backward":
             left_velocity *= -1
