@@ -105,7 +105,6 @@ class Move(RobotCommand[MovementResult]):
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
         correction_move: bool = False,
-        dfs_move: bool = True,
     ):
         self.direction = direction
         self.dist = dist
@@ -114,7 +113,6 @@ class Move(RobotCommand[MovementResult]):
         self.expected_wall_distance = expected_wall_distance
         self.returning_to_safe_position = returning_to_safe_position
         self.correction_move = correction_move
-        self.dfs_move = dfs_move
 
     @log_process(
         [
@@ -122,7 +120,6 @@ class Move(RobotCommand[MovementResult]):
             "dist",
             "returning_to_safe_position",
             "correction_move",
-            "dfs_move",
         ],
         System.motor_movement,
         from_self=True,
@@ -167,7 +164,7 @@ class Move(RobotCommand[MovementResult]):
 
         initial_position = robot.gps.get_position()
 
-        if not self.correction_move and self.dfs_move:
+        if not self.correction_move:
             initial_expected_position = robot.expected_position
 
             imu_expected_angle = cyclic_angle(
@@ -210,92 +207,89 @@ class Move(RobotCommand[MovementResult]):
             )
             robot.motor.set_velocity(left_velocity, right_velocity)
 
-            if self.dfs_move:
-                left_diagonal_distance = robot.lidar.get_side_distance(
-                    cyclic_angle(
-                        315 * DEGREE_IN_RAD
-                        + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
-                    ),
-                    field_of_view=30 * DEGREE_IN_RAD,
-                    use_min=True,
-                )
-                right_diagonal_distance = robot.lidar.get_side_distance(
-                    cyclic_angle(
-                        45 * DEGREE_IN_RAD
-                        + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
-                    ),
-                    field_of_view=30 * DEGREE_IN_RAD,
-                    use_min=True,
-                )
+            left_diagonal_distance = robot.lidar.get_side_distance(
+                cyclic_angle(
+                    315 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            right_diagonal_distance = robot.lidar.get_side_distance(
+                cyclic_angle(
+                    45 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            logger.info(
+                f"Diagonal distances: ({left_diagonal_distance}; {right_diagonal_distance})",
+                System.obstacle_detection,
+            )
+            left_diagonal = left_diagonal_distance <= 0.007
+            right_diagonal = right_diagonal_distance <= 0.007
+
+            left_side_distance = robot.lidar.get_side_distance(
+                cyclic_angle(
+                    285 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            right_side_distance = robot.lidar.get_side_distance(
+                cyclic_angle(
+                    75 * DEGREE_IN_RAD
+                    + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
+                ),
+                field_of_view=30 * DEGREE_IN_RAD,
+                use_min=True,
+            )
+            logger.info(
+                f"Side distances: ({left_diagonal_distance}; {right_side_distance})",
+                System.obstacle_detection,
+            )
+            left_side = left_side_distance <= 0.006
+            right_side = right_side_distance <= 0.006
+
+            if (left_diagonal or left_side) and (right_side or right_diagonal):
                 logger.info(
-                    f"Diagonal distances: ({left_diagonal_distance}; {right_diagonal_distance})",
-                    System.obstacle_detection,
+                    "Both sides/diagonals with obstacles", System.obstacle_detection
                 )
-                left_diagonal = left_diagonal_distance <= 0.007
-                right_diagonal = right_diagonal_distance <= 0.007
 
-                left_side_distance = robot.lidar.get_side_distance(
-                    cyclic_angle(
-                        285 * DEGREE_IN_RAD
-                        + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
-                    ),
-                    field_of_view=30 * DEGREE_IN_RAD,
-                    use_min=True,
+            if (left_diagonal or left_side) and (right_side or right_diagonal):
+                # TODO-: desfazer movimento obstáculo ou GPS arruma depois já?
+                found_obstacle = True
+                blocking = True
+                break
+            elif left_diagonal or left_side:
+                logger.info("Left obstacle: correction", System.obstacle_avoidance)
+                robot.motor.stop()
+                robot.run(Rotate(direction="right", turn_angle=PI / 2))
+                robot.run(
+                    Move(self.direction, 0.001, maze=self.maze, correction_move=True),
                 )
-                right_side_distance = robot.lidar.get_side_distance(
-                    cyclic_angle(
-                        75 * DEGREE_IN_RAD
-                        + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
-                    ),
-                    field_of_view=30 * DEGREE_IN_RAD,
-                    use_min=True,
+                robot.run(Rotate(direction="left", turn_angle=PI / 2))
+                found_obstacle = True
+            # TODO: tirar obstáculo etc pra área 4
+            elif right_diagonal or right_side:
+                logger.info("Right obstacle: correction", System.obstacle_avoidance)
+                robot.motor.stop()
+                robot.run(Rotate(direction="left", turn_angle=PI / 2))
+                robot.run(
+                    Move(
+                        self.direction,
+                        0.001,  # TODO: proporcional a quao perto está
+                        maze=self.maze,
+                        correction_move=True,
+                    )
                 )
-                logger.info(
-                    f"Side distances: ({left_diagonal_distance}; {right_side_distance})",
-                    System.obstacle_detection,
-                )
-                left_side = left_side_distance <= 0.006
-                right_side = right_side_distance <= 0.006
-
-                if (left_diagonal or left_side) and (right_side or right_diagonal):
-                    logger.info(
-                        "Both sides/diagonals with obstacles", System.obstacle_detection
-                    )
-
-                if (left_diagonal or left_side) and (right_side or right_diagonal):
-                    # TODO-: desfazer movimento obstáculo ou GPS arruma depois já?
-                    found_obstacle = True
-                    blocking = True
-                    break
-                elif left_diagonal or left_side:
-                    logger.info("Left obstacle: correction", System.obstacle_avoidance)
-                    robot.motor.stop()
-                    robot.run(Rotate(direction="right", turn_angle=PI / 2))
-                    robot.run(
-                        Move(
-                            self.direction, 0.001, maze=self.maze, correction_move=True
-                        ),
-                    )
-                    robot.run(Rotate(direction="left", turn_angle=PI / 2))
-                    found_obstacle = True
-                # TODO: tirar obstáculo etc pra área 4
-                elif right_diagonal or right_side:
-                    logger.info("Right obstacle: correction", System.obstacle_avoidance)
-                    robot.motor.stop()
-                    robot.run(Rotate(direction="left", turn_angle=PI / 2))
-                    robot.run(
-                        Move(
-                            self.direction,
-                            0.001,  # TODO: proporcional a quao perto está
-                            maze=self.maze,
-                            correction_move=True,
-                        )
-                    )
-                    robot.run(Rotate(direction="right", turn_angle=PI / 2))
-                    found_obstacle = True
+                robot.run(Rotate(direction="right", turn_angle=PI / 2))
+                found_obstacle = True
 
             is_x_traversed, is_y_traversed = False, False
-            if not self.correction_move and self.dfs_move:
+            if not self.correction_move:
                 is_x_traversed = (
                     robot.expected_position.x < current_position.x
                     if robot.expected_position.x > initial_position.x
@@ -319,7 +313,7 @@ class Move(RobotCommand[MovementResult]):
 
             if (
                 (is_x_traversed and is_y_traversed)
-                if not self.correction_move and not found_obstacle and self.dfs_move
+                if not self.correction_move and not found_obstacle
                 else traversed_dist >= self.dist
             ):
                 robot.motor.stop()
@@ -334,7 +328,7 @@ class Move(RobotCommand[MovementResult]):
             if robot.lidar.wall_collision(
                 "front" if self.direction == "forward" else "back"
             ):
-                if not self.returning_to_safe_position and self.dfs_move:
+                if not self.returning_to_safe_position:
                     blocking = True
 
                     logger.info(
@@ -354,7 +348,6 @@ class Move(RobotCommand[MovementResult]):
                     self.dist - traversed_dist > DIST_BEFORE_HOLE
                     or self.dist <= DIST_BEFORE_HOLE
                 )
-                and self.dfs_move
                 and not self.correction_move
             ):
                 logger.info(
