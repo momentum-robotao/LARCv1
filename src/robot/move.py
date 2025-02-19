@@ -105,7 +105,6 @@ class Move(RobotCommand[MovementResult]):
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         returning_to_safe_position: bool = False,
         correction_move: bool = False,
-        just_move: bool = False,  # TODO: refactor all these cases
         dfs_move: bool = True,
     ):
         self.direction = direction
@@ -115,7 +114,6 @@ class Move(RobotCommand[MovementResult]):
         self.expected_wall_distance = expected_wall_distance
         self.returning_to_safe_position = returning_to_safe_position
         self.correction_move = correction_move
-        self.just_move = just_move
         self.dfs_move = dfs_move
 
     @log_process(
@@ -124,7 +122,6 @@ class Move(RobotCommand[MovementResult]):
             "dist",
             "returning_to_safe_position",
             "correction_move",
-            "just_move",
             "dfs_move",
         ],
         System.motor_movement,
@@ -170,7 +167,7 @@ class Move(RobotCommand[MovementResult]):
 
         initial_position = robot.gps.get_position()
 
-        if not self.correction_move and self.dfs_move and not self.just_move:
+        if not self.correction_move and self.dfs_move:
             initial_expected_position = robot.expected_position
 
             imu_expected_angle = cyclic_angle(
@@ -213,7 +210,7 @@ class Move(RobotCommand[MovementResult]):
             )
             robot.motor.set_velocity(left_velocity, right_velocity)
 
-            if self.dfs_move and not self.just_move:
+            if self.dfs_move:
                 left_diagonal_distance = robot.lidar.get_side_distance(
                     cyclic_angle(
                         315 * DEGREE_IN_RAD
@@ -298,7 +295,7 @@ class Move(RobotCommand[MovementResult]):
                     found_obstacle = True
 
             is_x_traversed, is_y_traversed = False, False
-            if not self.correction_move and self.dfs_move and not self.just_move:
+            if not self.correction_move and self.dfs_move:
                 is_x_traversed = (
                     robot.expected_position.x < current_position.x
                     if robot.expected_position.x > initial_position.x
@@ -322,10 +319,7 @@ class Move(RobotCommand[MovementResult]):
 
             if (
                 (is_x_traversed and is_y_traversed)
-                if not self.correction_move
-                and not found_obstacle
-                and self.dfs_move
-                and not self.just_move
+                if not self.correction_move and not found_obstacle and self.dfs_move
                 else traversed_dist >= self.dist
             ):
                 robot.motor.stop()
@@ -340,11 +334,7 @@ class Move(RobotCommand[MovementResult]):
             if robot.lidar.wall_collision(
                 "front" if self.direction == "forward" else "back"
             ):
-                if (
-                    not self.returning_to_safe_position
-                    and self.dfs_move
-                    and not self.just_move
-                ):
+                if not self.returning_to_safe_position and self.dfs_move:
                     blocking = True
 
                     logger.info(
@@ -366,7 +356,6 @@ class Move(RobotCommand[MovementResult]):
                 )
                 and self.dfs_move
                 and not self.correction_move
-                and not self.just_move
             ):
                 logger.info(
                     "Retornará à posição antiga após achar buraco.",
@@ -382,11 +371,7 @@ class Move(RobotCommand[MovementResult]):
                     found_hole_type = MovementResult.right_hole
                 break
 
-            if (
-                not self.just_move
-                and not found_wall_token
-                and robot.run(RecognizeWallToken())
-            ):
+            if not found_wall_token and robot.run(RecognizeWallToken()):
                 found_wall_token = True
 
         if blocking:  # ? hole, obstacle or unexpected wall collision

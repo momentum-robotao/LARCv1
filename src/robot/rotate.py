@@ -46,8 +46,6 @@ class Rotate(RobotCommand):
         Rotate the robot in a direction by an angle, using the motors. Uses
         `imu` to check the robot angle to rotate correctly.
         """
-        from .recognize_wall_token import RecognizeWallToken
-
         was_rotating = robot.rotating > 0
         robot.rotating += 1
         rotation_angle = robot.imu.get_rotation_angle()
@@ -57,7 +55,6 @@ class Rotate(RobotCommand):
             f"Era {robot.expected_angle / DEGREE_IN_RAD}",
             System.rotation,
         )
-        recognized_wall_token = False
         if not self.correction_rotation and not was_rotating and self.dfs_rotation:
             robot.expected_angle = cyclic_angle(
                 robot.expected_angle
@@ -83,13 +80,6 @@ class Rotate(RobotCommand):
         angle_accumulated_delta = 0
 
         while robot.step() != -1:
-            if (
-                not self.just_rotate
-                and not recognized_wall_token
-                and robot.run(RecognizeWallToken(rotating=True))
-            ):
-                recognized_wall_token = True
-
             new_robot_angle = robot.imu.get_rotation_angle()
             angle_accumulated_delta += IMU.get_delta_rotation(
                 rotation_angle, new_robot_angle
