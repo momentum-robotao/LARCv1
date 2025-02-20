@@ -9,6 +9,7 @@ from types_and_constants import (
     PI,
     POSSIBLE_ANGLES,
     Coordinate,
+    LackOfProgressError,
     MovementResult,
     WallColisionError,
 )
@@ -103,7 +104,6 @@ class Move(RobotCommand[MovementResult]):
         maze: Maze,
         speed_controller: MovementVelocityController = create_movement_velocity_controller(),
         expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
-        returning_to_safe_position: bool = False,
         correction_move: bool = False,
     ):
         self.direction = direction
@@ -111,14 +111,12 @@ class Move(RobotCommand[MovementResult]):
         self.maze = maze
         self.speed_controller = speed_controller
         self.expected_wall_distance = expected_wall_distance
-        self.returning_to_safe_position = returning_to_safe_position
         self.correction_move = correction_move
 
     @log_process(
         [
             "direction",
             "dist",
-            "returning_to_safe_position",
             "correction_move",
         ],
         System.motor_movement,
@@ -142,10 +140,6 @@ class Move(RobotCommand[MovementResult]):
         :param dist: Distance that the robot should try to move.
         :param expected_wall_distance: The distance from the wall that the
                                        robot is going to try to maintain.
-        :param returning_to_safe_position: If robot is returning to a safe
-            position is expected that it will recognize a hole or wall while
-            returning to last position and it is guaranteeded that the movement
-            is safe/allowed, so it doesn't stop with holes nor walls.
         :return: What was the result of moving. For example, if it has moved or
             there were a hole and it returned to its start position.
         :raises WallColisionError: If the robot collides with a wall for some
@@ -165,20 +159,17 @@ class Move(RobotCommand[MovementResult]):
         initial_position = robot.gps.get_position()
 
         if not self.correction_move:
-            initial_expected_position = robot.expected_position
-
             imu_expected_angle = cyclic_angle(
                 robot.expected_angle
                 + (180 * DEGREE_IN_RAD if self.direction == "backward" else 0)
             )
             rounded_angle = round_angle(imu_expected_angle)
             delta = DIST_CHANGE_MAPPER[rounded_angle]
-            if not self.returning_to_safe_position:
-                robot.expected_position = expected_gps_after_move(
-                    robot.expected_position,
-                    imu_expected_angle,
-                    self.dist,
-                )
+            robot.expected_position = expected_gps_after_move(
+                robot.expected_position,
+                imu_expected_angle,
+                self.dist,
+            )
 
         logger.info(
             f"Target: {robot.expected_position} from {initial_position=}",
@@ -328,22 +319,18 @@ class Move(RobotCommand[MovementResult]):
             if robot.lidar.wall_collision(
                 "front" if self.direction == "forward" else "back"
             ):
-                if not self.returning_to_safe_position:
-                    blocking = True
+                blocking = True
 
-                    logger.info(
-                        "Detected collision: will return to last position",
-                        System.lidar_wall_detection,
-                    )
+                logger.info(
+                    "Detected collision: will return to last position",
+                    System.lidar_wall_detection,
+                )
 
-                    break
-                else:
-                    logger.warning("would be a collision", System.lidar_wall_detection)
+                break
 
             hole = robot.distance_sensor.detect_hole()
             if (
                 hole
-                and not self.returning_to_safe_position
                 and (
                     self.dist - traversed_dist > DIST_BEFORE_HOLE
                     or self.dist <= DIST_BEFORE_HOLE
@@ -369,18 +356,18 @@ class Move(RobotCommand[MovementResult]):
 
         if blocking:  # ? hole, obstacle or unexpected wall collision
             robot.motor.stop()
-            robot.expected_position = initial_expected_position
             logger.info("Blocked: return to initial position", System.movement_reason)
-            robot.run(
+            movement_result = robot.run(
                 Move(
                     "backward" if self.direction == "forward" else "forward",
-                    traversed_dist,
+                    self.dist,
                     maze=self.maze,
                     speed_controller=self.speed_controller,
                     expected_wall_distance=self.expected_wall_distance,
-                    returning_to_safe_position=True,
                 )
             )
+            if movement_result != MovementResult.moved:
+                raise LackOfProgressError
 
             # TODO: deixar 'branco' no mapa se `found_obstacle`
 
