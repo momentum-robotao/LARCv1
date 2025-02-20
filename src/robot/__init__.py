@@ -1,4 +1,4 @@
-from .move import Move, set_dist_change_mapper
+from .move import Move, MovementResult, set_dist_change_mapper
 from .recognize_wall_token import RecognizeWallToken
 from .robot import Robot
 from .rotate import Rotate, RotateToAngle, rotate_180
@@ -17,4 +17,5 @@ __all__ = [
     "RecognizeWallToken",
     "rotate_180",
     "RotateToAngle",
+    "MovementResult",
 ]

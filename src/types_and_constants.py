@@ -73,15 +73,6 @@ class EndOfTimeError(Exception):
     """
 
 
-class WallColisionError(Exception):
-    """
-    Exception raised when the robot colides with a wall and it
-    has already returned to its last position.
-    """
-
-    pass
-
-
 class LackOfProgressError(Exception):
     """
     Exception raised when a lack of progress is detected.
@@ -91,13 +82,6 @@ class LackOfProgressError(Exception):
 
 
 # Related to mapping
-class MovementResult(Enum):
-    moved = "moved"
-    left_hole = "left hole"
-    right_hole = "right hole"
-    central_hole = "central hole"
-
-
 class SpecialTileType(Enum):
     AREA_4 = "*"
     HOLE = "2"

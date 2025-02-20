@@ -2,6 +2,7 @@ from debugging import System, logger
 from maze import Maze
 from robot import (
     Move,
+    MovementResult,
     RecognizeWallToken,
     Robot,
     Rotate,
@@ -19,9 +20,8 @@ from types_and_constants import (
     TILE_SIZE,
     AreaDFSMappable,
     Coordinate,
-    MovementResult,
+    LackOfProgressError,
     SpecialTileType,
-    WallColisionError,
 )
 from utils import (
     calculate_wall_position,
@@ -307,11 +307,29 @@ def dfs(
         viz_moves.append(("rotate_to_angle", (movement_angle,)))
         robot.run(RotateToAngle(movement_angle))
         robot.run(RecognizeWallToken())
-        try:
-            viz_moves.append(("move", ("forward", new_position_distance)))
-            movement_result = robot.run(
+
+        viz_moves.append(("move", ("forward", new_position_distance)))
+        movement_result = robot.run(
+            Move(
+                "forward",
+                new_position_distance,
+                maze=maze,
+                speed_controller=create_movement_velocity_controller(
+                    slow_down_dist=SLOW_DOWN_DIST / 3
+                ),
+            )
+        )
+
+        if movement_result in [
+            MovementResult.central_hole,
+            MovementResult.left_hole,
+            MovementResult.right_hole,
+            MovementResult.unavoidable_obstacle,
+        ]:
+            logger.info("Blocked: return to initial position", System.movement_reason)
+            comeback_result = robot.run(
                 Move(
-                    "forward",
+                    "backward",
                     new_position_distance,
                     maze=maze,
                     speed_controller=create_movement_velocity_controller(
@@ -319,32 +337,41 @@ def dfs(
                     ),
                 )
             )
+            if comeback_result != MovementResult.moved:
+                raise LackOfProgressError()
 
-            angle_to_hole = None
-            if movement_result == MovementResult.central_hole:
+        angle_to_hole = None
+        match movement_result:
+            case MovementResult.moved:
+                pass
+
+            case MovementResult.central_hole:
                 angle_to_hole = movement_angle
-            elif movement_result == MovementResult.left_hole:
+            case MovementResult.left_hole:
                 angle_to_hole = cyclic_angle(movement_angle - 45)
-            elif movement_result == MovementResult.right_hole:
+            case MovementResult.right_hole:
                 angle_to_hole = cyclic_angle(movement_angle + 45)
 
-            if angle_to_hole is not None:
-                robot_position_on_hole = coordinate_after_move(
-                    coordinate_after_move(position, angle_to_hole), movement_angle
-                )
-                maze.set_tile_type(robot_position_on_hole, SpecialTileType.HOLE)
-                hole_tile_position = tile_pos_with_quarter_tile(robot_position_on_hole)
-                maze.mark_visited_tile(hole_tile_position)
+            case MovementResult.unavoidable_obstacle:
                 continue
-            elif movement_result == MovementResult.moved:
-                pass
-            elif DEBUG:
-                logger.error(
-                    f"Resultado inesperado para movimento: {movement_result}",
-                    System.unknown_error,
-                )
-                raise Exception(f"Resultado de movimento inesperado: {movement_result}")
-        except WallColisionError:
+
+            case _:
+                if DEBUG:
+                    logger.error(
+                        f"Resultado inesperado para movimento: {movement_result}",
+                        System.unknown_error,
+                    )
+                    raise Exception(
+                        f"Resultado de movimento inesperado: {movement_result}"
+                    )
+
+        if angle_to_hole is not None:
+            robot_position_on_hole = coordinate_after_move(
+                coordinate_after_move(position, angle_to_hole), movement_angle
+            )
+            maze.set_tile_type(robot_position_on_hole, SpecialTileType.HOLE)
+            hole_tile_position = tile_pos_with_quarter_tile(robot_position_on_hole)
+            maze.mark_visited_tile(hole_tile_position)
             continue
 
         transitions.extend(
@@ -358,7 +385,7 @@ def dfs(
         )
 
         logger.info("Retornando do vizinho", System.dfs_decision)
-        robot.run(
+        comeback_result = robot.run(
             Move(
                 "backward",
                 new_position_distance,
@@ -368,6 +395,8 @@ def dfs(
                 ),
             )
         )
+        if comeback_result != MovementResult.moved:
+            raise LackOfProgressError()
 
     logger.info(
         f"Finalizando DFS de {position=}. Voltando para {start_angle=}",

@@ -63,6 +63,10 @@ class MovementVelocityController(Protocol):
 
         :return: A tuple `(left velocity, right velocity)`.
         The signal of those values is defined by `direction`.
+
+        This approach is intended to make
+        the movement quick in general, but with a good precision as it moves
+        slower in the end of the movement.
         """
         ...
 

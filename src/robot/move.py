@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Literal
 
 from debugging import System, log_process, logger
@@ -5,13 +6,9 @@ from maze import Maze
 from types_and_constants import (
     DEGREE_IN_RAD,
     DIST_BEFORE_HOLE,
-    EXPECTED_WALL_DISTANCE,
     PI,
     POSSIBLE_ANGLES,
     Coordinate,
-    LackOfProgressError,
-    MovementResult,
-    WallColisionError,
 )
 from utils import cyclic_angle, round_if_almost_0
 
@@ -20,6 +17,15 @@ from .velocity_controller import (
     MovementVelocityController,
     create_movement_velocity_controller,
 )
+
+
+class MovementResult(Enum):
+    moved = "moved"
+    left_hole = "left hole"
+    right_hole = "right hole"
+    central_hole = "central hole"
+    unavoidable_obstacle = "unavoidable obstacle"
+
 
 DIST_CHANGE_MAPPER: dict[int, tuple[float, float]] = {}
 
@@ -103,14 +109,28 @@ class Move(RobotCommand[MovementResult]):
         *,
         maze: Maze,
         speed_controller: MovementVelocityController = create_movement_velocity_controller(),
-        expected_wall_distance: float = EXPECTED_WALL_DISTANCE,
         correction_move: bool = False,
     ):
+        """
+        Move the robot by certain distance in meters in some direction, using
+        the motors.
+
+        :param direction: Direction that robot should move.
+        :param dist: Distance that it should try to move.
+        :return: The `execute` method returns what was the result of moving.
+        - moved
+        - hole (in front, left, or right)
+        - unavoidable obstacle: If the robot find an obstacle in the path which cannot be avoided.
+        For example, because the size between it and a wall is too short.
+
+        OBS:
+        - Backward direction is intended only for moves in paths that are guaranteed to not have
+        hole, which are not detected in this situation.
+        """
         self.direction = direction
         self.dist = dist
         self.maze = maze
         self.speed_controller = speed_controller
-        self.expected_wall_distance = expected_wall_distance
         self.correction_move = correction_move
 
     @log_process(
@@ -126,33 +146,6 @@ class Move(RobotCommand[MovementResult]):
         self,
         robot: Robot,
     ) -> MovementResult:
-        """
-        Move the robot by certain distance in meters in some direction, using
-        the motors. If it enconters a hole, it raises `` and if it collide
-        with a wall, it raises `WallColisionError`, but in both cases, the
-        robot come back to the initial position before.
-
-        :param direction: Direction that robot should move.
-        :param gps: Used to check the robot position to navigate correctly.
-        :param lidar: Used to check wall distances and adjust the robot
-                      rotation angle.
-        :param color_sensor: Used to recognize holes.
-        :param dist: Distance that the robot should try to move.
-        :param expected_wall_distance: The distance from the wall that the
-                                       robot is going to try to maintain.
-        :return: What was the result of moving. For example, if it has moved or
-            there were a hole and it returned to its start position.
-        :raises WallColisionError: If the robot collides with a wall for some
-            reason, it will return to its position before this movement and
-            then raise this exception.
-
-        OBS:
-        - Moves at `high_speed`, until it lasts `slow_down_dist` to move, when
-        it slows down to `slow_down_speed`. This approach is intended to make
-        the movement quick in general, but with a good precision as it moves
-        slower in the end of the movement.
-        - Holes are not detected when moving backward.
-        """
         from .recognize_wall_token import RecognizeWallToken
         from .rotate import Rotate
 
@@ -177,8 +170,6 @@ class Move(RobotCommand[MovementResult]):
         )
 
         found_obstacle = False
-        found_hole_type = None
-        blocking = False
         found_wall_token = False
 
         while robot.step() != -1:
@@ -249,11 +240,15 @@ class Move(RobotCommand[MovementResult]):
                     "Both sides/diagonals with obstacles", System.obstacle_detection
                 )
 
-            if (left_diagonal or left_side) and (right_side or right_diagonal):
+            if (
+                (left_diagonal or left_side) and (right_side or right_diagonal)
+            ) or robot.lidar.wall_collision(
+                "front" if self.direction == "forward" else "back"
+            ):
                 # TODO-: desfazer movimento obstáculo ou GPS arruma depois já?
                 found_obstacle = True
-                blocking = True
-                break
+                robot.motor.stop()
+                return MovementResult.unavoidable_obstacle
             elif left_diagonal or left_side:
                 logger.info("Left obstacle: correction", System.obstacle_avoidance)
                 robot.motor.stop()
@@ -316,18 +311,6 @@ class Move(RobotCommand[MovementResult]):
 
                 break
 
-            if robot.lidar.wall_collision(
-                "front" if self.direction == "forward" else "back"
-            ):
-                blocking = True
-
-                logger.info(
-                    "Detected collision: will return to last position",
-                    System.lidar_wall_detection,
-                )
-
-                break
-
             hole = robot.distance_sensor.detect_hole()
             if (
                 hole
@@ -338,42 +321,18 @@ class Move(RobotCommand[MovementResult]):
                 and not self.correction_move
             ):
                 logger.info(
-                    "Retornará à posição antiga após achar buraco.",
-                    System.hole_detection,
+                    f"Encontrou buraco no caminho: {hole}", System.hole_detection
                 )
 
-                blocking = True
+                robot.motor.stop()
                 if hole == "central":
-                    found_hole_type = MovementResult.central_hole
+                    return MovementResult.central_hole
                 elif hole == "left":
-                    found_hole_type = MovementResult.left_hole
+                    return MovementResult.left_hole
                 else:
-                    found_hole_type = MovementResult.right_hole
-                break
+                    return MovementResult.right_hole
 
             if not found_wall_token and robot.run(RecognizeWallToken()):
                 found_wall_token = True
-
-        if blocking:  # ? hole, obstacle or unexpected wall collision
-            robot.motor.stop()
-            logger.info("Blocked: return to initial position", System.movement_reason)
-            movement_result = robot.run(
-                Move(
-                    "backward" if self.direction == "forward" else "forward",
-                    self.dist,
-                    maze=self.maze,
-                    speed_controller=self.speed_controller,
-                    expected_wall_distance=self.expected_wall_distance,
-                )
-            )
-            if movement_result != MovementResult.moved:
-                raise LackOfProgressError
-
-            # TODO: deixar 'branco' no mapa se `found_obstacle`
-
-            if found_hole_type:
-                return found_hole_type
-
-            raise WallColisionError()
 
         return MovementResult.moved
