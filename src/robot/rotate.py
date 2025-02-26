@@ -21,14 +21,12 @@ class Rotate(RobotCommand):
         correction_rotation: bool = False,
         speed_controller: RotationVelocityController = create_rotation_velocity_controller(),
         just_rotate: bool = False,
-        dfs_rotation: bool = True,
     ):
         self.direction = direction
         self.turn_angle = turn_angle
         self.correction_rotation = correction_rotation
         self.speed_controller = speed_controller
         self.just_rotate = just_rotate
-        self.dfs_rotation = dfs_rotation
 
     @log_process(
         [
@@ -36,7 +34,6 @@ class Rotate(RobotCommand):
             "turn_angle",
             "correction_rotation",
             "just_rotate",
-            "dfs_rotation",
         ],
         System.rotation,
         from_self=True,
@@ -55,7 +52,7 @@ class Rotate(RobotCommand):
             f"Era {robot.expected_angle / DEGREE_IN_RAD}",
             System.rotation,
         )
-        if not self.correction_rotation and not was_rotating and self.dfs_rotation:
+        if not self.correction_rotation and not was_rotating:
             robot.expected_angle = cyclic_angle(
                 robot.expected_angle
                 + (-1 if self.direction == "left" else 1) * self.turn_angle
