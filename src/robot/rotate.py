@@ -20,20 +20,17 @@ class Rotate(RobotCommand):
         *,
         correction_rotation: bool = False,
         speed_controller: RotationVelocityController = create_rotation_velocity_controller(),
-        just_rotate: bool = False,
     ):
         self.direction = direction
         self.turn_angle = turn_angle
         self.correction_rotation = correction_rotation
         self.speed_controller = speed_controller
-        self.just_rotate = just_rotate
 
     @log_process(
         [
             "direction",
             "turn_angle",
             "correction_rotation",
-            "just_rotate",
         ],
         System.rotation,
         from_self=True,
