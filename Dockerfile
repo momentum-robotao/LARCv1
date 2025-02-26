@@ -36,10 +36,10 @@ RUN sed -i 's/#backend : Agg/backend : tkagg/' ~/.configure/matplotlib/matplotli
 ENV MATPLOTLIBRC=~/.configure/matplotlib
 
 # TODO_COMPET! Set these if it is a competition or you want to debug
-#COPY ./ngrok.txt ./ngrok.txt
-#ENV ENTRIES_BETWEEN_SENDS=100
-#ENV LOG_PATH=/usr/local/controller/.logs/robo.log
-ENV DEBUG=False
+COPY ./ngrok.txt ./ngrok.txt
+ENV ENTRIES_BETWEEN_SENDS=100
+ENV LOG_PATH=/usr/local/controller/.logs/robo.log
+ENV DEBUG=True
 
 # Run controller (using extern controller helper)
 CMD webots-controller --protocol=tcp --ip-address=$EREBUS_SERVER --port=1234 --robot-name=Erebus_Bot --stdout-redirect --stderr-redirect main.py
