@@ -189,6 +189,43 @@ class Move(RobotCommand[MovementResult]):
             )
             robot.motor.set_velocity(left_velocity, right_velocity)
 
+            is_x_traversed, is_y_traversed = False, False
+            if not self.correction_move:
+                is_x_traversed = (
+                    robot.expected_position.x < current_position.x
+                    if robot.expected_position.x > initial_position.x
+                    else robot.expected_position.x > current_position.x
+                ) or delta[0] == 0
+                is_y_traversed = (
+                    robot.expected_position.y < current_position.y
+                    if robot.expected_position.y > initial_position.y
+                    else robot.expected_position.y > current_position.y
+                ) or delta[1] == 0
+
+            x_delta = round_if_almost_0(abs(current_position.x - initial_position.x))
+            y_delta = round_if_almost_0(abs(current_position.y - initial_position.y))
+            traversed_dist = x_delta + y_delta
+
+            logger.debug(
+                "Current move status: "
+                f"{traversed_dist=}. ({is_x_traversed}; {is_y_traversed}). {current_position=}.",
+                System.movement_step_by_step,
+            )
+
+            if (
+                (is_x_traversed and is_y_traversed)
+                if not self.correction_move and not found_obstacle
+                else traversed_dist >= self.dist
+            ):
+                robot.motor.stop()
+
+                logger.info(
+                    f"New position: {current_position}",
+                    System.motor_movement,
+                )
+
+                break
+
             left_diagonal_distance = robot.lidar.get_side_distance(
                 cyclic_angle(
                     315 * DEGREE_IN_RAD
@@ -274,43 +311,6 @@ class Move(RobotCommand[MovementResult]):
                 robot.run(Rotate(direction="right", turn_angle=PI / 2))
                 found_obstacle = True
 
-            is_x_traversed, is_y_traversed = False, False
-            if not self.correction_move:
-                is_x_traversed = (
-                    robot.expected_position.x < current_position.x
-                    if robot.expected_position.x > initial_position.x
-                    else robot.expected_position.x > current_position.x
-                ) or delta[0] == 0
-                is_y_traversed = (
-                    robot.expected_position.y < current_position.y
-                    if robot.expected_position.y > initial_position.y
-                    else robot.expected_position.y > current_position.y
-                ) or delta[1] == 0
-
-            x_delta = round_if_almost_0(abs(current_position.x - initial_position.x))
-            y_delta = round_if_almost_0(abs(current_position.y - initial_position.y))
-            traversed_dist = x_delta + y_delta
-
-            logger.debug(
-                "Current move status: "
-                f"{traversed_dist=}. ({is_x_traversed}; {is_y_traversed}). {current_position=}.",
-                System.movement_step_by_step,
-            )
-
-            if (
-                (is_x_traversed and is_y_traversed)
-                if not self.correction_move and not found_obstacle
-                else traversed_dist >= self.dist
-            ):
-                robot.motor.stop()
-
-                logger.info(
-                    f"New position: {current_position}",
-                    System.motor_movement,
-                )
-
-                break
-
             hole = robot.distance_sensor.detect_hole()
             if (
                 hole
@@ -320,10 +320,6 @@ class Move(RobotCommand[MovementResult]):
                 )
                 and not self.correction_move
             ):
-                logger.info(
-                    f"Encontrou buraco no caminho: {hole}", System.hole_detection
-                )
-
                 robot.motor.stop()
                 if hole == "central":
                     return MovementResult.central_hole

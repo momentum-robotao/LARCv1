@@ -40,7 +40,7 @@ class DistanceSensor(Device):
     def pegar_distancia(self, sensor):
         return float(sensor.getValue())
 
-    def detect_hole(self) -> HolePosition | None:
+    def _check_hole_position(self) -> HolePosition | None:
         if self.get_distance("left") > 0.2 and self.get_distance("right") > 0.2:
             logger.info("Buraco central", System.hole_detection)
             return "central"
@@ -52,5 +52,13 @@ class DistanceSensor(Device):
             logger.info("Buraco direita", System.hole_detection)
             return "right"
 
-        logger.info("Buraco não encontrado", System.hole_detection)
         return None
+
+    def detect_hole(self) -> HolePosition | None:
+        hole = self._check_hole_position()
+        logger.info(
+            f"{'Não encontrou' if hole is None else 'Encontrou'} buraco no caminho: {hole}",
+            System.hole_detection,
+        )
+
+        return hole
