@@ -95,7 +95,8 @@ class Lidar(Device):
         if DEBUG:
             self.debug_info.send(f"{distances=}", System.lidar_measures)
         return distances
-
+    
+    
     def get_distances_by_side_angle(self) -> dict[float, float]:
         """
         :return: A dict where `dict[angle] = distance measured in this side angle`.
@@ -113,6 +114,39 @@ class Lidar(Device):
             )
 
         return distances_by_side_angle
+
+    
+    def get_distances_by_side_angle_AUGUSTO(self) -> dict[float, float]:
+        """
+        :return: Um dicionário onde `dict[angle] = distância média medida nesse ângulo lateral`.
+        """
+    
+    
+        distances_by_side_angle = {}
+        num_angles = self.horizontal_resolution
+        num_layers = self.number_of_layers
+        
+        for measure_idx in range(num_angles):
+            side_angle = round(self._get_measure_side_angle(measure_idx), 2)
+            dist = 0
+            count = 0
+            
+            for i in range(num_layers):  # Considerando as 4 camadas do LiDAR
+                layer_distances = self._lidar.getLayerRangeImage(i)
+                if layer_distances[measure_idx] != float('inf'):
+                    dist += layer_distances[measure_idx]
+                    count += 1
+            
+            distances_by_side_angle[side_angle] = dist / count if count > 0 else float('inf')
+            
+        if DEBUG:
+            self.debug_info.send(
+                f"Medições da distância média em função do ângulo lateral: {distances_by_side_angle}",
+                System.lidar_measures,
+            )
+        
+        return distances_by_side_angle
+    
 
     def get_distances_of_range(
         self, initial_side_angle: float, end_side_angle: float

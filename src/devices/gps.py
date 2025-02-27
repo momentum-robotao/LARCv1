@@ -28,3 +28,9 @@ class GPS(Device):
         if DEBUG:
             self.debug_info.send(str(coordinate), System.gps_measures)
         return coordinate
+    
+    def get_position_AUGUSTO(self) -> list:
+        positions = self._gps.getValues()
+        posicaoX_atual = positions[0]
+        posicaoY_atual = positions[2]
+        return [posicaoX_atual, posicaoY_atual]
