@@ -98,7 +98,6 @@ class Lidar(Device):
     
     
     def get_distances_by_side_angle(self) -> dict[float, float]: 
-        print("Hello World")
         """
         :return: A dict where `dict[angle] = distance measured in this side angle`.
         """

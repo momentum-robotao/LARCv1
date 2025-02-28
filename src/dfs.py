@@ -180,7 +180,7 @@ def dfs(
         )
 
     
-    slam.take_snapshot(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO())
+    slam.take_snapshot(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle())
 
     maze.mark_visited(position)
     robot.step()
