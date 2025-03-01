@@ -24,7 +24,8 @@ from types_and_constants import (
     SpecialTileType,
     WallColisionError,
 )
-from slam import slam
+#from slam import slam
+from slam_navigation import navigation
 
 def get_errors(robot: Robot, field_of_view: float):
     y_error = 0.0
@@ -180,7 +181,9 @@ def dfs(
         )
 
     
-    slam.take_snapshot(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle())
+    #slam.take_snapshot(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle())
+    navigation.navigate(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle())
+
 
     maze.mark_visited(position)
     robot.step()

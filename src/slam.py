@@ -26,10 +26,14 @@ class Slam:
                 corrected_angle = side_angle + orientation
 
                 distance_x = distance*np.cos(corrected_angle) + x0
-                distance_y = distance*np.sin(corrected_angle) + y0
+                distance_y = distance*np.sin(corrected_angle) +  y0
                 self.list_x.append(distance_x)
                 self.list_y.append(distance_y)
-        fig.plott(self.list_x, self.list_y, "SLAM", 'b')
+        fig.plott(self.list_x, self.list_y, "SLAM", 'b') # Comment This when running in competition
+    
+    def get_list(self):
+        return self.list_x, self.list_y
+    
 
         ''' 
         for side_angle, distance in side_angle_to_distance_mapper.items():
