@@ -20,7 +20,7 @@ class Slam:
 
         
         for side_angle, distance in side_angle_to_distance_mapper.items():
-            if distance == float ("inf"):
+            if distance == float("inf"):
                 continue
             if distance < 0.18 : 
                 corrected_angle = side_angle + orientation
@@ -29,12 +29,10 @@ class Slam:
                 distance_y = distance*np.sin(corrected_angle) +  y0
                 self.list_x.append(distance_x)
                 self.list_y.append(distance_y)
-        fig.plott(self.list_x, self.list_y, "SLAM", 'b') # Comment This when running in competition
+        #fig.plott(self.list_x, self.list_y, "SLAM", 'b') # Comment This when running in competition
     
-    def get_list(self):
+    def get_list(self) -> list:
         return self.list_x, self.list_y
-    
-
         ''' 
         for side_angle, distance in side_angle_to_distance_mapper.items():
             print(f"side angle {side_angle} : {distance} ")

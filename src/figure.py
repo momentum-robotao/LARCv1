@@ -24,7 +24,7 @@ class Figure:
         except Exception as e:
             print(f"Erro durante a inicialização: {e}")
 
-    def plott(self, listX: list, listY: list, label: str, color: str = 'blue'):
+    def plott(self, listX: list, listY: list, label: str, color: str) -> None:
         listX = np.array(listX)  # Converte lista_x para um array de floats
         listY = np.array(listY)
             
@@ -57,6 +57,42 @@ class Figure:
         except Exception as e:
             print(f"Erro durante a exibição do gráfico: {e}")
  
+    def multi_plott(self, listX1: list, listY1: list, label1: str, color1: str, listX2: list, listY2: list, label2: str, color2: str) -> None:
+        listX1 = np.array(listX1)  # Converte lista_x para um array de floats
+        listY1 = np.array(listY1)
+        listX2 = np.array(listX2)
+        listY2 = np.array(listY2)
+            
+        sns.set_theme(style="white")
+            
+        # Plota o gráfico com seaborn
+        plt.scatter(x=listX1, y=listY1, label=label1, color=color1)
+        plt.scatter(x=listX2, y=listY2, label=label2, color=color2)
+
+        # Configurações adicionais
+        plt.legend()
+        plt.xlabel('X coordinates')
+        plt.ylabel('Y coordinates')
+        
+
+        try:
+            # Salva o gráfico em um arquivo PNG
+            plt.savefig(file_path)
+
+            # Abrindo o arquivo em modo binário
+            with open(file_path, 'rb') as file:
+                # Cria um dicionário com o arquivo
+                files = {'file': file}
+                # Envia a requisição POST com o arquivo
+                response = requests.post(url, files=files)
+
+            # Exibe a resposta do servidor
+            #print(response.json())
+
+            #print("Gráfico salvo como 'grafico.png'")
+            plt.clf()
+        except Exception as e:
+            print(f"Erro durante a exibição do gráfico: {e}")
 
 # Exemplo de uso
 fig = Figure()
