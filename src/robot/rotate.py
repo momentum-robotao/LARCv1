@@ -61,7 +61,7 @@ class Rotate(RobotCommand):
         if not self.correction_rotation:
             for test_angle_degree in [0, 45, 90, 135, 180, 225, 270, 315, 360]:
                 test_angle = test_angle_degree * DEGREE_IN_RAD
-                if abs(test_angle - robot.expected_angle) <= 10:
+                if abs(test_angle - new_expected_angle) / DEGREE_IN_RAD <= 10:
                     new_expected_angle = test_angle
             if self.direction == "left":  # changed
                 if new_expected_angle > rotation_angle:

@@ -297,17 +297,17 @@ class Move(RobotCommand[MovementResult]):
             elif left_diagonal or left_side:
                 logger.info("Left obstacle: correction", System.obstacle_avoidance)
                 robot.motor.stop()
-                robot.run(Rotate(direction="right", turn_angle=PI / 2))
+                robot.run(Rotate(direction="right", angle=PI / 2))
                 robot.run(
                     Move(self.direction, 0.001, maze=self.maze, correction_move=True),
                 )
-                robot.run(Rotate(direction="left", turn_angle=PI / 2))
+                robot.run(Rotate(direction="left", angle=PI / 2))
                 found_obstacle = True
             # TODO: tirar obstáculo etc pra área 4
             elif right_diagonal or right_side:
                 logger.info("Right obstacle: correction", System.obstacle_avoidance)
                 robot.motor.stop()
-                robot.run(Rotate(direction="left", turn_angle=PI / 2))
+                robot.run(Rotate(direction="left", angle=PI / 2))
                 robot.run(
                     Move(
                         self.direction,
@@ -316,12 +316,13 @@ class Move(RobotCommand[MovementResult]):
                         correction_move=True,
                     )
                 )
-                robot.run(Rotate(direction="right", turn_angle=PI / 2))
+                robot.run(Rotate(direction="right", angle=PI / 2))
                 found_obstacle = True
 
             hole = robot.distance_sensor.detect_hole()
             if (
                 hole
+                and self.direction == "forward"
                 and (
                     self.dist - traversed_dist > DIST_BEFORE_HOLE
                     or self.dist <= DIST_BEFORE_HOLE

@@ -13,6 +13,7 @@ systems = {
     # System.communicator_send_messages,
     # System.communicator_send_wall_token,
     # System.delay,
+    # System.lidar_side_measures,
     System.dfs_decision,
     System.dfs_state,
     System.dfs_verification,
@@ -28,8 +29,8 @@ systems = {
     # System.obstacle_detection,
     System.unknown_error,
     System.motor_movement,
-    # System.movement_step_by_step,
-    # System.movement_reason,
+    System.movement_step_by_step,
+    System.movement_reason,
     # System.rotation,
     # System.rotation_step_by_step,
     # System.rotation_angle_correction,
@@ -38,6 +39,7 @@ systems = {
 logger = RobotLogger(
     systems_to_log_in_file=systems,
     levels_to_log_in_file=ALL_LOG_LEVELS,
-    systems_to_print_logs=systems,
+    systems_to_print_logs=systems
+    - {System.lidar_side_measures, System.lidar_side_measures},
     levels_to_print_logs=ALL_LOG_LEVELS,
 )

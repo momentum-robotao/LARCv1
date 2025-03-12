@@ -111,13 +111,13 @@ def adjust_wall_distance(
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
     if x_error <= -wall_max_x_error:
-        robot.run(Rotate(direction="left", turn_angle=PI / 2))
+        robot.run(Rotate(direction="left", angle=PI / 2))
         robot.run(Move("backward", abs(x_error), maze=maze, correction_move=True))
-        robot.run(Rotate(direction="right", turn_angle=PI / 2))
+        robot.run(Rotate(direction="right", angle=PI / 2))
     if x_error >= wall_max_x_error:
-        robot.run(Rotate(direction="left", turn_angle=PI / 2))
+        robot.run(Rotate(direction="left", angle=PI / 2))
         robot.run(Move("forward", x_error, maze=maze, correction_move=True))
-        robot.run(Rotate(direction="right", turn_angle=PI / 2))
+        robot.run(Rotate(direction="right", angle=PI / 2))
 
 
 # TODO+: vítima do Nicolas aquele canto com tile vermelho/amarelo
@@ -347,9 +347,9 @@ def dfs(
             case MovementResult.central_hole:
                 angle_to_hole = movement_angle
             case MovementResult.left_hole:
-                angle_to_hole = cyclic_angle(movement_angle - 45)
+                angle_to_hole = cyclic_angle(movement_angle - 45 * DEGREE_IN_RAD)
             case MovementResult.right_hole:
-                angle_to_hole = cyclic_angle(movement_angle + 45)
+                angle_to_hole = cyclic_angle(movement_angle + 45 * DEGREE_IN_RAD)
 
             case MovementResult.unavoidable_obstacle:
                 continue
