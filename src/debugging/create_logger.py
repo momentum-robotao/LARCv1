@@ -15,7 +15,7 @@ systems = {
     # System.delay,
     System.dfs_decision,
     System.dfs_state,
-    # System.dfs_verification,
+    System.dfs_verification,
     # System.gps_measures,
     # System.hole_detection,
     System.imu_measures,
@@ -27,12 +27,12 @@ systems = {
     # System.obstacle_avoidance,
     # System.obstacle_detection,
     System.unknown_error,
-    # System.motor_movement,
+    System.motor_movement,
     # System.movement_step_by_step,
     # System.movement_reason,
-    System.rotation,
-    System.rotation_step_by_step,
-    System.rotation_angle_correction,
+    # System.rotation,
+    # System.rotation_step_by_step,
+    # System.rotation_angle_correction,
 }
 
 logger = RobotLogger(

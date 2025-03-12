@@ -73,7 +73,6 @@ class Robot:
         self.expected_angle = 0.0
         self.step()
         self.expected_position = gps.get_position()
-        self.rotating = 0
         # ? 5 primeiros minutos não checa tempo. Depois a cada 2 segs
         self.last_check_time_ms = round(time.time() * 1000) + 5 * 60 * 1000
 

@@ -6,7 +6,6 @@ from robot import (
     RecognizeWallToken,
     Robot,
     Rotate,
-    RotateToAngle,
     create_movement_velocity_controller,
     rotate_180,
 )
@@ -305,7 +304,7 @@ def dfs(
         )
         viz_moves = moves_before.copy()
         viz_moves.append(("rotate_to_angle", (movement_angle,)))
-        robot.run(RotateToAngle(movement_angle))
+        robot.run(Rotate("fastest", movement_angle))
         robot.run(RecognizeWallToken())
 
         viz_moves.append(("move", ("forward", new_position_distance)))
@@ -330,7 +329,7 @@ def dfs(
             comeback_result = robot.run(
                 Move(
                     "backward",
-                    new_position_distance,
+                    0,  # ? Move just to correct the last move, which was unsucessful
                     maze=maze,
                     speed_controller=create_movement_velocity_controller(
                         slow_down_dist=SLOW_DOWN_DIST / 3
@@ -409,7 +408,7 @@ def dfs(
     robot.step()
     adjust_wall_distance(robot, maze)
     robot.run(RecognizeWallToken())
-    robot.run(RotateToAngle(start_angle))
+    robot.run(Rotate("fastest", start_angle))
 
     if DEBUG:
         answer_map = "\n".join("".join(line) for line in maze.get_answer_maze())

@@ -1,6 +1,6 @@
 from dfs import dfs
 from maze import Maze
-from robot import Move, Robot, RotateToAngle, create_movement_velocity_controller
+from robot import Move, Robot, Rotate, create_movement_velocity_controller
 from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 
 
@@ -36,7 +36,7 @@ def solve_map(robot: Robot, maze: Maze) -> None:
     for move in best_moves_before:
         command, args = move
         if command == "rotate_to_angle":
-            robot.run(RotateToAngle(args[0]))
+            robot.run(Rotate("fastest", args[0]))
         if command == "move":
             robot.run(
                 Move(

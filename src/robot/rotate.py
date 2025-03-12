@@ -15,59 +15,80 @@ from .velocity_controller import (
 class Rotate(RobotCommand):
     def __init__(
         self,
-        direction: Literal["left", "right"],
-        turn_angle: float,
+        direction: Literal["left", "right", "fastest"],
+        angle: float,
         *,
         correction_rotation: bool = False,
         speed_controller: RotationVelocityController = create_rotation_velocity_controller(),
     ):
+        """
+        Rotate the robot in a direction by an angle, using the motors. Uses
+        `imu` to check the robot angle to rotate correctly.
+
+        :param direction: If `fastest`, angle is the desired final angle and not the angle to turn.
+        """
         self.direction = direction
-        self.turn_angle = turn_angle
+        self.angle = angle
         self.correction_rotation = correction_rotation
         self.speed_controller = speed_controller
 
     @log_process(
         [
             "direction",
-            "turn_angle",
+            "angle",
             "correction_rotation",
         ],
         System.rotation,
         from_self=True,
     )
     def execute(self, robot: Robot) -> None:
-        """
-        Rotate the robot in a direction by an angle, using the motors. Uses
-        `imu` to check the robot angle to rotate correctly.
-        """
-        was_rotating = robot.rotating > 0
-        robot.rotating += 1
         rotation_angle = robot.imu.get_rotation_angle()
 
         logger.info(
-            f"     rotacionando {self.turn_angle / DEGREE_IN_RAD} para {self.direction}. "
+            f"     rotacionando {self.angle / DEGREE_IN_RAD} para {self.direction}. "
             f"Era {robot.expected_angle / DEGREE_IN_RAD}",
             System.rotation,
         )
-        if not self.correction_rotation and not was_rotating:
-            robot.expected_angle = cyclic_angle(
+
+        new_expected_angle = (
+            cyclic_angle(
                 robot.expected_angle
-                + (-1 if self.direction == "left" else 1) * self.turn_angle
+                + (-1 if self.direction == "left" else 1) * self.angle
             )
+            if self.direction != "fastest"
+            else self.angle
+        )
+        if not self.correction_rotation:
             for test_angle_degree in [0, 45, 90, 135, 180, 225, 270, 315, 360]:
                 test_angle = test_angle_degree * DEGREE_IN_RAD
-                if abs(test_angle - robot.expected_angle) <= 0.3:
-                    robot.expected_angle = test_angle
+                if abs(test_angle - robot.expected_angle) <= 10:
+                    new_expected_angle = test_angle
             if self.direction == "left":  # changed
-                if robot.expected_angle > rotation_angle:
-                    self.turn_angle = 2 * PI - (robot.expected_angle - rotation_angle)
+                if new_expected_angle > rotation_angle:
+                    self.angle = 2 * PI - (new_expected_angle - rotation_angle)
                 else:
-                    self.turn_angle = rotation_angle - robot.expected_angle
+                    self.angle = rotation_angle - new_expected_angle
+            elif self.direction == "right":
+                if new_expected_angle > rotation_angle:
+                    self.angle = new_expected_angle - rotation_angle
+                else:
+                    self.angle = 2 * PI - (rotation_angle - new_expected_angle)
+
+        if self.direction == "fastest":
+            if new_expected_angle > rotation_angle:
+                if new_expected_angle - rotation_angle < PI:
+                    self.angle = new_expected_angle - rotation_angle
+                    self.direction = "right"
+                else:
+                    self.angle = 2 * PI - (new_expected_angle - rotation_angle)
+                    self.direction = "left"
             else:
-                if robot.expected_angle > rotation_angle:
-                    self.turn_angle = robot.expected_angle - rotation_angle
+                if rotation_angle - new_expected_angle < PI:
+                    self.angle = rotation_angle - new_expected_angle
+                    self.direction = "left"
                 else:
-                    self.turn_angle = 2 * PI - (rotation_angle - robot.expected_angle)
+                    self.angle = 2 * PI - (rotation_angle - new_expected_angle)
+                    self.direction = "right"
 
         robot.motor.stop()
 
@@ -78,7 +99,7 @@ class Rotate(RobotCommand):
             angle_accumulated_delta += IMU.get_delta_rotation(
                 rotation_angle, new_robot_angle
             )
-            angle_to_rotate = self.turn_angle - angle_accumulated_delta
+            angle_to_rotate = self.angle - angle_accumulated_delta
 
             logger.info(
                 f"- Já girou {angle_accumulated_delta / DEGREE_IN_RAD} no total, falta "
@@ -93,8 +114,11 @@ class Rotate(RobotCommand):
             )
             robot.motor.set_velocity(left_velocity, right_velocity)
 
-            if angle_accumulated_delta >= self.turn_angle:
+            if angle_accumulated_delta >= self.angle:
                 robot.motor.stop()
+
+                if not self.correction_rotation:
+                    robot.expected_angle = new_expected_angle
 
                 logger.info(
                     f"=== Terminou de girar {angle_accumulated_delta / DEGREE_IN_RAD} "
@@ -103,25 +127,19 @@ class Rotate(RobotCommand):
                 )
                 logger.info(
                     f"Esperado {robot.expected_angle / DEGREE_IN_RAD}. "
-                    f"Parou em: {robot.imu.get_rotation_angle() / DEGREE_IN_RAD}",
+                    f"Parou em: {robot.imu.get_rotation_angle() / DEGREE_IN_RAD}.\n"
+                    f"Girou a mais {(angle_accumulated_delta - self.angle)/DEGREE_IN_RAD}",
                     System.rotation_angle_correction,
                 )
 
-                logger.info(
-                    f"Girou a mais {(angle_accumulated_delta - self.turn_angle)/DEGREE_IN_RAD}",
-                    System.rotation_angle_correction,
-                )
-
-                if angle_accumulated_delta - self.turn_angle >= 0.1:  # changed
+                if angle_accumulated_delta - self.angle >= 0.1:  # changed
                     robot.run(
                         Rotate(
                             "left" if self.direction == "right" else "right",
-                            angle_accumulated_delta - self.turn_angle,
+                            angle_accumulated_delta - self.angle,
                             correction_rotation=True,
                             speed_controller=create_rotation_velocity_controller(
-                                slow_down_angle=angle_accumulated_delta
-                                - self.turn_angle
-                                + 1
+                                slow_down_angle=angle_accumulated_delta - self.angle + 1
                             ),
                         )
                     )
@@ -132,42 +150,6 @@ class Rotate(RobotCommand):
                     )
 
                 break
-        robot.rotating -= 1
 
 
-class RotateToAngle(Rotate):
-    """
-    Rotate the robot to `angle`. It rotates to the direction that
-    makes this rotation faster.
-    """
-
-    def __init__(
-        self,
-        angle: float,
-        speed_controller: RotationVelocityController = create_rotation_velocity_controller(),
-    ):
-        self.angle = angle
-        self.speed_controller = speed_controller
-
-    def execute(self, robot: Robot) -> None:
-        angle_rotating_right = cyclic_angle(2 * PI + self.angle - robot.expected_angle)
-        angle_rotating_left = 2 * PI - angle_rotating_right  # complementar angles
-        if angle_rotating_right <= PI:
-            return robot.run(
-                Rotate(
-                    "right",
-                    angle_rotating_right,
-                    speed_controller=self.speed_controller,
-                )
-            )
-        else:
-            return robot.run(
-                Rotate(
-                    "left",
-                    angle_rotating_left,
-                    speed_controller=self.speed_controller,
-                )
-            )
-
-
-rotate_180 = Rotate(direction="right", turn_angle=PI)
+rotate_180 = Rotate(direction="right", angle=PI)

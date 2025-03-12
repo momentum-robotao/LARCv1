@@ -158,14 +158,15 @@ class Move(RobotCommand[MovementResult]):
             )
             rounded_angle = round_angle(imu_expected_angle)
             delta = DIST_CHANGE_MAPPER[rounded_angle]
-            robot.expected_position = expected_gps_after_move(
+            new_expected_position = expected_gps_after_move(
                 robot.expected_position,
                 imu_expected_angle,
                 self.dist,
             )
 
         logger.info(
-            f"Target: {robot.expected_position} from {initial_position=}",
+            f"Target: {new_expected_position if not self.correction_move else f'move {self.dist}'} "
+            f"from {initial_position=}",
             System.motor_movement,
         )
 
@@ -175,31 +176,17 @@ class Move(RobotCommand[MovementResult]):
         while robot.step() != -1:
             current_position = robot.gps.get_position()
 
-            left_velocity, right_velocity = self.speed_controller(
-                max(
-                    abs(robot.expected_position.x - current_position.x),
-                    abs(robot.expected_position.y - current_position.y),
-                ),
-                robot.lidar.get_side_distance(
-                    "front" if self.direction == "forward" else "back",
-                    field_of_view=20 * DEGREE_IN_RAD,
-                    use_min=True,
-                ),
-                self.direction,
-            )
-            robot.motor.set_velocity(left_velocity, right_velocity)
-
             is_x_traversed, is_y_traversed = False, False
             if not self.correction_move:
                 is_x_traversed = (
-                    robot.expected_position.x < current_position.x
-                    if robot.expected_position.x > initial_position.x
-                    else robot.expected_position.x > current_position.x
+                    new_expected_position.x < current_position.x
+                    if new_expected_position.x > initial_position.x
+                    else new_expected_position.x > current_position.x
                 ) or delta[0] == 0
                 is_y_traversed = (
-                    robot.expected_position.y < current_position.y
-                    if robot.expected_position.y > initial_position.y
-                    else robot.expected_position.y > current_position.y
+                    new_expected_position.y < current_position.y
+                    if new_expected_position.y > initial_position.y
+                    else new_expected_position.y > current_position.y
                 ) or delta[1] == 0
 
             x_delta = round_if_almost_0(abs(current_position.x - initial_position.x))
@@ -212,12 +199,33 @@ class Move(RobotCommand[MovementResult]):
                 System.movement_step_by_step,
             )
 
+            left_velocity, right_velocity = self.speed_controller(
+                (
+                    max(
+                        abs(new_expected_position.x - current_position.x),
+                        abs(new_expected_position.y - current_position.y),
+                    )
+                    if not self.correction_move
+                    else self.dist - traversed_dist
+                ),
+                robot.lidar.get_side_distance(
+                    "front" if self.direction == "forward" else "back",
+                    field_of_view=20 * DEGREE_IN_RAD,
+                    use_min=True,
+                ),
+                self.direction,
+            )
+            robot.motor.set_velocity(left_velocity, right_velocity)
+
             if (
                 (is_x_traversed and is_y_traversed)
                 if not self.correction_move and not found_obstacle
                 else traversed_dist >= self.dist
             ):
                 robot.motor.stop()
+
+                if not self.correction_move:
+                    robot.expected_position = new_expected_position
 
                 logger.info(
                     f"New position: {current_position}",
