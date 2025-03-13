@@ -116,10 +116,10 @@ def mover_para_frente(dist = tamanho_tile):
 
         if tot_delta > dist:
             parar()
-            print(f"A posição X atual é {posicaoX_atual}")
-            print(f"A posição Y atual é {posicaoY_atual}")
-            print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
-            print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
+            #print(f"A posição X atual é {posicaoX_atual}")
+            #print(f"A posição Y atual é {posicaoY_atual}")
+            #print(f" O Delta X é {posicaoX_atual- posicaoX_anterior}")
+            #print(f" O Delta Y é {posicaoY_atual- posicaoY_anterior}")
             break
 
 

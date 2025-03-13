@@ -135,7 +135,7 @@ def seguir_parede():
 
     # Se não há parede à esquerda, vire à esquerda e mova-se para frente
     if not parede_esquerda(sensoresEsquerda):
-        print(f'esquerda livre, {sensoresEsquerda[1].getValue()}')
+        #print(f'esquerda livre, {sensoresEsquerda[1].getValue()}')
         encoder_antes()
         virar_esquerda()
         encoder_antes()
@@ -143,13 +143,13 @@ def seguir_parede():
 
     # Se há parede à esquerda, mas não à frente, mova-se para frente
     elif parede_esquerda(sensoresEsquerda) and not parede_frente(sensoresFrente):
-        print('esquerda ocupada, frente livre')
+        #print('esquerda ocupada, frente livre')
         encoder_antes()
         mover_para_frente(6)
 
     # Se há parede à esquerda e à frente, vire à direita e mova-se para frente
     elif parede_esquerda(sensoresEsquerda) and parede_frente(sensoresFrente) and not parede_direita(sensoresDireita):
-        print('esquerda e frente ocupadas, direita livre')
+        #print('esquerda e frente ocupadas, direita livre')
         encoder_antes()
         virar_direita()
         encoder_antes()
@@ -188,7 +188,7 @@ def tem_preto():
     # Display the result
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-    print(np.any(result))
+    #print(np.any(result))
     return np.any(result)
 
 def tem_amarelo():
@@ -247,7 +247,7 @@ def codificar_tipo(tipo):
     message = struct.pack("j j x", x, y, victimType) # Pack the message.
     delay(1300) # Delay for 1.3 seconds
     emitter.send(message) # Send out the message
-    print("enviou mensagem")
+    #print("enviou mensagem")
 
 def reconhecer_vitima():
     if parede_frente(sensoresFrente):

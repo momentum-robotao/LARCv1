@@ -419,10 +419,8 @@ class Robot:
                         System.motor_rotation,
                     )
 
-                print("\n\n\n\n")
-                print(
-                    f"Girou a mais {(angle_accumulated_delta - turn_angle)/DEGREE_IN_RAD}"
-                )
+                #print("\n\n\n\n")
+                #print(f"Girou a mais {(angle_accumulated_delta - turn_angle)/DEGREE_IN_RAD}")
                 if angle_accumulated_delta - turn_angle >= 0.1:  # changed
                     self.rotate(
                         "left" if direction == "right" else "right",
@@ -430,9 +428,7 @@ class Robot:
                         correction_rotation=True,
                         slow_down_angle=angle_accumulated_delta - turn_angle + 1,
                     )
-                    print(
-                        f"Girou demais, voltou {self.expected_angle=} e {self.imu.get_rotation_angle()}"
-                    )
+                    #print(f"Girou demais, voltou {self.expected_angle=} e {self.imu.get_rotation_angle()}")
 
                 break
         self.rotating -= 1
@@ -568,11 +564,9 @@ class Robot:
         found_hole_type = None
         blocking = False
 
-        print(f"  Movendo {dist=} em {direction}")
-        print(
-            f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}"
-        )
-        print(f"  {initial_position=}; {self.expected_position=}")
+        #print(f"  Movendo {dist=} em {direction}")
+        #print(f"  - {returning_to_safe_position=} {correction_move=} {just_move=} {dfs_move=}")
+        #print(f"  {initial_position=}; {self.expected_position=}")
 
         while self.step() != -1:
             actual_position = self.gps.get_position()
@@ -701,8 +695,8 @@ class Robot:
             y_delta = round_if_almost_0(abs(actual_position.y - initial_position.y))
             traversed_dist = x_delta + y_delta
 
-            print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
-            print(f"    {actual_position=}")
+            #print(f"    andou {traversed_dist}. {x_traversed},{y_traversed}.")
+            #print(f"    {actual_position=}")
 
             if (
                 (x_traversed and y_traversed)

@@ -265,8 +265,8 @@ def robo_torto(lidar, camera):
         if distance < min_distance:
             min_distance = distance
             min_angle = angle
-    print(min_angle)
-    print(min_distance)
+    #print(min_angle)
+    #print(min_distance)
     if min_angle == 90 or min_angle == 270:
         # robo ta certinho, mantem a margem
         return 0
