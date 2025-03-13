@@ -22,9 +22,6 @@ def calculate_min_node(nodeX: list, nodeY: list, robot_position: list) -> list:
             distance = (nx - robot_position[0]) ** 2 + (ny - robot_position[1]) ** 2
             min_node = [nx, ny]
     return min_node
-        
-
-            
     
 
 class Navigation:
@@ -52,7 +49,7 @@ class Navigation:
                 (px - wx) ** 2 + (py - wy) ** 2 > ROBOT_RADIUS ** 2 for wx, wy in zip(listx, listy)
             ):
                 self.existing_nodes.add((px, py))
-        print(f"Contador2 : {contador2}")
+        #print(f"Contador2 : {contador2}")
 
     def navigate(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], robot_orientation: float) -> None:
         global contador

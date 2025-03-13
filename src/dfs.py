@@ -170,7 +170,7 @@ def dfs(
     Robot position is specified by the lower left coordinate.
     """
     transitions: list[tuple[Coordinate, SpecialTileType, list[tuple[str, tuple]]]] = []
-    print(f"entra DFS {position=}")
+    #print(f"entra DFS {position=}")
     if DEBUG:
         debug_info.send(f"Começando DFS em {position=} da {area=}", System.dfs_state)
 
@@ -411,5 +411,5 @@ def dfs(
     adjust_wall_distance(robot, debug_info, maze)
     robot.recognize_wall_token()
     robot.rotate_to_angle(start_angle)
-    print(f"sai DFS {position=}")
+    #print(f"sai DFS {position=}")
     return transitions
