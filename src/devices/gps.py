@@ -34,3 +34,5 @@ class GPS(Device):
         posicaoX_atual = positions[0]
         posicaoY_atual = positions[2]
         return [posicaoX_atual, posicaoY_atual]
+    
+
