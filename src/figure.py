@@ -20,7 +20,7 @@ class Figure:
     def __init__(self):
         try:
             self.figure = plt.figure(figsize=(10,10))   
-            print("Cheguei Aqui 1")
+            #print("Cheguei Aqui 1")
         except Exception as e:
             print(f"Erro durante a inicialização: {e}")
 

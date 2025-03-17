@@ -3,6 +3,7 @@ from dfs import dfs
 from maze import Maze
 from robot import Robot
 from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
+from slam_navigation import navigation
 
 
 def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
@@ -48,7 +49,7 @@ def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
                 dist=args[1],
                 slow_down_dist=SLOW_DOWN_DIST / 3,
             )
-
+    #navigation.dfs(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle(), robot)
     dfs(
         best_transition_pos,
         maze,

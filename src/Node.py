@@ -2,11 +2,13 @@ from __future__ import annotations
 
 class Node:
     
+
     def __init__(self, position : list) -> None:
         self.nodes_adjacentes = []
         self.node_position = position
         self.node_visited = False
         self.node_father = None
+
 
 
     def set_node_adjacentes(self, node : Node) -> None:
