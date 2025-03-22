@@ -31,9 +31,6 @@ class Slam:
             self.start_angle = possible_angles[robot.DIST_CHANGE_MAPPER[robot.round_angle(orientation)]]
             condicao = False
         
-        
-        print(f"Angulo TRATADO: {self.start_angle}")
-        print(f"X : {x0} Y : {y0}")
         #time.sleep(2)
         
         
@@ -61,5 +58,8 @@ class Slam:
         
     def get_list_atual(self) -> list:
         return self.list_x_atual, self.list_y_atual
+    
+    def get_start_angle(self) -> float:
+        return self.start_angle
 
 slam = Slam()

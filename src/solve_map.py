@@ -4,6 +4,7 @@ from maze import Maze
 from robot import Robot
 from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 from slam_navigation import navigation
+import numpy as np
 
 
 def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
@@ -38,18 +39,29 @@ def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
         return
 
     # go to room 4
+    print("Indo para sala 4")
+    
     for move in best_moves_before:
         command, args = move
         if command == "rotate_to_angle":
             robot.rotate_to_angle(args[0])
         if command == "move":
             robot.move(
-                args[0],
+                args[0],    
                 Maze(debug_info),
                 dist=args[1],
                 slow_down_dist=SLOW_DOWN_DIST / 3,
             )
-    #navigation.dfs(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle(), robot)
+    
+    print("Chegou na sala 4")
+    robot.move(
+        "fowawrd",
+        Maze(debug_info),
+        dist=0.12,
+        slow_down_dist=SLOW_DOWN_DIST / 3,
+    )
+    navigation.slam_dfs(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle(), robot, maze)
+    ''' 
     dfs(
         best_transition_pos,
         maze,
@@ -59,6 +71,10 @@ def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
         moves_before=[],
         starting=True,
     )
+    '''
+
+    
+
 
     # TODO4: retornar pra tile inicial (+10%)
     # best_moves_before.reverse()
