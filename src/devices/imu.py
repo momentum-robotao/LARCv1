@@ -3,7 +3,7 @@ import os
 from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import System, logger
-from types_and_constants import PI
+from types_and_constants import DEGREE_IN_RAD, PI
 from utils import cyclic_angle
 
 from .device import Device
@@ -57,3 +57,25 @@ class IMU(Device):
     # TODO-: unify with get_rotation_angle
     def get_roll_pitch_yaw(self) -> float:
         return self._imu.getRollPitchYaw()[2]
+
+    def get_adjusted_angle(self) -> float:
+        """ "
+        (1, 0) must be 0° and (1.0 / SQRT, 1.0 / SQRT) must be 45°
+        """
+        from robot import DIST_CHANGE_MAPPER
+
+        angle_0, angle_45 = None, None
+        for angle, delta in DIST_CHANGE_MAPPER.items():
+            if delta == (1, 0):
+                angle_0 = angle
+            if delta[0] > 0 and delta[1] > 0:
+                angle_45 = angle
+
+        rotation_angle = self.get_rotation_angle()
+
+        rotation_angle = cyclic_angle(rotation_angle - angle_0 * DEGREE_IN_RAD)
+        if (angle_0 + 45) % 360 != angle_45:
+            # ? inverted
+            rotation_angle = 2 * PI - rotation_angle
+
+        return rotation_angle

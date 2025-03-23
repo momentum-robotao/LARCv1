@@ -12,6 +12,5 @@
 # flask
 # TODO: remove requests for competition
 requests==2.32.3
-opencv-python
 numpy
 ultralytics

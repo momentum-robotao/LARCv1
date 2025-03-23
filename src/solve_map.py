@@ -1,10 +1,22 @@
 from dfs import dfs
 from maze import Maze
-from robot import Move, Robot, Rotate, create_movement_velocity_controller
+from robot import (
+    Move,
+    RecognizeWallToken,
+    Robot,
+    Rotate,
+    create_movement_velocity_controller,
+)
 from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 
 
 def solve_map(robot: Robot, maze: Maze) -> None:
+    while robot.step() != -1:
+        robot.run(RecognizeWallToken())
+        from time import sleep
+
+        sleep(1)
+
     initial_position = Coordinate(0, 0)
     maze.set_tile_type(initial_position, SpecialTileType.STARTING)
     transitions = dfs(

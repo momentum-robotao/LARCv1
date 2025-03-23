@@ -1,7 +1,7 @@
 import cv2
 from ultralytics import YOLO
 
-model_path = r"C:\Users\nicol\Documents\yollo11test\yollo11test\runs\detect\train6\weights\best.pt"
+model_path = r"./weights/best.pt"
 
 model = YOLO(model_path)
 
