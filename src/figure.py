@@ -57,17 +57,24 @@ class Figure:
         except Exception as e:
             print(f"Erro durante a exibição do gráfico: {e}")
  
-    def multi_plott(self, listX1: list, listY1: list, label1: str, color1: str, listX2: list, listY2: list, label2: str, color2: str) -> None:
+    def multi_plott(self, listX1: list, listY1: list, label1: str, color1: str, listX2: list, listY2: list, label2: str, color2: str, robot_position : list, label3 : str, color3: str) -> None:
         listX1 = np.array(listX1)  # Converte lista_x para um array de floats
         listY1 = np.array(listY1)
         listX2 = np.array(listX2)
         listY2 = np.array(listY2)
+        robot_position_X = []
+        robot_position_Y = []
+        robot_position_X.append(np.array(robot_position)[0])
+        robot_position_Y.append(np.array(robot_position)[1])
+
             
         sns.set_theme(style="white")
             
         # Plota o gráfico com seaborn
         plt.scatter(x=listX1, y=listY1, label=label1, color=color1)
         plt.scatter(x=listX2, y=listY2, label=label2, color=color2)
+        plt.scatter(x=robot_position_X, y=robot_position[1], label=label3, color=color3)
+        
 
         # Configurações adicionais
         plt.legend()
