@@ -20,7 +20,7 @@ class Camera(Device):
         self.width = self._camera.getWidth()
         self.height = self._camera.getHeight()
 
-        self.FOV = 0.6
+        self.FOV = 1
 
     def get_image(self) -> bytes:
         return self._camera.getImage()

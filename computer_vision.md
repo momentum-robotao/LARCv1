@@ -34,3 +34,7 @@ Understand camera model for calibration:
 - Depending on coefficients, there are different types of distorcion
 
 ![alt text](image-5.png)
+
+- https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html
+- https://docs.opencv.org/4.x/d7/d53/tutorial_py_pose.html
+- https://www.youtube.com/watch?v=H5qbRTikxI4&t=316s
