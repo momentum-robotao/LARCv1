@@ -54,12 +54,7 @@ def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
             )
     
     print("Chegou na sala 4")
-    robot.move(
-        "fowawrd",
-        Maze(debug_info),
-        dist=0.12,
-        slow_down_dist=SLOW_DOWN_DIST / 3,
-    )
+
     navigation.slam_dfs(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle(), robot, maze)
     ''' 
     dfs(

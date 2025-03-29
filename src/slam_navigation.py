@@ -7,7 +7,6 @@ from robot import Robot
 from maze import Maze
 from types_and_constants import MAX_SPEED
 
-contador_dfs = 0
 
 def get_start_angle() -> float:
     return slam.get_start_angle()
@@ -39,37 +38,48 @@ class Navigation:
 
     # Define o nó atual com base na posição GPS
     def set_current_node(self, gps_position: list) -> None:
-        past_node = self.current_node
-        condicao = False
         for node in self.existing_nodes:
             # Verifica se a posição GPS coincide com algum node existente (considerando imprecisão)
             if all(node_coord + THRESHOLD_SLAM > gps_coord and node_coord - THRESHOLD_SLAM < gps_coord 
                    for node_coord, gps_coord in zip(node.get_node_position(), gps_position)):
                 self.current_node = node
-                condicao = True
-        if not condicao:  # Caso não encontre, cria um novo node
-            self.current_node = Node(gps_position, past_node)
+                return
+        
+        self.current_node = Node(gps_position, None)
+        
     
-    def move_to_node(self, node_position: list, robot: Robot, direction: str) -> None:
-        total_distance = np.hypot(node_position[0] - robot.gps.get_position_AUGUSTO()[0],node_position[1] - robot.gps.get_position_AUGUSTO()[1])
-        theta = -robot.imu.get_rotation_angle() + np.arctan2(node_position[1] - robot.gps.get_position_AUGUSTO()[1],node_position[0] - robot.gps.get_position_AUGUSTO()[0])
-        print(f"distance : {total_distance}, theta : {theta}")
+    def move_to_node(self, node_position: list, robot_start_position : list, start_orientation : float, robot: Robot, direction: str) -> bool:
+        """Move o robô para um nó e retorna True se o movimento foi bem sucedido"""
+        start_pos = robot_start_position
+        target_distance = np.hypot(node_position[0] - start_pos[0],
+                                node_position[1] - start_pos[1])
+        
         if direction == "backward":
-            robot.move('backward', total_distance, high_speed = 0.5*MAX_SPEED)
-            robot.motor.stop()
+            # Backtracking - move em linha reta sem mudar a orientação
+            robot.motor.set_velocity(-0.5*MAX_SPEED, -0.5*MAX_SPEED)
         else:
+            # Movimento normal - alinha com o alvo primeiro
+            theta = np.arctan2(node_position[1] - start_pos[1],
+                            node_position[0] - start_pos[0]) - start_orientation
             robot.rotate_to_angle(theta)
             robot.motor.set_velocity(0.8*MAX_SPEED, 0.8*MAX_SPEED)
-            dist = total_distance
-            while(dist > 0.005):
-                robot.step()
-                dist = np.hypot(node_position[0] - robot.gps.get_position_AUGUSTO()[0],node_position[1] - robot.gps.get_position_AUGUSTO()[1])
-            robot.motor.stop()
+        
+        # Controle de movimento baseado na distância percorrida
+        moved_distance = 0
+        while moved_distance < target_distance * 0.75:  # 5% de margem
+            robot.step()
+            print(f"moved_distance : {moved_distance} || target_distance : {target_distance}")
+            current_pos = robot.gps.get_position_AUGUSTO()
+            moved_distance = np.hypot(current_pos[0] - start_pos[0],
+                                    current_pos[1] - start_pos[1])
+        
+        robot.motor.stop()
+        return True
 
     # Identifica e adiciona novos nodes com base nos pontos do SLAM
     def get_node(self, listx: list, listy: list, robot_position: list) -> None:
         x0, y0 = robot_position
-        radius_offset = ROBOT_RADIUS + THRESHOLD_SLAM# Raio de tolerância para criação de node
+        radius_offset = ROBOT_RADIUS + THRESHOLD_SLAM/4# Raio de tolerância para criação de node
         for lx, ly in zip(listx, listy):
             # Calcula a posição ajustada do node com base no raio de tolerância
             theta = np.arctan2(y0 - ly, lx - x0)
@@ -77,11 +87,7 @@ class Navigation:
             py = ly + radius_offset * np.sin(theta)
 
             # Adiciona o node somente se não estiver muito próximo de outros nós ou pontos existentes
-            if all(
-                (px - node.get_node_position()[0]) ** 2 + (py - node.get_node_position()[1]) ** 2 > radius_offset ** 2 for node in self.existing_nodes
-            ) and all(
-                (px - wx) ** 2 + (py - wy) ** 2 > ROBOT_RADIUS ** 2 for wx, wy in zip(listx, listy)
-            ):
+            if all((px - node.get_node_position()[0]) ** 2 + (py - node.get_node_position()[1]) ** 2 > radius_offset ** 2 for node in self.existing_nodes) and all((px - wx) ** 2 + (py - wy) ** 2 > radius_offset ** 2 for wx, wy in zip(listx, listy)):         
                 new_node = Node([px, py], self.current_node)  # Cria um novo node
                 self.existing_nodes.add(new_node)  # Adiciona o novo node ao conjunto de node existentes
                 self.current_node.set_node_adjacentes(new_node)  # Define o node como adjacente ao node atual
@@ -95,8 +101,12 @@ class Navigation:
                         if node not in self.current_node.nodes_adjacentes and node != self.current_node:
                             self.current_node.set_node_adjacentes(node)
 
+
+            
+
     # Função principal de navegação ( ESTÀ COM UM NOME ESTRANHO, NÃO FAZ O QUE O NOME DIZ)
     def navigate(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], robot_orientation: float) -> None:
+        print("entrei navigate")
         global contador
         # Captura um snapshot do SLAM
         slam_snapshot(gps_position, side_angle_to_distance_mapper, robot_orientation)
@@ -118,45 +128,53 @@ class Navigation:
             "Node", 'r', gps_position, "Robot", 'y')
 
     # Implementação inicial de navegação DFS (Depth-First Search)
-    def slam_dfs(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], robot_orientation: float, robot: Robot, maze : Maze) -> list:
-        '''
-        O robô utiliza DFS para explorar o ambiente:
-        1. Tira um snapshot do SLAM e identifica os nós.
-        2. Calcula o nó mais próximo que seja transversável (todos os adjacentes visitados).
-        3. Move-se para o nó mais próximo ou retorna ao nó anterior se não houver mais opções.
-        '''
+    def slam_dfs(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], 
+                robot_orientation: float, robot: Robot, maze: Maze, current_node: Node = None) -> list:
+        
+        if current_node is None: self.set_current_node(gps_position)
+        else: self.current_node = current_node
+        
+        if not self.current_node.node_visited:
+            self.current_node.visit_node()
+            self.stack_visited_node.append(self.current_node)
+            self.navigate(gps_position, side_angle_to_distance_mapper, robot_orientation)
+            
+            print(f"Current node: {self.current_node}")
+            print("Adjacents:")
+            for adjacent in self.current_node.nodes_adjacentes:
+                print(f"Position: {adjacent.get_node_position()}")
 
-        self.set_current_node(gps_position)  # Define o node atual
-        print(f"Current node: {self.current_node.node_position}")  # Printa a posição do node atual
-        self.current_node.visit_node()  # Marca o node atual como visitado
-        self.stack_visited_node.append(self.current_node)  # Adiciona o node à pilha de nodes_visitados
-        self.navigate(gps_position, side_angle_to_distance_mapper, robot_orientation)  # Cria Pontos do SLAM e Nodes
-        min_node = self.current_node.calculate_min_node(self.current_node)  # Calcula o node mais próximo
-        print("posicao_atual X: ", gps_position[0], "posicao_atual Y: ", gps_position[1])
-        adjacentes_positions = [adj_node.get_node_position() for adj_node in self.current_node.nodes_adjacentes]
-        print(f"Adjacentes: {adjacentes_positions}")
-        print("-----------------------------------------------")
-        print(f"orientacao = {robot_orientation}")
-        print(f"start angle = {get_start_angle()}")
+        min_node = self.current_node.calculate_min_node(self.current_node)
 
         if min_node is not None:
-            # Move-se ao nó mais próximo e chama a DFS novamente
-            print(f"Next_node : {min_node.node_position}")
-            self.move_to_node(min_node.get_node_position(), robot, 'forward')
-            print(f"cheguei no node {min_node.node_position}")
-            self.slam_dfs(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle(), robot, maze)
-        elif self.stack_visited_node:
-            # Backtracking para o nó anterior
-            print("ENTREI NO BACKTRAKING")
-            self.stack_visited_node.pop()  # Remove o nó atual da pilha
-            if self.stack_visited_node:  # Verifica se ainda há nós na pilha
-                node = self.stack_visited_node[-1]  # Obtém o nó anterior   
-                self.move_to_node(node.get_node_position(), robot, 'backward')  # Move-se ao nó anterior
-                self.slam_dfs(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle(), robot, maze)
-        else:
-            # Termina a DFS quando não há mais nós para visitar
-            print("DFS concluída. Todos os nós foram visitados.")
-
+            distance_to_min_node = np.hypot(
+            min_node.get_node_position()[0] - self.current_node.get_node_position()[0],
+            min_node.get_node_position()[1] - self.current_node.get_node_position()[1]
+            )
+            print(f"min_node : {min_node.get_node_position()}")
+        
+        if min_node is not None:
+            print(f"Moving to next node: {min_node.node_position}")
+            success = self.move_to_node(min_node.get_node_position(), robot.gps.get_position_AUGUSTO(), robot_orientation, robot, 'forward')
+            if success:
+                return self.slam_dfs(robot.gps.get_position_AUGUSTO(), 
+                                robot.lidar.get_distances_by_side_angle_AUGUSTO(), 
+                                robot.imu.get_rotation_angle(), robot, maze)
+        
+        # Backtracking
+        if len(self.stack_visited_node) > 1:
+            print("Iniciando backtracking...")
+            parent_node = self.stack_visited_node.pop()
+            
+            print(f"Retornando para nó anterior: {parent_node.get_node_position()}")
+            success = self.move_to_node(parent_node.get_node_position(), robot.gps.get_position_AUGUSTO(), robot_orientation, robot, 'backward')
+            if success:
+                return self.slam_dfs(robot.gps.get_position_AUGUSTO(), 
+                                robot.lidar.get_distances_by_side_angle_AUGUSTO(), 
+                                robot.imu.get_rotation_angle(), robot, maze, parent_node)
+        
+        print("Exploração concluída")
+        return []
 
 # Instância da classe Navigation
 navigation = Navigation()

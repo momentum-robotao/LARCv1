@@ -1,5 +1,5 @@
 import numpy as np
-from types_and_constants import Coordinate
+from types_and_constants import Coordinate, SLAM_MAX_DISTANCE
 from figure import fig
 import time
 import robot

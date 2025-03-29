@@ -10,6 +10,9 @@ class Node:
         self.node_position = position
         self.node_visited = False
         self.node_father = father
+    
+    def __str__(self):
+        return f"Node: \n\t x = {self.node_position[0]}, y = {self.node_position[1]} \n\t size_adj = {len(self.nodes_adjacentes)}"
 
     def __hash__(self):
         # Se a posição for None, retorna um hash fixo; caso contrário, usa a tupla da posição
@@ -36,16 +39,19 @@ class Node:
     def get_node_father(self) -> Node:
         return self.node_father
 
+
     def calculate_min_node(self, current: Node) -> Node:
         min_distance = float('inf')
         min_node = None
         for n in self.nodes_adjacentes:
-            if not n.node_visited and n.get_node_position() is not None:
-                distance = ((n.get_node_position()[0] - current.get_node_position()[0]) ** 2 +
-                            (n.get_node_position()[1] - current.get_node_position()[1]) ** 2) ** 0.5
+            pos = n.get_node_position()
+            current_pos = current.get_node_position()
+            if pos is None or current_pos is None:
+                continue
+            if not n.node_visited:
+                distance = np.hypot(pos[0] - current_pos[0], pos[1] - current_pos[1])
                 if distance < min_distance:
                     min_distance = distance
                     min_node = n
         return min_node
 
-        
