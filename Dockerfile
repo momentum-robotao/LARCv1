@@ -19,6 +19,7 @@ ENV TIME_STEP=32
 
 COPY ./ngrok.txt ./ngrok.txt
 COPY ./best.pt ./best.pt
+COPY ./calibration.npz ./calibration.npz
 ENV ENTRIES_BETWEEN_SENDS=1000
 ENV LOG_PATH=/usr/local/controller/.logs/robo.log
 ENV DEBUG=True
