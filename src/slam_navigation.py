@@ -51,28 +51,40 @@ class Navigation:
     def move_to_node(self, node_position: list, robot_start_position : list, start_orientation : float, robot: Robot, direction: str) -> bool:
         """Move o robô para um nó e retorna True se o movimento foi bem sucedido"""
         start_pos = robot_start_position
-        target_distance = np.hypot(node_position[0] - start_pos[0],
-                                node_position[1] - start_pos[1])
+        dx = node_position[0] - start_pos[0]
+        dy = node_position[1] - start_pos[1]
+        target_distance = np.hypot(dx, dy)
         
         if direction == "backward":
-            # Backtracking - move em linha reta sem mudar a orientação
             robot.motor.set_velocity(-0.5*MAX_SPEED, -0.5*MAX_SPEED)
         else:
-            # Movimento normal - alinha com o alvo primeiro
-            theta = np.arctan2(node_position[1] - start_pos[1],
-                            node_position[0] - start_pos[0]) - start_orientation
-            robot.rotate_to_angle(theta)
-            robot.motor.set_velocity(0.8*MAX_SPEED, 0.8*MAX_SPEED)
+            dx = node_position[0] - start_pos[0]
+            dy = node_position[1] - start_pos[1]
+            
+            # Corrige arctan2 para seu sistema de coordenadas (y cresce para baixo, ângulo horário)
+            target_angle = np.arctan2(-dy, dx)
+            if target_angle < 0:
+                target_angle += 2 * np.pi
+
+            current_angle = robot.imu.get_rotation_angle()
+
+            # Diferença angular, normalizada para [-π, π]
+            theta = (target_angle - current_angle + np.pi) % (2 * np.pi) - np.pi
+
+            robot.rotate_to_angle(-theta)
+            robot.motor.set_velocity(0.8 * MAX_SPEED, 0.8 * MAX_SPEED)
+
         
         # Controle de movimento baseado na distância percorrida
-        moved_distance = 0
-        while moved_distance < target_distance * 0.75:  # 5% de margem
+        while True:
             robot.step()
-            print(f"moved_distance : {moved_distance} || target_distance : {target_distance}")
             current_pos = robot.gps.get_position_AUGUSTO()
-            moved_distance = np.hypot(current_pos[0] - start_pos[0],
-                                    current_pos[1] - start_pos[1])
-        
+            remaining_distance = np.hypot(node_position[0] - current_pos[0],
+                                          node_position[1] - current_pos[1])
+            print(f"Remaining distance: {remaining_distance} | Target: {target_distance}")
+            if remaining_distance <= THRESHOLD_SLAM:
+                break
+
         robot.motor.stop()
         return True
 
@@ -157,6 +169,7 @@ class Navigation:
             print(f"Moving to next node: {min_node.node_position}")
             success = self.move_to_node(min_node.get_node_position(), robot.gps.get_position_AUGUSTO(), robot_orientation, robot, 'forward')
             if success:
+                self.current_node = min_node
                 return self.slam_dfs(robot.gps.get_position_AUGUSTO(), 
                                 robot.lidar.get_distances_by_side_angle_AUGUSTO(), 
                                 robot.imu.get_rotation_angle(), robot, maze)
@@ -164,11 +177,13 @@ class Navigation:
         # Backtracking
         if len(self.stack_visited_node) > 1:
             print("Iniciando backtracking...")
-            parent_node = self.stack_visited_node.pop()
+            self.stack_visited_node.pop()  # remove o atual
+            parent_node = self.stack_visited_node[-1]  # pega o pai sem remover
             
             print(f"Retornando para nó anterior: {parent_node.get_node_position()}")
             success = self.move_to_node(parent_node.get_node_position(), robot.gps.get_position_AUGUSTO(), robot_orientation, robot, 'backward')
             if success:
+                self.current_node = parent_node
                 return self.slam_dfs(robot.gps.get_position_AUGUSTO(), 
                                 robot.lidar.get_distances_by_side_angle_AUGUSTO(), 
                                 robot.imu.get_rotation_angle(), robot, maze, parent_node)
