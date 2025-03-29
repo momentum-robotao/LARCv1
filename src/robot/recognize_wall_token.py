@@ -9,7 +9,7 @@ class RecognizeWallToken(RobotCommand[bool]):
         self,
         robot: Robot,
     ) -> bool:
-        wall_token = classify_wall_token(robot.camera, robot.gps)
+        wall_token = classify_wall_token(robot.camera, robot.gps, robot.imu)
         if not wall_token:
             return False
 

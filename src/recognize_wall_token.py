@@ -11,17 +11,28 @@ Regras importantes:
     of the wall token in a platform-specific format"
 """
 
+from math import atan, cos, sin, sqrt
+
 import cv2 as cv
 import numpy as np
 from ultralytics import YOLO  # type: ignore[import-untyped]
 
-from devices import GPS, Camera
-from types_and_constants import TILE_SIZE, WallToken
+from devices import GPS, IMU, Camera
+from types_and_constants import (
+    DEGREE_IN_RAD,
+    ROBOT_RADIUS,
+    TILE_SIZE,
+    Coordinate,
+    WallToken,
+)
 
 MODEL_PATH = r"/usr/local/controller/best.pt"
 CALIBRATION_PATH = r"/usr/local/controller/calibration.npz"
 MIN_DIST_TO_SEND_WT = TILE_SIZE / 2 - 0.01
 MIN_ACCURACY_TO_CONSIDER_WT = 0.85
+CAMERA_FOCUS_RADIUS = (
+    ROBOT_RADIUS - 0.005
+)  # ? radius - dist(robot side, camera optical center)
 
 model = YOLO(MODEL_PATH)
 
@@ -31,9 +42,46 @@ with np.load(CALIBRATION_PATH) as calibration_file:
     ]
 
 
+def get_camera_focus_coordinate(
+    robot_position: Coordinate, rotation_angle: float
+) -> Coordinate:
+    """
+    :param robot_position: In GPS coordinates.
+    :param rotation_angle: In GPS axes.
+
+    Returns camera focus coordinate in GPS axes.
+    """
+    dx = CAMERA_FOCUS_RADIUS * cos(rotation_angle)
+    dy = CAMERA_FOCUS_RADIUS * sin(rotation_angle)
+    camera_focus = robot_position + Coordinate(dx, dy)
+    print(f"Foco da câmera em: {camera_focus}")
+    return camera_focus
+
+
+def get_WT_coordinate_deltas(
+    tvec_dx: float, tvec_dz: float, rotation_angle: float
+) -> tuple[float, float]:
+    """
+    :param rotation_angle: In GPS axes.
+
+    Returns (dx, dy) in GPS axes.
+    """
+    side_angle_WT = atan(tvec_dx / tvec_dz)
+    angle_WT = rotation_angle + side_angle_WT
+    distance_WT = sqrt(tvec_dx * tvec_dx + tvec_dz * tvec_dz)
+    dx = distance_WT * cos(angle_WT)
+    dy = distance_WT * sin(angle_WT)
+    print(f"{side_angle_WT / DEGREE_IN_RAD}")
+    print(f"tvec: {tvec_dx}, {tvec_dz}")
+    print(f"deltas: {dx}, {dy}")
+
+    return (dx, dy)
+
+
 def classify_wall_token(
     camera: Camera,
     gps: GPS,
+    imu: IMU,
 ) -> WallToken | None:
     wall_token: WallToken | None = None
 
@@ -54,22 +102,32 @@ def classify_wall_token(
             if conf < MIN_ACCURACY_TO_CONSIDER_WT:
                 continue
 
-            position = gps.get_position()
-            x, y = position.x, position.y
+            camera_position = get_camera_focus_coordinate(
+                robot_position=gps.get_position(), rotation_angle=imu.get_GPS_angle()
+            )
 
             bounding_box = np.array(
                 [[x1, y1], [x2, y1], [x1, y2], [x2, y2]], dtype=np.float32
             ).reshape((4, 1, 2))
             obj_points = np.array(
-                [[0, 0, 0], [0.02, 0, 0], [0, 0.02, 0], [0.02, 0.02, 0]],
+                [
+                    [-0.01, -0.01, 0],
+                    [0.01, -0.01, 0],
+                    [-0.01, 0.01, 0],
+                    [0.01, 0.01, 0],
+                ],
                 dtype=np.float32,
             )
             ret, rvecs, tvecs = cv.solvePnP(
                 obj_points, bounding_box, camMatrix, distCoeff
             )
-            dy, _dz, dx = tvecs.ravel()
+            tvec_dx, _dy, tvec_dz = tvecs.ravel()
 
-            print(dy, dx)
+            dx, dy = get_WT_coordinate_deltas(
+                tvec_dx, tvec_dz, rotation_angle=imu.get_GPS_angle()
+            )
 
-            print(f"Encontrado {class_name}: {x + dx}, {y + dy}")
+            print(
+                f"Encontrado {class_name}: {camera_position.x + dx}, {camera_position.y + dy}"
+            )
     return wall_token

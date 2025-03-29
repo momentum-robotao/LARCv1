@@ -58,9 +58,10 @@ class IMU(Device):
     def get_roll_pitch_yaw(self) -> float:
         return self._imu.getRollPitchYaw()[2]
 
-    def get_adjusted_angle(self) -> float:
+    def get_GPS_angle(self) -> float:
         """ "
         (1, 0) must be 0° and (1.0 / SQRT, 1.0 / SQRT) must be 45°
+        In other words, rotation angle in GPS axes.
         """
         from robot import DIST_CHANGE_MAPPER
 
@@ -73,8 +74,10 @@ class IMU(Device):
 
         rotation_angle = self.get_rotation_angle()
 
-        rotation_angle = cyclic_angle(rotation_angle - angle_0 * DEGREE_IN_RAD)
-        if (angle_0 + 45) % 360 != angle_45:
+        rotation_angle = cyclic_angle(
+            rotation_angle - angle_0 * DEGREE_IN_RAD  # type: ignore[operator]
+        )
+        if (angle_0 + 45) % 360 != angle_45:  # type: ignore[operator]
             # ? inverted
             rotation_angle = 2 * PI - rotation_angle
 
