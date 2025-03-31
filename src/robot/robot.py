@@ -22,6 +22,7 @@ from types_and_constants import (
     POSSIBLE_ANGLES,
     EndOfTimeError,
     LackOfProgressError,
+    WallTokenEntry,
 )
 
 T = TypeVar("T")
@@ -75,6 +76,9 @@ class Robot:
         self.expected_position = gps.get_position()
         # ? 5 primeiros minutos não checa tempo. Depois a cada 2 segs
         self.last_check_time_ms = round(time.time() * 1000) + 5 * 60 * 1000
+
+        self.found_wall_tokens: list[WallTokenEntry] = []
+        self.wall_tokens_to_send: list[WallTokenEntry] = []
 
     def check_time(
         self, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))

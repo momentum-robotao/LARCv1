@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal
+from typing import Literal, NamedTuple
 
 
 class Victim(Enum):
@@ -255,3 +255,9 @@ SPECIAL_TILE_COLOR_MAPPER: dict[RGB, ColoredSpecialTile] = {
     RGB(255, 79, 79): SpecialTileType.PASSAGE_3_4,
     RGB(235, 206, 126): SpecialTileType.SWAMP,
 }
+
+
+class WallTokenEntry(NamedTuple):
+    position: Coordinate
+    wt_type: WallToken
+    orientation: float
