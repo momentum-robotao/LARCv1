@@ -11,7 +11,7 @@ LOG_PATH = os.getenv("LOG_PATH", "./.logs/log.txt")
 
 # Defina o diretório de upload
 UPLOAD_FOLDER = '/home/alunoc/git_projects/LARCv1/SLAM_IMAGES' # PC DO ETAPA
-#UPLOAD_FOLDER = r"C:\Users\Pichau\Desktop\LARCV1\SLAM_IMAGES"  #Meu PC
+#UPLOAD_FOLDER = r"C:\Users\Pichau\Des  ktop\LARCV1\SLAM_IMAGES"  #Meu PC
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Certifique-se de que o diretório de upload existe

@@ -39,13 +39,15 @@ class Navigation:
     # Define o nó atual com base na posição GPS
     def set_current_node(self, gps_position: list) -> None:
         for node in self.existing_nodes:
-            # Verifica se a posição GPS coincide com algum node existente (considerando imprecisão)
-            if all(node_coord + THRESHOLD_SLAM > gps_coord and node_coord - THRESHOLD_SLAM < gps_coord 
-                   for node_coord, gps_coord in zip(node.get_node_position(), gps_position)):
+            node_pos = node.get_node_position()
+            distance = np.hypot(node_pos[0]-gps_position[0], node_pos[1]-gps_position[1])
+            # Aumente a tolerância para reconhecer nodes próximos
+            if distance <= THRESHOLD_SLAM * 1.5:  # 50% a mais de tolerância
                 self.current_node = node
                 return
-        
+        # Cria novo node somente se realmente não existir
         self.current_node = Node(gps_position, None)
+        self.existing_nodes.add(self.current_node)
         
     
     def move_to_node(self, node_position: list, robot_start_position : list, start_orientation : float, robot: Robot, direction: str) -> bool:
@@ -54,39 +56,56 @@ class Navigation:
         dx = node_position[0] - start_pos[0]
         dy = node_position[1] - start_pos[1]
         target_distance = np.hypot(dx, dy)
+
+        if target_distance <= THRESHOLD_SLAM:
+            print("Já está próximo do node. Ignorando movimento.")
+            return True
         
         if direction == "backward":
-            robot.motor.set_velocity(-0.5*MAX_SPEED, -0.5*MAX_SPEED)
-        else:
-            dx = node_position[0] - start_pos[0]
-            dy = node_position[1] - start_pos[1]
+            # Novo cálculo de ângulo para movimento reverso
+            dx_parent = node_position[0] - start_pos[0]
+            dy_parent = node_position[1] - start_pos[1]
             
+            target_angle = np.arctan2(-dy_parent, dx_parent)  # Ângulo inverso
+            if target_angle < 0:
+                target_angle += 2 * np.pi
+            
+            current_angle = robot.imu.get_rotation_angle()
+            theta = (target_angle - current_angle + np.pi) % (2 * np.pi) - np.pi
+            
+            # Gira antes de mover para trás
+            robot.rotate_to_angle(-theta)
+            robot.motor.set_velocity(-0.5 * MAX_SPEED, -0.5 * MAX_SPEED)
+        else:
+
             # Corrige arctan2 para seu sistema de coordenadas (y cresce para baixo, ângulo horário)
             target_angle = np.arctan2(-dy, dx)
             if target_angle < 0:
-                target_angle += 2 * np.pi
+                target_angle += 2 * np.pi - start_orientation
 
             current_angle = robot.imu.get_rotation_angle()
 
             # Diferença angular, normalizada para [-π, π]
-            theta = (target_angle - current_angle + np.pi) % (2 * np.pi) - np.pi
+            theta = (target_angle - current_angle + np.pi) % (2 * np.pi) - np.pi + current_angle
 
             robot.rotate_to_angle(-theta)
             robot.motor.set_velocity(0.8 * MAX_SPEED, 0.8 * MAX_SPEED)
 
-        
-        # Controle de movimento baseado na distância percorrida
+        previous_distance = float('inf')  # Inicializa com um valor infinito
         while True:
             robot.step()
             current_pos = robot.gps.get_position_AUGUSTO()
             remaining_distance = np.hypot(node_position[0] - current_pos[0],
-                                          node_position[1] - current_pos[1])
-            print(f"Remaining distance: {remaining_distance} | Target: {target_distance}")
-            if remaining_distance <= THRESHOLD_SLAM:
+                                        node_position[1] - current_pos[1])
+            
+            # Condição de parada aprimorada
+            if remaining_distance <= THRESHOLD_SLAM or remaining_distance > previous_distance:
                 break
+            previous_distance = remaining_distance
 
         robot.motor.stop()
-        return True
+        return remaining_distance <= THRESHOLD_SLAM  # Retorna bool real
+    
 
     # Identifica e adiciona novos nodes com base nos pontos do SLAM
     def get_node(self, listx: list, listy: list, robot_position: list) -> None:
@@ -177,16 +196,29 @@ class Navigation:
         # Backtracking
         if len(self.stack_visited_node) > 1:
             print("Iniciando backtracking...")
-            self.stack_visited_node.pop()  # remove o atual
-            parent_node = self.stack_visited_node[-1]  # pega o pai sem remover
-            
+            current_node = self.stack_visited_node.pop()  # Remove o nó atual
+            parent_node = self.stack_visited_node[-1]  # Pega o nó pai
+
             print(f"Retornando para nó anterior: {parent_node.get_node_position()}")
-            success = self.move_to_node(parent_node.get_node_position(), robot.gps.get_position_AUGUSTO(), robot_orientation, robot, 'backward')
+            
+            # Calcula a direção correta para o pai
+            success = self.move_to_node(
+                parent_node.get_node_position(), 
+                robot.gps.get_position_AUGUSTO(), 
+                robot.imu.get_rotation_angle(),  # Usa o ângulo ATUAL
+                robot, 
+                'backward'
+            )
+            
             if success:
                 self.current_node = parent_node
+                parent_node.visit_node()  # Marca o pai como revisitado
                 return self.slam_dfs(robot.gps.get_position_AUGUSTO(), 
                                 robot.lidar.get_distances_by_side_angle_AUGUSTO(), 
                                 robot.imu.get_rotation_angle(), robot, maze, parent_node)
+            else:
+                print("Falha no backtracking! Abortando...")
+                return []
         
         print("Exploração concluída")
         return []
