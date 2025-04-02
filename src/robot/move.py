@@ -337,7 +337,11 @@ class Move(RobotCommand[MovementResult]):
                 else:
                     return MovementResult.right_hole
 
-            if not found_wall_token and robot.run(RecognizeWallToken()):
+            if (
+                not found_wall_token
+                and not self.correction_move
+                and robot.run(RecognizeWallToken())
+            ):
                 found_wall_token = True
 
         return MovementResult.moved

@@ -11,6 +11,7 @@ Regras importantes:
     of the wall token in a platform-specific format"
 """
 
+import itertools
 from math import atan, cos, sin, sqrt
 
 import cv2 as cv
@@ -131,6 +132,47 @@ def get_hsv_background(
     return None
 
 
+def find_farthest_four(points: np.ndarray) -> np.ndarray:
+    """
+    Find four farthest points from an approxPolyDP result.
+
+    :param points: NumPy array of shape (N, 1, 2), result of cv2.approxPolyDP.
+    :return: NumPy array of shape (4, 2) containing the four farthest points.
+    """
+    points = points[:, 0]  # Reshape from (N, 1, 2) to (N, 2)
+
+    # Compute pairwise distances
+    max_dist = 0.0
+    farthest_pair: tuple[np.ndarray | None, np.ndarray | None] = (None, None)
+    for p1, p2 in itertools.combinations(points, 2):
+        dist = float(np.linalg.norm(p1 - p2))
+        if dist > max_dist:
+            max_dist = dist
+            farthest_pair = (p1, p2)
+
+    remaining_points = np.array(
+        [
+            p
+            for p in points
+            if not np.array_equal(p, farthest_pair[0])
+            and not np.array_equal(p, farthest_pair[1])
+        ]
+    )
+    # TODO: filter min expected dist to avoid rectangles inside WTs pattern
+
+    # Find the next two points that maximize the area
+    max_area = 0.0
+    best_quad: np.ndarray = np.zeros((4, 2), dtype=np.int32)
+    for p3, p4 in itertools.combinations(remaining_points, 2):
+        quad = np.array([farthest_pair[0], farthest_pair[1], p3, p4])
+        area = cv.contourArea(quad)
+        if area > max_area:
+            max_area = area
+            best_quad = quad
+
+    return best_quad
+
+
 def get_corners(
     rgb_image: NDArray[np.uint8],
     x1: int,
@@ -157,20 +199,47 @@ def get_corners(
     hsv_cropped_img = cv.cvtColor(cropped_image, cv.COLOR_RGB2HSV)
     background_mask = cv.inRange(hsv_cropped_img, hsv_background, hsv_background)
 
-    cropped_image[background_mask > 0] = [128, 0, 128]
+    masked_cropped_image = cropped_image.copy()
+    pts = []
+    for x in range(x2 - x1 + 1):
+        for y in range(y2 - y1 + 1):
+            if background_mask[y, x] == 0:
+                pts.append((x, y))
+    print(
+        f"Convex Hull: {cv.convexHull(np.array(pts).reshape((len(pts), 2)), clockwise=True)}"
+    )
+    masked_cropped_image[background_mask > 0] = [255, 255, 255]
+    masked_cropped_image[background_mask == 0] = [0, 0, 0]
 
-    cv.imwrite("cropped_mask.png", cropped_image)
+    cv.imwrite("cropped_mask.png", masked_cropped_image)
 
-    # ? Gets four corners of image
-    gray_cropped_image = cv.cvtColor(cropped_image, cv.COLOR_RGB2GRAY)
-    blurred_cropped_image = cv.GaussianBlur(gray_cropped_image, (5, 5), 0)
-
-    edges = cv.Canny(blurred_cropped_image, 50, 150)
+    edges = cv.Canny(masked_cropped_image, 50, 150)
     contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+
+    # TODO: test findCorners
+    # TODO: pegar 4 pontos maximizando área
+    # TODO: pintar interior de outra cor também
+
+    print(cropped_image)
 
     for contour in contours:
         epsilon = 0.04 * cv.arcLength(contour, True)
         approx = cv.approxPolyDP(contour, epsilon, True)
+
+        last = approx[-1].ravel()
+        for pt_ in approx:
+            pt = pt_.copy().ravel()
+            cv.circle(cropped_image, tuple(pt), 1, (0, 0, 255), -1)
+            cv.line(
+                cropped_image,
+                tuple(last),
+                tuple(pt),
+                (0, 255, 0),
+                1,
+            )
+        cv.imwrite("found.png", cropped_image)
+
+        approx = find_farthest_four(approx)
 
         if len(approx) != 4:
             continue
@@ -185,7 +254,7 @@ def get_corners(
 
         for i in range(4):
             cv.line(
-                cropped_image,
+                masked_cropped_image,
                 tuple(approx[i]),
                 tuple(approx[(i + 1) % 4]),
                 (0, 255, 0),
@@ -193,9 +262,9 @@ def get_corners(
             )
 
         for point in approx:
-            cv.circle(cropped_image, tuple(point), 1, (0, 0, 255), -1)
+            cv.circle(masked_cropped_image, tuple(point), 1, (0, 0, 255), -1)
 
-        cv.imwrite("quad.png", cropped_image)
+        cv.imwrite("quad.png", masked_cropped_image)
 
         print("Found quad!!")
 
@@ -284,6 +353,7 @@ def classify_wall_token(
                     obj_points, bounding_box, camMatrix, distCoeff
                 )
                 rx, ry, rz = rvecs.ravel()
+                print(imu.get_rotation_angle() / DEGREE_IN_RAD)
                 print(ry / DEGREE_IN_RAD)
                 print(
                     f"Orientação 2 da vítima: {cyclic_angle(ry - imu.get_rotation_angle()) / DEGREE_IN_RAD}"
