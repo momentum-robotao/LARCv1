@@ -66,27 +66,23 @@ class Navigation:
             dx_parent = node_position[0] - start_pos[0]
             dy_parent = node_position[1] - start_pos[1]
             
-            target_angle = np.arctan2(-dy_parent, dx_parent)  # Ângulo inverso
-            if target_angle < 0:
-                target_angle += 2 * np.pi
+            target_angle = np.arctan2(-dy_parent, dx_parent)  - start_orientation # Ângulo inverso
             
             current_angle = robot.imu.get_rotation_angle()
-            theta = (target_angle - current_angle + np.pi) % (2 * np.pi) - np.pi
+            theta = target_angle + current_angle    
             
             # Gira antes de mover para trás
             robot.rotate_to_angle(-theta)
-            robot.motor.set_velocity(-0.5 * MAX_SPEED, -0.5 * MAX_SPEED)
+            robot.motor.set_velocity(0.5 * MAX_SPEED, 0.5 * MAX_SPEED)
         else:
 
             # Corrige arctan2 para seu sistema de coordenadas (y cresce para baixo, ângulo horário)
-            target_angle = np.arctan2(-dy, dx)
-            if target_angle < 0:
-                target_angle += 2 * np.pi - start_orientation
+            target_angle = np.arctan2(-dy, dx) - start_orientation
 
             current_angle = robot.imu.get_rotation_angle()
 
             # Diferença angular, normalizada para [-π, π]
-            theta = (target_angle - current_angle + np.pi) % (2 * np.pi) - np.pi + current_angle
+            theta = target_angle + current_angle
 
             robot.rotate_to_angle(-theta)
             robot.motor.set_velocity(0.8 * MAX_SPEED, 0.8 * MAX_SPEED)
@@ -104,6 +100,7 @@ class Navigation:
             previous_distance = remaining_distance
 
         robot.motor.stop()
+        
         return remaining_distance <= THRESHOLD_SLAM  # Retorna bool real
     
 
@@ -120,8 +117,11 @@ class Navigation:
             # Adiciona o node somente se não estiver muito próximo de outros nós ou pontos existentes
             if all((px - node.get_node_position()[0]) ** 2 + (py - node.get_node_position()[1]) ** 2 > radius_offset ** 2 for node in self.existing_nodes) and all((px - wx) ** 2 + (py - wy) ** 2 > radius_offset ** 2 for wx, wy in zip(listx, listy)):         
                 new_node = Node([px, py], self.current_node)  # Cria um novo node
-                self.existing_nodes.add(new_node)  # Adiciona o novo node ao conjunto de node existentes
-                self.current_node.set_node_adjacentes(new_node)  # Define o node como adjacente ao node atual
+                if new_node is not None:  # <--- Garanta que o nó foi criado
+                    self.existing_nodes.add(new_node)
+                    self.current_node.set_node_adjacentes(new_node)
+                    new_node.set_node_adjacentes(self.current_node)  # Bidirecionalidade
+
 
                 # Verifica e conecta nodes adjacentes próximos
                 for node in self.existing_nodes:
@@ -131,6 +131,7 @@ class Navigation:
                         # Evita adicionar nodes duplicados na lista de adjacentes
                         if node not in self.current_node.nodes_adjacentes and node != self.current_node:
                             self.current_node.set_node_adjacentes(node)
+                            node.set_node_adjacentes(self.current_node)
 
 
             
@@ -151,7 +152,6 @@ class Navigation:
         self.list_x_total.extend(new_x)
         self.list_y_total.extend(new_y)
 
-        # Plota os pontos e nodes a cada 25 iterações
         fig.multi_plott(
             self.list_x_total, self.list_y_total, "SLAM", 'b',
             [node.get_node_position()[0] for node in self.existing_nodes],
@@ -160,7 +160,7 @@ class Navigation:
 
     # Implementação inicial de navegação DFS (Depth-First Search)
     def slam_dfs(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], 
-                robot_orientation: float, robot: Robot, maze: Maze, current_node: Node = None) -> list:
+                robot_orientation: float, robot: Robot, maze: Maze, current_node: Node = None) -> None:
         
         if current_node is None: self.set_current_node(gps_position)
         else: self.current_node = current_node
@@ -173,31 +173,29 @@ class Navigation:
             print(f"Current node: {self.current_node}")
             print("Adjacents:")
             for adjacent in self.current_node.nodes_adjacentes:
-                print(f"Position: {adjacent.get_node_position()}")
+                if adjacent is not None : print(f"Position: {adjacent.get_node_position()}")
 
-        min_node = self.current_node.calculate_min_node(self.current_node)
+        min_node = self.current_node.calculate_min_node()
 
-        if min_node is not None:
-            distance_to_min_node = np.hypot(
-            min_node.get_node_position()[0] - self.current_node.get_node_position()[0],
-            min_node.get_node_position()[1] - self.current_node.get_node_position()[1]
-            )
-            print(f"min_node : {min_node.get_node_position()}")
         
         if min_node is not None:
+            distance_to_min_node = np.hypot(min_node.get_node_position()[0] - self.current_node.get_node_position()[0],min_node.get_node_position()[1] - self.current_node.get_node_position()[1])
             print(f"Moving to next node: {min_node.node_position}")
+            print(f"distance_to_min_node: {distance_to_min_node}")
             success = self.move_to_node(min_node.get_node_position(), robot.gps.get_position_AUGUSTO(), robot_orientation, robot, 'forward')
+            print(f"success : {success}")
+            while not success :
+                robot.step()
+                success = self.move_to_node(min_node.get_node_position(), robot.gps.get_position_AUGUSTO(), robot_orientation, robot, 'forward')
             if success:
-                self.current_node = min_node
                 return self.slam_dfs(robot.gps.get_position_AUGUSTO(), 
                                 robot.lidar.get_distances_by_side_angle_AUGUSTO(), 
-                                robot.imu.get_rotation_angle(), robot, maze)
+                                robot.imu.get_rotation_angle(), robot, maze, current_node=min_node)
         
         # Backtracking
-        if len(self.stack_visited_node) > 1:
+        if self.current_node.node_father is not None:
             print("Iniciando backtracking...")
-            current_node = self.stack_visited_node.pop()  # Remove o nó atual
-            parent_node = self.stack_visited_node[-1]  # Pega o nó pai
+            parent_node = current_node.get_node_father()
 
             print(f"Retornando para nó anterior: {parent_node.get_node_position()}")
             
@@ -211,17 +209,16 @@ class Navigation:
             )
             
             if success:
-                self.current_node = parent_node
                 parent_node.visit_node()  # Marca o pai como revisitado
                 return self.slam_dfs(robot.gps.get_position_AUGUSTO(), 
                                 robot.lidar.get_distances_by_side_angle_AUGUSTO(), 
                                 robot.imu.get_rotation_angle(), robot, maze, parent_node)
             else:
                 print("Falha no backtracking! Abortando...")
-                return []
+                return None
         
         print("Exploração concluída")
-        return []
+        return None
 
 # Instância da classe Navigation
 navigation = Navigation()
