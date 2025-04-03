@@ -11,8 +11,7 @@ Regras importantes:
     of the wall token in a platform-specific format"
 """
 
-import itertools
-from math import atan, cos, sin, sqrt
+from math import acos, asin, atan, atan2, cos, sin, sqrt
 
 import cv2 as cv
 import numpy as np
@@ -132,45 +131,44 @@ def get_hsv_background(
     return None
 
 
-def find_farthest_four(points: np.ndarray) -> np.ndarray:
-    """
-    Find four farthest points from an approxPolyDP result.
+def cross(pt1, pt2):
+    x1, y1 = pt1
+    x2, y2 = pt2
+    return x1 * y2 - x2 * y1
 
-    :param points: NumPy array of shape (N, 1, 2), result of cv2.approxPolyDP.
-    :return: NumPy array of shape (4, 2) containing the four farthest points.
-    """
-    points = points[:, 0]  # Reshape from (N, 1, 2) to (N, 2)
 
-    # Compute pairwise distances
-    max_dist = 0.0
-    farthest_pair: tuple[np.ndarray | None, np.ndarray | None] = (None, None)
-    for p1, p2 in itertools.combinations(points, 2):
-        dist = float(np.linalg.norm(p1 - p2))
-        if dist > max_dist:
-            max_dist = dist
-            farthest_pair = (p1, p2)
+def subtract(pt1, pt2):
+    pt1[0] -= pt2[0]
+    pt1[1] -= pt2[1]
+    return pt1
 
-    remaining_points = np.array(
-        [
-            p
-            for p in points
-            if not np.array_equal(p, farthest_pair[0])
-            and not np.array_equal(p, farthest_pair[1])
-        ]
-    )
-    # TODO: filter min expected dist to avoid rectangles inside WTs pattern
 
-    # Find the next two points that maximize the area
-    max_area = 0.0
-    best_quad: np.ndarray = np.zeros((4, 2), dtype=np.int32)
-    for p3, p4 in itertools.combinations(remaining_points, 2):
-        quad = np.array([farthest_pair[0], farthest_pair[1], p3, p4])
-        area = cv.contourArea(quad)
-        if area > max_area:
-            max_area = area
-            best_quad = quad
+def sz(pt):
+    return sqrt(pt[0] * pt[0] + pt[1] * pt[1])
 
-    return best_quad
+
+def dot(pt1, pt2):
+    return pt1[0] * pt2[0] + pt1[1] * pt2[1]
+
+
+def remove_pts_by_angle(pts, ang=130 * DEGREE_IN_RAD):
+    n = len(pts)
+    result = []
+    for i in range(n):
+        pt_left = pts[(i - 1 + n) % n].copy()
+        pt = pts[i].copy()
+        pt_right = pts[(i + 1) % n].copy()
+
+        print(pt_left, pt, pt_right, end=": ")
+        left = subtract(pt_left, pt)
+        right = subtract(pt_right, pt)
+        sin_angle = round(cross(left, right) / sz(left) / sz(right), 4)
+        cos_angle = round(dot(left, right) / sz(left) / sz(right), 4)
+        angle = atan2(sin_angle, cos_angle)
+        print(angle / DEGREE_IN_RAD)
+        if angle <= ang:
+            result.append(pts[i].copy())
+    return result
 
 
 def get_corners(
@@ -205,77 +203,35 @@ def get_corners(
         for y in range(y2 - y1 + 1):
             if background_mask[y, x] == 0:
                 pts.append((x, y))
-    print(
-        f"Convex Hull: {cv.convexHull(np.array(pts).reshape((len(pts), 2)), clockwise=True)}"
-    )
-    masked_cropped_image[background_mask > 0] = [255, 255, 255]
-    masked_cropped_image[background_mask == 0] = [0, 0, 0]
+    convex_hull = cv.convexHull(np.array(pts).reshape((len(pts), 2)), clockwise=True)
 
-    cv.imwrite("cropped_mask.png", masked_cropped_image)
+    convex_hull = convex_hull.reshape((len(convex_hull), 2))
 
-    edges = cv.Canny(masked_cropped_image, 50, 150)
-    contours, _ = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-
-    # TODO: test findCorners
-    # TODO: pegar 4 pontos maximizando área
-    # TODO: pintar interior de outra cor também
-
-    print(cropped_image)
-
-    for contour in contours:
-        epsilon = 0.04 * cv.arcLength(contour, True)
-        approx = cv.approxPolyDP(contour, epsilon, True)
-
-        last = approx[-1].ravel()
-        for pt_ in approx:
-            pt = pt_.copy().ravel()
-            cv.circle(cropped_image, tuple(pt), 1, (0, 0, 255), -1)
-            cv.line(
-                cropped_image,
-                tuple(last),
-                tuple(pt),
-                (0, 255, 0),
-                1,
-            )
-        cv.imwrite("found.png", cropped_image)
-
-        approx = find_farthest_four(approx)
-
-        if len(approx) != 4:
-            continue
-
-        approx = approx.reshape((4, 2))
-        centroid = np.mean(approx, axis=0)
-
-        def angle_from_centroid(point):
-            return np.arctan2(point[1] - centroid[1], point[0] - centroid[0])
-
-        approx = sorted(approx, key=angle_from_centroid)  # Clockwise order
-
-        for i in range(4):
+    print(f"Convex hull: {convex_hull}")
+    if len(convex_hull) >= 3:
+        convex_hull = remove_pts_by_angle(convex_hull)
+        print(f"Novo ch: {convex_hull}")
+        for i in range(len(convex_hull)):
             cv.line(
                 masked_cropped_image,
-                tuple(approx[i]),
-                tuple(approx[(i + 1) % 4]),
+                tuple(convex_hull[i]),
+                tuple(convex_hull[(i + 1) % len(convex_hull)]),
                 (0, 255, 0),
                 1,
             )
 
-        for point in approx:
+        for point in convex_hull:
             cv.circle(masked_cropped_image, tuple(point), 1, (0, 0, 255), -1)
 
         cv.imwrite("quad.png", masked_cropped_image)
 
-        print("Found quad!!")
+    if len(convex_hull) != 4:
+        print("quad not found")
+        return None
 
-        return tuple((int(corner[0]) + x1, int(corner[1]) + y1) for corner in approx)  # type: ignore[return-value]
-    print("quad not found")
+    print("quad found")
 
-    return None
-
-    # corners = cv.goodFeaturesToTrack(gray, 100, 0.01, 10)
-    # corners = np.int0(corners)
-    # + Radial sweep
+    return tuple((x, y) for x, y in convex_hull)
 
 
 def classify_wall_token(
@@ -319,10 +275,10 @@ def classify_wall_token(
 
             obj_points = np.array(
                 (
-                    (0.01, -0.01, 0),
-                    (-0.01, -0.01, 0),
-                    (-0.01, 0.01, 0),
-                    (0.01, 0.01, 0),
+                    (0.008025, -0.008025, 0),
+                    (-0.008025, -0.008025, 0),
+                    (-0.008025, 0.008025, 0),
+                    (0.008025, 0.008025, 0),
                 ),
                 dtype=np.float32,
             )
