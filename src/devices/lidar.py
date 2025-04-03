@@ -1,5 +1,7 @@
 import os
 from typing import Literal
+import numpy as np
+import math 
 
 from controller import Robot as WebotsRobot  # type: ignore
 
@@ -118,30 +120,33 @@ class Lidar(Device):
     
     def get_distances_by_side_angle_AUGUSTO(self) -> dict[float, float]:
         """
-        :return: Um dicionário onde `dict[angle] = distância média medida nesse ângulo lateral`.
+        :return: Um dicionário com distâncias brutas do LiDAR (ângulo em radianos → distância em metros)
         """
-    
-    
         distances_by_side_angle = {}
-        num_angles = self.horizontal_resolution
         num_layers = self.number_of_layers
-        
-        for measure_idx in range(num_angles):
-            side_angle = round(self._get_measure_side_angle(measure_idx), 2)
-            dist = 0
-            count = 0
+        horizontal_res = 512  # Confirmar no Webots
+        total_points = horizontal_res * num_layers
+        range_image = self._lidar.getRangeImage()
+
+        for angle_deg in range(360):
+            n = (angle_deg * horizontal_res) // 360
+            final_distance = float('inf')
             
-            for i in range(num_layers):  # Considerando as 4 camadas do LiDAR
-                layer_distances = self._lidar.getLayerRangeImage(i)
-                if layer_distances[measure_idx] != float('inf'):
-                    dist += layer_distances[measure_idx]
-                    count += 1
-            
-            distances_by_side_angle[side_angle] = dist / count if count > 0 else float('inf')
-            
+            # Procura a primeira medida válida em qualquer camada
+            for layer in range(num_layers):
+                idx = n + (layer * horizontal_res)
+                if idx < len(range_image):
+                    distance = range_image[idx]
+                    if distance != float('inf'):
+                        final_distance = distance  # Mantém valor bruto do sensor
+                        break
+
+            angle_rad = round(math.radians(angle_deg), 4)
+            distances_by_side_angle[angle_rad] = round(final_distance, 4)
+
         if DEBUG:
             self.debug_info.send(
-                f"Medições da distância média em função do ângulo lateral: {distances_by_side_angle}",
+                f"Medições LiDAR brutas: {distances_by_side_angle}",
                 System.lidar_measures,
             )
         
@@ -156,7 +161,6 @@ class Lidar(Device):
         meters by lidar and corresponds to the distances from the
         robot sides. The measures corresponds only to the ones of
         the angles of specified range.
-
         OBS:
         - Zero angle depends of the value set in the robot file
         (probably, it is the front of the robot)

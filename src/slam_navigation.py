@@ -1,5 +1,5 @@
 from slam import slam
-from types_and_constants import ROBOT_RADIUS, THRESHOLD_SLAM
+from types_and_constants import ROBOT_RADIUS, THRESHOLD_SLAM, TILE_SIZE
 from figure import fig
 import numpy as np
 from Node import Node
@@ -103,11 +103,81 @@ class Navigation:
         
         return remaining_distance <= THRESHOLD_SLAM  # Retorna bool real
     
+    def is_Transversable(self, listx: list, listy: list, initial_point: tuple, final_point: tuple) -> bool:
+        """Verifica se o caminho entre dois pontos está livre de obstáculos"""
+        px, py = initial_point  # Ponto atual
+        nx, ny = final_point    # Novo node candidato
 
+        # Vetor de direção e distância entre os pontos
+        dx = nx - px
+        dy = ny - py
+        distance = np.hypot(dx, dy)
+        
+        # Não verifica caminhos muito curtos
+        if distance < ROBOT_RADIUS:
+            return True
+
+        # Ângulo correto considerando sistema de coordenadas do Webots (Y cresce para baixo)
+        theta = np.arctan2(-dy, dx)  # Inverte dy para compensar o eixo Y invertido
+
+        # Parâmetros de verificação
+        step = ROBOT_RADIUS * 0.5  # Passo de verificação (50% do raio do robô)
+        steps = int(distance / step) + 1
+
+        # Verifica pontos intermediários ao longo da linha
+        for i in range(1, steps + 1):
+            ratio = i/steps
+            x = px + dx * ratio
+            y = py + dy * ratio
+
+            # Verifica colisão com obstáculos mapeados
+            for obstacle_x, obstacle_y in zip(listx, listy):
+                if np.hypot(x - obstacle_x, y - obstacle_y) <= ROBOT_RADIUS * 1.2:  # Margem de segurança
+                    return False
+
+        return True
+
+    def create_wall(self, robot_orientation):
+        # Adiciona uma parede virtual atrás do robô com base na orientação inicial
+        initial_x, initial_y = self.current_node.get_node_position()
+        tile_length = (TILE_SIZE - 0.01)/2   # Comprimento do tile (ajuste conforme necessário)
+        robot_orientation = robot_orientation
+        
+        # Calcula os limites da parede com base na orientação do robô
+        if 0 <= robot_orientation < np.pi/4 or 7*np.pi/4 <= robot_orientation < 2*np.pi:  # Robô voltado para o leste (eixo X positivo)
+            wall_start_y = initial_y - tile_length
+            wall_end_y = initial_y + tile_length
+            wall_x = initial_x - tile_length
+            for y in np.linspace(wall_start_y, wall_end_y, 50):
+                self.list_x_total.append(wall_x)
+                self.list_y_total.append(y)
+        elif np.pi/4 <= robot_orientation < 3*np.pi/4:  # Robô voltado para o norte (eixo Y negativo)
+            wall_start_x = initial_x - tile_length
+            wall_end_x = initial_x + tile_length
+            wall_y = initial_y + tile_length
+            for x in np.linspace(wall_start_x, wall_end_x, 50):
+                self.list_x_total.append(x)
+                self.list_y_total.append(wall_y)
+        elif 3*np.pi/4 <= robot_orientation < 5*np.pi/4:  # Robô voltado para o oeste (eixo X negativo)
+            wall_start_y = initial_y - tile_length
+            wall_end_y = initial_y + tile_length
+            wall_x = initial_x + tile_length
+            for y in np.linspace(wall_start_y, wall_end_y, 50):
+                self.list_x_total.append(wall_x)
+                self.list_y_total.append(y)
+        else:  # Robô voltado para o sul (eixo Y positivo)
+            wall_start_x = initial_x - tile_length
+            wall_end_x = initial_x + tile_length
+            wall_y = initial_y - tile_length
+            for x in np.linspace(wall_start_x, wall_end_x, 50):
+                self.list_x_total.append(x)
+                self.list_y_total.append(wall_y)
+        pass
+    
     # Identifica e adiciona novos nodes com base nos pontos do SLAM
     def get_node(self, listx: list, listy: list, robot_position: list) -> None:
         x0, y0 = robot_position
-        radius_offset = ROBOT_RADIUS + THRESHOLD_SLAM/4# Raio de tolerância para criação de node
+        radius_offset = ROBOT_RADIUS + THRESHOLD_SLAM # Raio de tolerância para criação de node
         for lx, ly in zip(listx, listy):
             # Calcula a posição ajustada do node com base no raio de tolerância
             theta = np.arctan2(y0 - ly, lx - x0)
@@ -115,8 +185,8 @@ class Navigation:
             py = ly + radius_offset * np.sin(theta)
 
             # Adiciona o node somente se não estiver muito próximo de outros nós ou pontos existentes
-            if all((px - node.get_node_position()[0]) ** 2 + (py - node.get_node_position()[1]) ** 2 > radius_offset ** 2 for node in self.existing_nodes) and all((px - wx) ** 2 + (py - wy) ** 2 > radius_offset ** 2 for wx, wy in zip(listx, listy)):         
-                new_node = Node([px, py], self.current_node)  # Cria um novo node
+            if all((px - node.get_node_position()[0]) ** 2 + (py - node.get_node_position()[1]) ** 2 > radius_offset ** 2 for node in self.existing_nodes) and all((px - wx) ** 2 + (py - wy) ** 2 > radius_offset ** 2 for wx, wy in zip(listx, listy)) and self.is_Transversable(listx, listy, (x0, y0), (px,py)):         
+                new_node = Node([px, py], self.current_node) # Cria um novo node
                 if new_node is not None:  # <--- Garanta que o nó foi criado
                     self.existing_nodes.add(new_node)
                     self.current_node.set_node_adjacentes(new_node)
@@ -127,7 +197,7 @@ class Navigation:
                 for node in self.existing_nodes:
                     nx = node.get_node_position()[0]
                     ny = node.get_node_position()[1]
-                    if ((px - nx) ** 2 + (py - ny) ** 2 < (radius_offset + THRESHOLD_SLAM) ** 2):
+                    if ((px - nx) ** 2 + (py - ny) ** 2 < (radius_offset + THRESHOLD_SLAM) ** 2) and self.is_Transversable(listx, listy, (x0, y0), (nx,ny)) :
                         # Evita adicionar nodes duplicados na lista de adjacentes
                         if node not in self.current_node.nodes_adjacentes and node != self.current_node:
                             self.current_node.set_node_adjacentes(node)
@@ -152,6 +222,8 @@ class Navigation:
         self.list_x_total.extend(new_x)
         self.list_y_total.extend(new_y)
 
+
+
         fig.multi_plott(
             self.list_x_total, self.list_y_total, "SLAM", 'b',
             [node.get_node_position()[0] for node in self.existing_nodes],
@@ -162,7 +234,9 @@ class Navigation:
     def slam_dfs(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], 
                 robot_orientation: float, robot: Robot, maze: Maze, current_node: Node = None) -> None:
         
-        if current_node is None: self.set_current_node(gps_position)
+        if current_node is None: 
+            self.set_current_node(gps_position)
+            self.create_wall(robot_orientation)
         else: self.current_node = current_node
         
         if not self.current_node.node_visited:

@@ -34,10 +34,10 @@ class Slam:
         #time.sleep(2)
         
         
-        for side_angle, distance in side_angle_to_distance_mapper.items():
+        for side_angle, distance in side_angle_to_distance_mapper.items():  
             if distance == float("inf"):
                 continue
-            if distance < 0.36 : 
+            if distance < 0.48 : 
                 corrected_angle = side_angle + self.start_angle + orientation
 
                 distance_x = distance*np.cos(corrected_angle) + x0
