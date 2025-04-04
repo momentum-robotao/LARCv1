@@ -5,6 +5,8 @@ from debugging import System, logger
 from types_and_constants import (
     ALL_QUADRANTS,
     DEBUG,
+    MAX_RADIUS_TO_SEND_WT,
+    MIN_DISTANCE_BETWEEN_WT,
     QUADRANT_OF_DELTA,
     Coordinate,
     MappingEncode,
@@ -13,6 +15,9 @@ from types_and_constants import (
     Side,
     SpecialTileType,
     Tile,
+    WallToken,
+    WallTokenEntry,
+    check_distance,
 )
 from utils import quarter_tile_quadrant, tile_pos_with_quarter_tile
 
@@ -168,6 +173,8 @@ class Maze:
     def __init__(self) -> None:
         self.objects: ObjectsMaze = dict()
         self.wall_tokens: list[tuple[Coordinate, Side]] = []
+        self.wall_tokens_to_send: list[WallTokenEntry] = []
+        self.found_wall_tokens: list[WallTokenEntry] = []
 
     @staticmethod
     def check_position(quarter_tile_pos: Coordinate) -> Coordinate:
@@ -272,9 +279,45 @@ class Maze:
 
         self.objects[tile_pos.x][tile_pos.y].special_type = tile_type  # type: ignore[index]
 
-    def add_wall_token(self, quarter_tile_pos: Coordinate, side: Side) -> None:
+    def _add_wall_token(self, quarter_tile_pos: Coordinate, side: Side) -> None:
         quarter_tile_pos = Maze.check_position(quarter_tile_pos)
         self.wall_tokens.append((quarter_tile_pos, side))
+
+    def get_wall_tokens_near(
+        self, position: Coordinate, max_distance: float = MAX_RADIUS_TO_SEND_WT
+    ) -> list[WallToken]:
+        """
+        Returns the found wall tokens that are at most max_distance from the robot
+        and haven't been send yet.
+        :param position: GPS axes
+        """
+        wall_tokens_near = [
+            wall_token.wt_type
+            for wall_token in self.wall_tokens_to_send
+            if check_distance(wall_token.position, position, max_distance)
+        ]
+        self.wall_tokens_to_send = [
+            wall_token
+            for wall_token in self.wall_tokens_to_send
+            if not check_distance(wall_token.position, position, max_distance)
+        ]
+        return wall_tokens_near
+
+    def check_wall_token_already_found(self, wall_token_entry: WallTokenEntry) -> bool:
+        return any(
+            check_distance(
+                wall_token.position, wall_token_entry.position, MIN_DISTANCE_BETWEEN_WT
+            )
+            for wall_token in self.found_wall_tokens
+        )
+
+    def add_wall_token(self, wall_token_entry: WallTokenEntry) -> None:
+        logger.info(f"Adicionado: {wall_token_entry}", System.wall_token_send)
+        if self.check_wall_token_already_found(wall_token_entry):
+            logger.info("Já enviado", System.wall_token_send)
+            return
+        self.wall_tokens_to_send.append(wall_token_entry)
+        self.found_wall_tokens.append(wall_token_entry)
 
     def get_answer_maze(self) -> AnswerMaze:
         """

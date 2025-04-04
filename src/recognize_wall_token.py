@@ -17,8 +17,17 @@ import cv2 as cv
 import numpy as np
 from ultralytics import YOLO  # type: ignore[import-untyped]
 
+from debugging import System, logger
 from devices import GPS, IMU, Camera
-from types_and_constants import ROBOT_RADIUS, TILE_SIZE, Coordinate, WallToken
+from types_and_constants import (
+    ROBOT_RADIUS,
+    TILE_SIZE,
+    Coordinate,
+    HazmatSign,
+    Victim,
+    WallToken,
+    WallTokenEntry,
+)
 
 MODEL_PATH = r"/usr/local/controller/best.pt"
 CALIBRATION_PATH = r"/usr/local/controller/calibration.npz"
@@ -27,6 +36,16 @@ MIN_ACCURACY_TO_CONSIDER_WT = 0.85
 CAMERA_FOCUS_RADIUS = (
     ROBOT_RADIUS - 0.005
 )  # ? radius - dist(robot side, camera optical center)
+
+WALL_TOKEN_MODEL_MAPPER: dict[str, WallToken] = {
+    "C": HazmatSign.CORROSIVE,
+    "F": HazmatSign.FLAMMABLE_GAS,
+    "P": HazmatSign.POISON,
+    "O": HazmatSign.ORGANIC_PEROXIDE,
+    "H": Victim.HARMED,
+    "S": Victim.STABLE,
+    "U": Victim.UNHARMED,
+}
 
 model = YOLO(MODEL_PATH)
 
@@ -68,26 +87,29 @@ def get_WT_coordinate_deltas(
     return (dx, dy)
 
 
-def classify_wall_token(
-    camera: Camera,
-    gps: GPS,
-    imu: IMU,
-) -> WallToken | None:
-    wall_token: WallToken | None = None
-
+def recognize_wall_tokens(camera: Camera) -> list:
     image = camera.get_rgb_matrix()
     results = model(image)
+    return results
 
-    class_names = model.names
 
-    for result in results:
+def verify_wall_tokens(
+    wall_tokens: list,
+    gps: GPS,
+    imu: IMU,
+) -> list[WallTokenEntry]:
+    wall_tokens_data: list[WallTokenEntry] = []
+
+    for result in wall_tokens:
         for box in result.boxes:
             x1, y1, x2, y2 = map(int, box.xyxy[0])
             conf = float(box.conf[0])
             class_id = int(box.cls[0])
-            class_name = class_names[class_id]
+            class_name = model.names[class_id]
 
-            print(f"Acurácia {class_name}: {conf * 100}%")
+            logger.info(
+                f"Acurácia {class_name}: {conf * 100}%", System.wall_token_recognition
+            )
 
             if conf < MIN_ACCURACY_TO_CONSIDER_WT:
                 continue
@@ -117,8 +139,13 @@ def classify_wall_token(
                 tvec_dx, tvec_dz, rotation_angle=imu.get_GPS_angle()
             )
 
-            print(
-                f"Encontrado {class_name}: {camera_position.x + dx}, {camera_position.y + dy}"
+            wall_token_position = camera_position + Coordinate(dx, dy)
+            logger.info(
+                f"Encontrado {class_name}: {camera_position.x + dx}, {camera_position.y + dy}",
+                System.wall_token_recognition,
+            )
+            wall_tokens_data.append(
+                WallTokenEntry(wall_token_position, WALL_TOKEN_MODEL_MAPPER[class_name])
             )
 
-    return wall_token
+    return wall_tokens_data

@@ -171,7 +171,6 @@ class Move(RobotCommand[MovementResult]):
         )
 
         found_obstacle = False
-        found_wall_token = False
 
         while robot.step() != -1:
             current_position = robot.gps.get_position()
@@ -337,11 +336,7 @@ class Move(RobotCommand[MovementResult]):
                 else:
                     return MovementResult.right_hole
 
-            if (
-                not found_wall_token
-                and not self.correction_move
-                and robot.run(RecognizeWallToken())
-            ):
-                found_wall_token = True
+            if not self.correction_move:
+                robot.run(RecognizeWallToken(self.maze))
 
         return MovementResult.moved

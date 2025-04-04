@@ -167,7 +167,7 @@ def dfs(
     maze.mark_visited(position)
     robot.step()
     adjust_wall_distance(robot, maze)
-    robot.run(RecognizeWallToken())
+    robot.run(RecognizeWallToken(maze))
 
     # TODO-: swamp etc podem estar acessíveis apenas em certo quarter tile
     colored_tile = None
@@ -305,7 +305,7 @@ def dfs(
         viz_moves = moves_before.copy()
         viz_moves.append(("rotate_to_angle", (movement_angle,)))
         robot.run(Rotate("fastest", movement_angle))
-        robot.run(RecognizeWallToken())
+        robot.run(RecognizeWallToken(maze))
 
         viz_moves.append(("move", ("forward", new_position_distance)))
         movement_result = robot.run(
@@ -407,7 +407,7 @@ def dfs(
     # this tile, coming back to the last tile.
     robot.step()
     adjust_wall_distance(robot, maze)
-    robot.run(RecognizeWallToken())
+    robot.run(RecognizeWallToken(maze))
     robot.run(Rotate("fastest", start_angle))
 
     if DEBUG:

@@ -53,6 +53,9 @@ DIAGONAL_MAX_DIST_IF_WALL2 = (
     0.135481996  # 0.5*TILE_SIZE*cos 25°*(1+3*((1-tg 25)/(2*tg 25)))
 )
 
+MAX_RADIUS_TO_SEND_WT = 0.06
+MIN_DISTANCE_BETWEEN_WT = 0.02
+
 AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]
 Quadrant = Literal["top_left", "top_right", "bottom_left", "bottom_right"]
@@ -142,6 +145,15 @@ class Coordinate:
 
     def __mul__(self, multiplier: Numeric) -> "Coordinate":
         return Coordinate(self.x * multiplier, self.y * multiplier)
+
+
+def check_distance(a: Coordinate, b: Coordinate, max_distance: float) -> bool:
+    """
+    Returns if `a` and `b` are at most at euclidean `max_distance`.
+    """
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (
+        a.y - b.y
+    ) <= max_distance * max_distance
 
 
 @dataclass(frozen=True)
@@ -260,4 +272,3 @@ SPECIAL_TILE_COLOR_MAPPER: dict[RGB, ColoredSpecialTile] = {
 class WallTokenEntry(NamedTuple):
     position: Coordinate
     wt_type: WallToken
-    orientation: float

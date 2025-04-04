@@ -1,22 +1,18 @@
-from recognize_wall_token import classify_wall_token
-from utils import delay
+from maze import Maze
+from recognize_wall_token import recognize_wall_tokens, verify_wall_tokens
 
 from .robot import Robot, RobotCommand
 
 
-class RecognizeWallToken(RobotCommand[bool]):
+class RecognizeWallToken(RobotCommand[None]):
+    def __init__(self, maze: Maze):
+        self.maze = maze
+
     def execute(
         self,
         robot: Robot,
-    ) -> bool:
-        wall_token = classify_wall_token(robot.camera, robot.gps, robot.imu)
-        if not wall_token:
-            return False
-
-        robot.motor.stop()
-        delay(robot.webots_robot, 1300)
-        robot.communicator.send_wall_token_information(
-            robot.gps.get_position(), wall_token
-        )
-
-        return True
+    ) -> None:
+        wall_tokens = recognize_wall_tokens(robot.camera)
+        wall_tokens_data = verify_wall_tokens(wall_tokens, robot.gps, robot.imu)
+        for wall_token in wall_tokens_data:
+            self.maze.add_wall_token(wall_token)

@@ -12,7 +12,7 @@ from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 
 def solve_map(robot: Robot, maze: Maze) -> None:
     while robot.step() != -1:
-        robot.run(RecognizeWallToken())
+        robot.run(RecognizeWallToken(maze))
         from time import sleep
 
         sleep(1)

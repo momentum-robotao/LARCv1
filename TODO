@@ -1,0 +1,10 @@
+- mapear vítima
+- enviar vítima quando perto
+  robot.motor.stop()
+  delay(robot.webots_robot, 1300)
+  robot.communicator.send_wall_token_information(
+  robot.gps.get_position(), wall_token
+  )
+- re-treinar modelo para vítima rotacionada
+- Dijkstra
+- considerar orientação da vítima para mandar duas vítimas iguais em lados opostos de parede
