@@ -13,6 +13,21 @@ from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 def solve_map(robot: Robot, maze: Maze) -> None:
     while robot.step() != -1:
         robot.run(RecognizeWallToken(maze))
+        from debugging import System, logger
+        from utils import delay
+
+        current_position = robot.gps.get_position()
+        if wall_tokens := maze.get_wall_tokens_near(current_position):
+            logger.info(
+                f"Enviará: {wall_tokens}, estão próximos do robô",
+                System.wall_token_send,
+            )
+            robot.motor.stop()
+            delay(robot.webots_robot, 1300)
+            for wall_token in wall_tokens:
+                robot.communicator.send_wall_token_information(
+                    current_position, wall_token
+                )
         from time import sleep
 
         sleep(1)

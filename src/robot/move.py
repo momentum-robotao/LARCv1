@@ -10,7 +10,7 @@ from types_and_constants import (
     POSSIBLE_ANGLES,
     Coordinate,
 )
-from utils import cyclic_angle, round_if_almost_0
+from utils import cyclic_angle, delay, round_if_almost_0
 
 from .robot import Robot, RobotCommand
 from .velocity_controller import (
@@ -338,5 +338,17 @@ class Move(RobotCommand[MovementResult]):
 
             if not self.correction_move:
                 robot.run(RecognizeWallToken(self.maze))
+
+            if wall_tokens := self.maze.get_wall_tokens_near(current_position):
+                logger.info(
+                    f"Enviará: {wall_tokens}, estão próximos do robô",
+                    System.wall_token_send,
+                )
+                robot.motor.stop()
+                delay(robot.webots_robot, 1300)
+                for wall_token in wall_tokens:
+                    robot.communicator.send_wall_token_information(
+                        current_position, wall_token
+                    )
 
         return MovementResult.moved

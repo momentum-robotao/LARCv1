@@ -314,7 +314,7 @@ class Maze:
     def add_wall_token(self, wall_token_entry: WallTokenEntry) -> None:
         logger.info(f"Adicionado: {wall_token_entry}", System.wall_token_send)
         if self.check_wall_token_already_found(wall_token_entry):
-            logger.info("Já enviado", System.wall_token_send)
+            logger.info("Já registrado", System.wall_token_send)
             return
         self.wall_tokens_to_send.append(wall_token_entry)
         self.found_wall_tokens.append(wall_token_entry)
