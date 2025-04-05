@@ -140,40 +140,37 @@ class Navigation:
     def create_wall(self, robot_orientation):
         # Adiciona uma parede virtual atrás do robô com base na orientação inicial
         initial_x, initial_y = self.current_node.get_node_position()
-        tile_length = (TILE_SIZE - 0.01)/2   # Comprimento do tile (ajuste conforme necessário)
-        robot_orientation = robot_orientation
-        
+        half_tile = TILE_SIZE / 2  # Metade do tamanho do tile
+
         # Calcula os limites da parede com base na orientação do robô
         if 0 <= robot_orientation < np.pi/4 or 7*np.pi/4 <= robot_orientation < 2*np.pi:  # Robô voltado para o leste (eixo X positivo)
-            wall_start_y = initial_y - tile_length
-            wall_end_y = initial_y + tile_length
-            wall_x = initial_x - tile_length
+            wall_start_y = initial_y - half_tile
+            wall_end_y = initial_y + half_tile
+            wall_x = initial_x - TILE_SIZE  # Meio tile atrás no eixo X
             for y in np.linspace(wall_start_y, wall_end_y, 50):
                 self.list_x_total.append(wall_x)
                 self.list_y_total.append(y)
         elif np.pi/4 <= robot_orientation < 3*np.pi/4:  # Robô voltado para o norte (eixo Y negativo)
-            wall_start_x = initial_x - tile_length
-            wall_end_x = initial_x + tile_length
-            wall_y = initial_y + tile_length
+            wall_start_x = initial_x - half_tile
+            wall_end_x = initial_x + half_tile
+            wall_y = initial_y + TILE_SIZE  # Meio tile atrás no eixo Y
             for x in np.linspace(wall_start_x, wall_end_x, 50):
                 self.list_x_total.append(x)
                 self.list_y_total.append(wall_y)
         elif 3*np.pi/4 <= robot_orientation < 5*np.pi/4:  # Robô voltado para o oeste (eixo X negativo)
-            wall_start_y = initial_y - tile_length
-            wall_end_y = initial_y + tile_length
-            wall_x = initial_x + tile_length
+            wall_start_y = initial_y - half_tile
+            wall_end_y = initial_y + half_tile
+            wall_x = initial_x + TILE_SIZE  # Meio tile atrás no eixo X
             for y in np.linspace(wall_start_y, wall_end_y, 50):
                 self.list_x_total.append(wall_x)
                 self.list_y_total.append(y)
         else:  # Robô voltado para o sul (eixo Y positivo)
-            wall_start_x = initial_x - tile_length
-            wall_end_x = initial_x + tile_length
-            wall_y = initial_y - tile_length
+            wall_start_x = initial_x - half_tile
+            wall_end_x = initial_x + half_tile
+            wall_y = initial_y - TILE_SIZE  # Meio tile atrás no eixo Y
             for x in np.linspace(wall_start_x, wall_end_x, 50):
                 self.list_x_total.append(x)
                 self.list_y_total.append(wall_y)
-        pass
-    
     # Identifica e adiciona novos nodes com base nos pontos do SLAM
     def get_node(self, listx: list, listy: list, robot_position: list) -> None:
         x0, y0 = robot_position
