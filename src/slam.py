@@ -14,7 +14,13 @@ class Slam:
         self.list_x_atual = []
         self.list_y_atual = []
         self.start_angle = 0
+
         pass
+    
+    def atualizar_start_angle(self, robot_orientation :float):
+        possible_angles = {(1, 0): 0, (0, 1): np.pi/2, (-1, 0): np.pi, (0, -1): 3*np.pi/2}
+        self.start_angle = possible_angles[robot.DIST_CHANGE_MAPPER[robot.round_angle(robot_orientation)]]
+        print(f"START_ANGLE : {self.start_angle}")
         
     def take_snapshot(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], robot_orientation : float) -> None:
         global condicao
@@ -25,10 +31,8 @@ class Slam:
 
         self.list_x_atual = []
         self.list_y_atual = []
-
-        possible_angles = {(1, 0): 0, (0, 1): np.pi/2, (-1, 0): np.pi, (0, -1): 3*np.pi/2}
         if condicao : 
-            self.start_angle = possible_angles[robot.DIST_CHANGE_MAPPER[robot.round_angle(orientation)]]
+            self.atualizar_start_angle(robot_orientation)
             condicao = False
         
         #time.sleep(2)

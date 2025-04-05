@@ -137,40 +137,48 @@ class Navigation:
 
         return True
 
-    def create_wall(self, robot_orientation):
-        # Adiciona uma parede virtual atrás do robô com base na orientação inicial
+    def create_wall(self, robot: Robot):
+        # Obtem a posição atual do robô e define metade do tamanho do tile
         initial_x, initial_y = self.current_node.get_node_position()
-        half_tile = TILE_SIZE / 2  # Metade do tamanho do tile
+        half_tile = TILE_SIZE / 2
+        print(f"Orientatation : {robot.imu.get_rotation_angle()}")
+        print(f"start_angle : {slam.start_angle}")
+        global_orientation = abs(robot.imu.get_rotation_angle() - slam.start_angle)
+        print(f"global_orientation : {global_orientation}")
+        THRESHOLD = 2*np.pi/15
+    
 
-        # Calcula os limites da parede com base na orientação do robô
-        if 0 <= robot_orientation < np.pi/4 or 7*np.pi/4 <= robot_orientation < 2*np.pi:  # Robô voltado para o leste (eixo X positivo)
+        # Cria a parede com base na orientação global
+        if 0 - THRESHOLD <= global_orientation <= 0 + THRESHOLD or 2 * np.pi - THRESHOLD <= global_orientation <= 2 * np.pi + THRESHOLD:  # Leste
+            wall_x = initial_x - half_tile
             wall_start_y = initial_y - half_tile
             wall_end_y = initial_y + half_tile
-            wall_x = initial_x - TILE_SIZE  # Meio tile atrás no eixo X
             for y in np.linspace(wall_start_y, wall_end_y, 50):
                 self.list_x_total.append(wall_x)
                 self.list_y_total.append(y)
-        elif np.pi/4 <= robot_orientation < 3*np.pi/4:  # Robô voltado para o norte (eixo Y negativo)
+        elif np.pi / 2 - THRESHOLD <= global_orientation <= np.pi / 2 + THRESHOLD:  # Sul
+            wall_y = initial_y - half_tile
             wall_start_x = initial_x - half_tile
             wall_end_x = initial_x + half_tile
-            wall_y = initial_y + TILE_SIZE  # Meio tile atrás no eixo Y
             for x in np.linspace(wall_start_x, wall_end_x, 50):
                 self.list_x_total.append(x)
                 self.list_y_total.append(wall_y)
-        elif 3*np.pi/4 <= robot_orientation < 5*np.pi/4:  # Robô voltado para o oeste (eixo X negativo)
+        elif np.pi - THRESHOLD <= global_orientation <= np.pi + THRESHOLD:  # Oeste
+            wall_x = initial_x + half_tile
             wall_start_y = initial_y - half_tile
             wall_end_y = initial_y + half_tile
-            wall_x = initial_x + TILE_SIZE  # Meio tile atrás no eixo X
             for y in np.linspace(wall_start_y, wall_end_y, 50):
                 self.list_x_total.append(wall_x)
                 self.list_y_total.append(y)
-        else:  # Robô voltado para o sul (eixo Y positivo)
+        elif 3 * np.pi / 2 - THRESHOLD <= global_orientation <= 3 * np.pi / 2 + THRESHOLD:  # Norte
+            wall_y = initial_y + half_tile
             wall_start_x = initial_x - half_tile
             wall_end_x = initial_x + half_tile
-            wall_y = initial_y - TILE_SIZE  # Meio tile atrás no eixo Y
             for x in np.linspace(wall_start_x, wall_end_x, 50):
                 self.list_x_total.append(x)
                 self.list_y_total.append(wall_y)
+
+
     # Identifica e adiciona novos nodes com base nos pontos do SLAM
     def get_node(self, listx: list, listy: list, robot_position: list) -> None:
         x0, y0 = robot_position
@@ -232,8 +240,9 @@ class Navigation:
                 robot_orientation: float, robot: Robot, maze: Maze, current_node: Node = None) -> None:
         
         if current_node is None: 
+            slam.atualizar_start_angle(robot_orientation)
             self.set_current_node(gps_position)
-            self.create_wall(robot_orientation)
+            self.create_wall(robot)
         else: self.current_node = current_node
         
         if not self.current_node.node_visited:
