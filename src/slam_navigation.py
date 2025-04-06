@@ -103,36 +103,30 @@ class Navigation:
         
         return remaining_distance <= THRESHOLD_SLAM  # Retorna bool real
     
-    def is_Transversable(self, listx: list, listy: list, initial_point: tuple, final_point: tuple) -> bool:
-        """Verifica se o caminho entre dois pontos está livre de obstáculos"""
-        px, py = initial_point  # Ponto atual
-        nx, ny = final_point    # Novo node candidato
+    def is_Transversable(self, initial_point: tuple, final_point: tuple) -> bool:
+        px, py = initial_point
+        nx, ny = final_point
 
-        # Vetor de direção e distância entre os pontos
         dx = nx - px
         dy = ny - py
         distance = np.hypot(dx, dy)
-        
-        # Não verifica caminhos muito curtos
-        if distance < ROBOT_RADIUS:
+
+        if distance < ROBOT_RADIUS * 0.1:
             return True
 
-        # Ângulo correto considerando sistema de coordenadas do Webots (Y cresce para baixo)
-        theta = np.arctan2(-dy, dx)  # Inverte dy para compensar o eixo Y invertido
-
-        # Parâmetros de verificação
-        step = ROBOT_RADIUS * 0.5  # Passo de verificação (50% do raio do robô)
+        step = ROBOT_RADIUS * 1.5
         steps = int(distance / step) + 1
 
-        # Verifica pontos intermediários ao longo da linha
-        for i in range(1, steps + 1):
-            ratio = i/steps
-            x = px + dx * ratio
-            y = py + dy * ratio
+        # Combina todos os obstáculos (SLAM + paredes)
+        all_obstacles = list(zip(self.list_x_total, self.list_y_total))
 
-            # Verifica colisão com obstáculos mapeados
-            for obstacle_x, obstacle_y in zip(listx, listy):
-                if np.hypot(x - obstacle_x, y - obstacle_y) <= ROBOT_RADIUS * 1.2:  # Margem de segurança
+        for i in range(1, steps + 1):
+            x = px + dx * (i / steps)
+            y = py + dy * (i / steps)
+
+            # Verifica colisão com margem de segurança
+            for ox, oy in all_obstacles:
+                if np.hypot(x - ox, y - oy) < ROBOT_RADIUS * 1.2:
                     return False
 
         return True
@@ -182,31 +176,40 @@ class Navigation:
     # Identifica e adiciona novos nodes com base nos pontos do SLAM
     def get_node(self, listx: list, listy: list, robot_position: list) -> None:
         x0, y0 = robot_position
-        radius_offset = ROBOT_RADIUS + THRESHOLD_SLAM # Raio de tolerância para criação de node
+        radius_offset = ROBOT_RADIUS * 2  # Aumente conforme necessário
+
         for lx, ly in zip(listx, listy):
-            # Calcula a posição ajustada do node com base no raio de tolerância
-            theta = np.arctan2(y0 - ly, lx - x0)
-            px = lx - radius_offset * np.cos(theta)
+            # Direção do obstáculo para o robô (considerando Y para baixo)
+            dx = x0 - lx  # X do robô - X do obstáculo
+            dy = y0 - ly  # Y do robô - Y do obstáculo
+
+            theta = np.arctan2(dy, dx)  # Ângulo do obstáculo para o robô
+            px = lx + radius_offset * np.cos(theta)  # Posiciona o nó NA DIREÇÃO DO ROBÔ
             py = ly + radius_offset * np.sin(theta)
 
-            # Adiciona o node somente se não estiver muito próximo de outros nós ou pontos existentes
-            if all((px - node.get_node_position()[0]) ** 2 + (py - node.get_node_position()[1]) ** 2 > radius_offset ** 2 for node in self.existing_nodes) and all((px - wx) ** 2 + (py - wy) ** 2 > radius_offset ** 2 for wx, wy in zip(listx, listy)) and self.is_Transversable(listx, listy, (x0, y0), (px,py)):         
-                new_node = Node([px, py], self.current_node) # Cria um novo node
-                if new_node is not None:  # <--- Garanta que o nó foi criado
+            # --- Verificação de Proximidade ---
+            # Verifica distância mínima de outros nós
+            too_close_to_nodes = any(
+                np.hypot(px - node.get_node_position()[0], py - node.get_node_position()[1]) < radius_offset
+                for node in self.existing_nodes
+            )
+
+            # Verifica distância mínima de obstáculos (SLAM + paredes virtuais)
+            all_obstacles_x = listx + self.list_x_total  # Combina obstáculos atuais e paredes
+            all_obstacles_y = listy + self.list_y_total
+            too_close_to_obstacles = any(
+                np.hypot(px - ox, py - oy) < radius_offset * 0.8  # Margem de segurança
+                for ox, oy in zip(all_obstacles_x, all_obstacles_y)
+            )
+
+            # --- Criação do Nó ---
+            if not too_close_to_nodes and not too_close_to_obstacles:
+                if self.is_Transversable((x0, y0), (px, py)):
+                    new_node = Node([px, py], self.current_node)
                     self.existing_nodes.add(new_node)
                     self.current_node.set_node_adjacentes(new_node)
-                    new_node.set_node_adjacentes(self.current_node)  # Bidirecionalidade
-
-
-                # Verifica e conecta nodes adjacentes próximos
-                for node in self.existing_nodes:
-                    nx = node.get_node_position()[0]
-                    ny = node.get_node_position()[1]
-                    if ((px - nx) ** 2 + (py - ny) ** 2 < (radius_offset + THRESHOLD_SLAM) ** 2) and self.is_Transversable(listx, listy, (x0, y0), (nx,ny)) :
-                        # Evita adicionar nodes duplicados na lista de adjacentes
-                        if node not in self.current_node.nodes_adjacentes and node != self.current_node:
-                            self.current_node.set_node_adjacentes(node)
-                            node.set_node_adjacentes(self.current_node)
+                    new_node.set_node_adjacentes(self.current_node)
+                    print(f"Node criado em ({px:.2f}, {py:.2f})")
 
 
             

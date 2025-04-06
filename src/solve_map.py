@@ -2,7 +2,7 @@ from debugging import DebugInfo
 from dfs import dfs
 from maze import Maze
 from robot import Robot
-from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
+from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType, TILE_SIZE
 from slam_navigation import navigation
 import numpy as np
 
@@ -55,6 +55,20 @@ def solve_map(robot: Robot, debug_info: DebugInfo, maze: Maze) -> None:
     
     print("Chegou na sala 4")
 
+    # Turn to the direction of the entrance
+    
+    side_distance = robot.lidar.get_distances_by_side_angle_AUGUSTO()
+    
+    side_angle = {'front' : side_distance[0], 'left' : side_distance[4.7124], 'right' : side_distance[1.5708]}
+    if side_angle['front'] > TILE_SIZE:
+        pass
+    elif side_angle['left'] > TILE_SIZE:
+        robot.rotate_90_left()
+    elif side_angle['right'] > TILE_SIZE:
+        robot.rotate_90_right()
+    
+    
+        
     navigation.slam_dfs(robot.gps.get_position_AUGUSTO(), robot.lidar.get_distances_by_side_angle_AUGUSTO(), robot.imu.get_rotation_angle(), robot, maze)
     ''' 
     dfs(

@@ -1,9 +1,10 @@
 import numpy as np
-from types_and_constants import Coordinate, SLAM_MAX_DISTANCE
+from types_and_constants import Coordinate, TILE_SIZE
 from figure import fig
 import time
 import robot
 
+LIDAR_LIMIT =  TILE_SIZE * 8
 
 condicao = True
 class Slam: 
@@ -23,6 +24,7 @@ class Slam:
         print(f"START_ANGLE : {self.start_angle}")
         
     def take_snapshot(self, gps_position: list, side_angle_to_distance_mapper: dict[float, float], robot_orientation : float) -> None:
+        global LIDAR_LIMIT
         global condicao
         x0 = gps_position[0]
         y0 = gps_position[1]
@@ -33,15 +35,14 @@ class Slam:
         self.list_y_atual = []
         if condicao : 
             self.atualizar_start_angle(robot_orientation)
+            LIDAR_LIMIT = LIDAR_LIMIT/2 # Atualiza o LIDAR_LIMIT PARA MENORAR O CAMPO DE VISÃO DO ROBÔ APOS O PRIMEIRO MOVIMENTO
             condicao = False
-        
-        #time.sleep(2)
         
         
         for side_angle, distance in side_angle_to_distance_mapper.items():  
             if distance == float("inf"):
                 continue
-            if distance < 0.48 : 
+            if distance < LIDAR_LIMIT : 
                 corrected_angle = side_angle + self.start_angle + orientation
 
                 distance_x = distance*np.cos(corrected_angle) + x0
@@ -54,11 +55,8 @@ class Slam:
     
     def get_list_total(self) -> list:
         return self.list_x_total, self.list_y_total
-        ''' 
-        for side_angle, distance in side_angle_to_distance_mapper.items():
-            print(f"side angle {side_angle} : {distance} ")
-        time.sleep(5)
-        '''
+        
+        
         
     def get_list_atual(self) -> list:
         return self.list_x_atual, self.list_y_atual
