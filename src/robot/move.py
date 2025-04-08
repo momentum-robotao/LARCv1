@@ -344,10 +344,21 @@ class Move(RobotCommand[MovementResult]):
                     System.wall_token_send,
                 )
                 robot.motor.stop()
+                print("pegará")
+                from time import sleep
+
+                sleep(3)
                 delay(robot.webots_robot, 1300)
                 for wall_token in wall_tokens:
+                    before_points = robot.communicator.get_game_information().score
                     robot.communicator.send_wall_token_information(
                         current_position, wall_token
                     )
+                    after_points = robot.communicator.get_game_information().score
+                    if before_points > after_points:
+                        print(f"Errou {wall_token} !!!\n\n\n\n")
+
+                        sleep(3)
+                        robot.motor.stop()
 
         return MovementResult.moved

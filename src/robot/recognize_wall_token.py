@@ -21,6 +21,8 @@ class RecognizeWallToken(RobotCommand[None]):
         robot.last_wt_recognition = datetime.now()
 
         wall_tokens = recognize_wall_tokens(robot.camera)
-        wall_tokens_data = verify_wall_tokens(wall_tokens, robot.gps, robot.imu)
+        wall_tokens_data = verify_wall_tokens(
+            wall_tokens, robot.gps, robot.imu, robot.camera.get_rgb_matrix()
+        )
         for wall_token in wall_tokens_data:
             self.maze.add_wall_token(wall_token)

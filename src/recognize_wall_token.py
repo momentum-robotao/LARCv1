@@ -31,7 +31,6 @@ from types_and_constants import (
 
 MODEL_PATH = r"/usr/local/controller/best.pt"
 CALIBRATION_PATH = r"/usr/local/controller/calibration.npz"
-MIN_DIST_TO_SEND_WT = TILE_SIZE / 2 - 0.01
 MIN_ACCURACY_TO_CONSIDER_WT = 0.75
 CAMERA_FOCUS_RADIUS = (
     ROBOT_RADIUS - 0.005
@@ -94,10 +93,29 @@ def recognize_wall_tokens(camera: Camera) -> list:
     return results
 
 
+def save_image(img, corners) -> None:
+    img = img.copy()
+    for i in range(len(corners)):
+        cv.line(
+            img,
+            corners[i],
+            corners[(i + 1) % len(corners)],
+            (0, 255, 0),
+            1,
+        )
+
+    for point in corners:
+        cv.circle(img, point, 1, (0, 0, 255), -1)
+    from random import randint
+
+    cv.imwrite(f"photo{randint(1, 10000000)}.png", img)
+
+
 def verify_wall_tokens(
     wall_tokens: list,
     gps: GPS,
     imu: IMU,
+    img,
 ) -> list[WallTokenEntry]:
     wall_tokens_data: list[WallTokenEntry] = []
 
@@ -116,6 +134,8 @@ def verify_wall_tokens(
                 continue
 
             corners = ((x1, y1), (x2, y1), (x2, y2), (x1, y2))
+
+            save_image(img, corners)
 
             camera_position = get_camera_focus_coordinate(
                 robot_position=gps.get_position(), rotation_angle=imu.get_GPS_angle()
