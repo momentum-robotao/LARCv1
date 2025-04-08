@@ -23,3 +23,8 @@ Ajustar contantes: Brutar em vários mapas?
 - distância mínima para não pegar vítima no mesmo lugar 2x
 - distância mínima para envio de vítima
 - distância minima entre vítimas
+
+Backlog:
+
+- desenvolver estratégia complexa de calcular pontos optimais em cada caso
+- LOP

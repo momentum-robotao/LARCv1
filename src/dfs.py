@@ -10,6 +10,7 @@ from robot import (
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
+    DEGREES_TO_ENSURE_VIEW_WT,
     QUADRANT_OF_DELTA,
     SLOW_DOWN_DIST,
     TILE_SIZE,
@@ -191,17 +192,37 @@ def dfs(
         robot.run(Rotate("fastest", movement_angle, maze=maze))
         if delta_angle_in_degree == 90:
             robot.run(
-                Rotate("right", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+                Rotate(
+                    "right",
+                    DEGREES_TO_ENSURE_VIEW_WT * DEGREE_IN_RAD,
+                    maze=maze,
+                    correction_rotation=True,
+                )
             )
             robot.run(
-                Rotate("left", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+                Rotate(
+                    "left",
+                    DEGREES_TO_ENSURE_VIEW_WT * DEGREE_IN_RAD,
+                    maze=maze,
+                    correction_rotation=True,
+                )
             )
         if delta_angle_in_degree == -90:
             robot.run(
-                Rotate("left", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+                Rotate(
+                    "left",
+                    DEGREES_TO_ENSURE_VIEW_WT * DEGREE_IN_RAD,
+                    maze=maze,
+                    correction_rotation=True,
+                )
             )
             robot.run(
-                Rotate("right", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+                Rotate(
+                    "right",
+                    DEGREES_TO_ENSURE_VIEW_WT * DEGREE_IN_RAD,
+                    maze=maze,
+                    correction_rotation=True,
+                )
             )
 
         viz_moves.append(("move", ("forward", new_position_distance)))

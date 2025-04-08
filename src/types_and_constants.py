@@ -56,6 +56,7 @@ DIAGONAL_MAX_DIST_IF_WALL2 = (
 MAX_RADIUS_TO_SEND_WT = 0.07
 MIN_DISTANCE_BETWEEN_WT = 0.04
 TIME_BETWEEN_WT = timedelta(milliseconds=200)
+DEGREES_TO_ENSURE_VIEW_WT = 20
 
 AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]
