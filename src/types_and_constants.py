@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass, field
+from datetime import timedelta
 from enum import Enum
 from typing import Literal, NamedTuple
 
@@ -53,8 +54,9 @@ DIAGONAL_MAX_DIST_IF_WALL2 = (
     0.135481996  # 0.5*TILE_SIZE*cos 25°*(1+3*((1-tg 25)/(2*tg 25)))
 )
 
-MAX_RADIUS_TO_SEND_WT = 0.06
+MAX_RADIUS_TO_SEND_WT = 0.08
 MIN_DISTANCE_BETWEEN_WT = 0.02
+TIME_BETWEEN_WT = timedelta(milliseconds=200)
 
 AreaDFSMappable = Literal[1, 2]
 Side = Literal["front", "back", "left", "right"]

@@ -296,17 +296,17 @@ class Move(RobotCommand[MovementResult]):
             elif left_diagonal or left_side:
                 logger.info("Left obstacle: correction", System.obstacle_avoidance)
                 robot.motor.stop()
-                robot.run(Rotate(direction="right", angle=PI / 2))
+                robot.run(Rotate(direction="right", angle=PI / 2, maze=self.maze))
                 robot.run(
                     Move(self.direction, 0.001, maze=self.maze, correction_move=True),
                 )
-                robot.run(Rotate(direction="left", angle=PI / 2))
+                robot.run(Rotate(direction="left", angle=PI / 2, maze=self.maze))
                 found_obstacle = True
             # TODO: tirar obstáculo etc pra área 4
             elif right_diagonal or right_side:
                 logger.info("Right obstacle: correction", System.obstacle_avoidance)
                 robot.motor.stop()
-                robot.run(Rotate(direction="left", angle=PI / 2))
+                robot.run(Rotate(direction="left", angle=PI / 2, maze=self.maze))
                 robot.run(
                     Move(
                         self.direction,
@@ -315,7 +315,7 @@ class Move(RobotCommand[MovementResult]):
                         correction_move=True,
                     )
                 )
-                robot.run(Rotate(direction="right", angle=PI / 2))
+                robot.run(Rotate(direction="right", angle=PI / 2, maze=self.maze))
                 found_obstacle = True
 
             hole = robot.distance_sensor.detect_hole()
@@ -336,8 +336,7 @@ class Move(RobotCommand[MovementResult]):
                 else:
                     return MovementResult.right_hole
 
-            if not self.correction_move:
-                robot.run(RecognizeWallToken(self.maze))
+            robot.run(RecognizeWallToken(self.maze))
 
             if wall_tokens := self.maze.get_wall_tokens_near(current_position):
                 logger.info(

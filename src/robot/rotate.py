@@ -2,9 +2,11 @@ from typing import Literal
 
 from debugging import System, log_process, logger
 from devices import IMU
+from maze import Maze
 from types_and_constants import DEGREE_IN_RAD, PI
 from utils import cyclic_angle
 
+from .recognize_wall_token import RecognizeWallToken
 from .robot import Robot, RobotCommand
 from .velocity_controller import (
     RotationVelocityController,
@@ -18,6 +20,7 @@ class Rotate(RobotCommand):
         direction: Literal["left", "right", "fastest"],
         angle: float,
         *,
+        maze: Maze,
         correction_rotation: bool = False,
         speed_controller: RotationVelocityController = create_rotation_velocity_controller(),
     ):
@@ -31,6 +34,7 @@ class Rotate(RobotCommand):
         self.angle = angle
         self.correction_rotation = correction_rotation
         self.speed_controller = speed_controller
+        self.maze = maze
 
     @log_process(
         [
@@ -95,6 +99,7 @@ class Rotate(RobotCommand):
         angle_accumulated_delta = 0
 
         while robot.step() != -1:
+            robot.run(RecognizeWallToken(self.maze))
             new_robot_angle = robot.imu.get_rotation_angle()
             angle_accumulated_delta += IMU.get_delta_rotation(
                 rotation_angle, new_robot_angle
@@ -137,6 +142,7 @@ class Rotate(RobotCommand):
                         Rotate(
                             "left" if self.direction == "right" else "right",
                             angle_accumulated_delta - self.angle,
+                            maze=self.maze,
                             correction_rotation=True,
                             speed_controller=create_rotation_velocity_controller(
                                 slow_down_angle=angle_accumulated_delta - self.angle + 1
@@ -150,6 +156,3 @@ class Rotate(RobotCommand):
                     )
 
                 break
-
-
-rotate_180 = Rotate(direction="right", angle=PI)

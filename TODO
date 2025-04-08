@@ -1,5 +1,4 @@
 - mapear vítima
-- enviar vítima quando perto
 - re-treinar modelo para vítima rotacionada
 - Dijkstra
 - considerar orientação da vítima para mandar duas vítimas iguais em lados opostos de parede

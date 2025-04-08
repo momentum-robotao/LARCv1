@@ -32,7 +32,7 @@ from types_and_constants import (
 MODEL_PATH = r"/usr/local/controller/best.pt"
 CALIBRATION_PATH = r"/usr/local/controller/calibration.npz"
 MIN_DIST_TO_SEND_WT = TILE_SIZE / 2 - 0.01
-MIN_ACCURACY_TO_CONSIDER_WT = 0.85
+MIN_ACCURACY_TO_CONSIDER_WT = 0.75
 CAMERA_FOCUS_RADIUS = (
     ROBOT_RADIUS - 0.005
 )  # ? radius - dist(robot side, camera optical center)
@@ -53,6 +53,7 @@ with np.load(CALIBRATION_PATH) as calibration_file:
     camMatrix, distCoeff, _, _ = [
         calibration_file[i] for i in ("camMatrix", "distCoeff", "rvecs", "tvecs")
     ]
+    print("loading model and calibration")
 
 
 def get_camera_focus_coordinate(

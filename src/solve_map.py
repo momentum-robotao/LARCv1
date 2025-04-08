@@ -1,37 +1,10 @@
 from dfs import dfs
 from maze import Maze
-from robot import (
-    Move,
-    RecognizeWallToken,
-    Robot,
-    Rotate,
-    create_movement_velocity_controller,
-)
+from robot import Move, Robot, Rotate, create_movement_velocity_controller
 from types_and_constants import SLOW_DOWN_DIST, Coordinate, SpecialTileType
 
 
 def solve_map(robot: Robot, maze: Maze) -> None:
-    while robot.step() != -1:
-        robot.run(RecognizeWallToken(maze))
-        from debugging import System, logger
-        from utils import delay
-
-        current_position = robot.gps.get_position()
-        if wall_tokens := maze.get_wall_tokens_near(current_position):
-            logger.info(
-                f"Enviará: {wall_tokens}, estão próximos do robô",
-                System.wall_token_send,
-            )
-            robot.motor.stop()
-            delay(robot.webots_robot, 1300)
-            for wall_token in wall_tokens:
-                robot.communicator.send_wall_token_information(
-                    current_position, wall_token
-                )
-        from time import sleep
-
-        sleep(1)
-
     initial_position = Coordinate(0, 0)
     maze.set_tile_type(initial_position, SpecialTileType.STARTING)
     transitions = dfs(
@@ -63,7 +36,7 @@ def solve_map(robot: Robot, maze: Maze) -> None:
     for move in best_moves_before:
         command, args = move
         if command == "rotate_to_angle":
-            robot.run(Rotate("fastest", args[0]))
+            robot.run(Rotate("fastest", args[0], maze=maze))
         if command == "move":
             robot.run(
                 Move(

@@ -3,11 +3,9 @@ from maze import Maze
 from robot import (
     Move,
     MovementResult,
-    RecognizeWallToken,
     Robot,
     Rotate,
     create_movement_velocity_controller,
-    rotate_180,
 )
 from types_and_constants import (
     DEBUG,
@@ -97,10 +95,12 @@ def adjust_wall_distance(
         return
 
     if angle_error <= -angle_max_error:
-        robot.run(Rotate("right", abs(angle_error), correction_rotation=True))
+        robot.run(
+            Rotate("right", abs(angle_error), maze=maze, correction_rotation=True)
+        )
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
     if angle_error >= angle_max_error:
-        robot.run(Rotate("left", angle_error, correction_rotation=True))
+        robot.run(Rotate("left", angle_error, maze=maze, correction_rotation=True))
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
     if y_error <= -wall_max_y_error:
@@ -111,13 +111,13 @@ def adjust_wall_distance(
         y_error, x_error, angle_error = get_errors(robot, field_of_view)
 
     if x_error <= -wall_max_x_error:
-        robot.run(Rotate(direction="left", angle=PI / 2))
+        robot.run(Rotate(direction="left", angle=PI / 2, maze=maze))
         robot.run(Move("backward", abs(x_error), maze=maze, correction_move=True))
-        robot.run(Rotate(direction="right", angle=PI / 2))
+        robot.run(Rotate(direction="right", angle=PI / 2, maze=maze))
     if x_error >= wall_max_x_error:
-        robot.run(Rotate(direction="left", angle=PI / 2))
+        robot.run(Rotate(direction="left", angle=PI / 2, maze=maze))
         robot.run(Move("forward", x_error, maze=maze, correction_move=True))
-        robot.run(Rotate(direction="right", angle=PI / 2))
+        robot.run(Rotate(direction="right", angle=PI / 2, maze=maze))
 
 
 # TODO+: vítima do Nicolas aquele canto com tile vermelho/amarelo
@@ -167,7 +167,6 @@ def dfs(
     maze.mark_visited(position)
     robot.step()
     adjust_wall_distance(robot, maze)
-    robot.run(RecognizeWallToken(maze))
 
     # TODO-: swamp etc podem estar acessíveis apenas em certo quarter tile
     colored_tile = None
@@ -187,7 +186,7 @@ def dfs(
 
     if alley(robot, maze, position, start_angle):
         adjust_wall_distance(robot, maze, wall_max_x_error=0.1, wall_max_y_error=0.1)
-        robot.run(rotate_180)
+        robot.run(Rotate("fastest", PI, maze=maze))
 
     if colored_tile in [
         SpecialTileType.PASSAGE_1_4,
@@ -304,8 +303,21 @@ def dfs(
         )
         viz_moves = moves_before.copy()
         viz_moves.append(("rotate_to_angle", (movement_angle,)))
-        robot.run(Rotate("fastest", movement_angle))
-        robot.run(RecognizeWallToken(maze))
+        robot.run(Rotate("fastest", movement_angle, maze=maze))
+        if delta_angle_in_degree == 90:
+            robot.run(
+                Rotate("right", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+            )
+            robot.run(
+                Rotate("left", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+            )
+        if delta_angle_in_degree == -90:
+            robot.run(
+                Rotate("left", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+            )
+            robot.run(
+                Rotate("right", 20 * DEGREE_IN_RAD, maze=maze, correction_rotation=True)
+            )
 
         viz_moves.append(("move", ("forward", new_position_distance)))
         movement_result = robot.run(
@@ -407,8 +419,7 @@ def dfs(
     # this tile, coming back to the last tile.
     robot.step()
     adjust_wall_distance(robot, maze)
-    robot.run(RecognizeWallToken(maze))
-    robot.run(Rotate("fastest", start_angle))
+    robot.run(Rotate("fastest", start_angle, maze=maze))
 
     if DEBUG:
         answer_map = "\n".join("".join(line) for line in maze.get_answer_maze())

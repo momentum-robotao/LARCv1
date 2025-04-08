@@ -1,6 +1,7 @@
 import os
 import time
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any, Generic, TypeVar
 
 from controller import Robot as WebotsRobot  # type: ignore
@@ -79,6 +80,8 @@ class Robot:
 
         self.found_wall_tokens: list[WallTokenEntry] = []
         self.wall_tokens_to_send: list[WallTokenEntry] = []
+
+        self.last_wt_recognition = datetime(1900, 1, 1)
 
     def check_time(
         self, time_tolerance: int = int(os.getenv("TIME_TOLERANCE", 3))
