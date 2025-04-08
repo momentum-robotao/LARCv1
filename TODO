@@ -1,7 +1,6 @@
 - Dijkstra
 - retirar adjust_wall_distance
 - minimazar paradinha ao final de rotações e movimentações
-- tirar caso Alley
 - Testar girada extra para pegar todas vítimas
   - Implementar de jeito melho
   - Projetar visão das câmeras e garantir que cobriu todas paredes?

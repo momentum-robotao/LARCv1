@@ -120,25 +120,6 @@ def adjust_wall_distance(
         robot.run(Rotate(direction="right", angle=PI / 2, maze=maze))
 
 
-# TODO+: vítima do Nicolas aquele canto com tile vermelho/amarelo
-# TODO+: parede quarter tile ou canto de quarter já vira
-def alley(robot: Robot, maze: Maze, position: Coordinate, start_angle: float) -> bool:
-    for delta_angle_in_degree, side in [(0, "front"), (90, "right"), (-90, "left")]:
-        delta_angle = delta_angle_in_degree * DEGREE_IN_RAD
-
-        movement_angle = cyclic_angle(start_angle + delta_angle)
-        new_robot_position = coordinate_after_move(position, movement_angle)
-
-        if any(
-            not maze.is_visited(new_robot_position + delta)
-            for delta in QUADRANT_OF_DELTA.keys()
-        ) and not robot.lidar.has_wall(
-            side  # type: ignore[arg-type]
-        ):
-            return False
-    return True
-
-
 def dfs(
     position: Coordinate,
     maze: Maze,
@@ -183,10 +164,6 @@ def dfs(
         maze.set_tile_type(position, colored_tile)
     else:
         logger.info(f"Não detectou cor em {position}", System.check_tile_color)
-
-    if alley(robot, maze, position, start_angle):
-        adjust_wall_distance(robot, maze, wall_max_x_error=0.1, wall_max_y_error=0.1)
-        robot.run(Rotate("fastest", PI, maze=maze))
 
     if colored_tile in [
         SpecialTileType.PASSAGE_1_4,
