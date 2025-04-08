@@ -26,6 +26,7 @@ def get_slam_list() -> list:
 
 
 
+
 # Classe principal de navegação
 class Navigation:
     def __init__(self) -> None:
@@ -248,6 +249,17 @@ class Navigation:
             self.create_wall(robot)
         else: self.current_node = current_node
         
+                    # Turn to the direction of the entrance
+        
+        side_distance = robot.lidar.get_distances_by_side_angle_AUGUSTO()
+
+        side_angle = {'front' : side_distance[0], 'left' : side_distance[4.7124], 'right' : side_distance[1.5708]}
+        if side_angle['front'] > TILE_SIZE:
+            pass
+        elif side_angle['left'] > TILE_SIZE:
+            robot.rotate_90_left()
+        elif side_angle['right'] > TILE_SIZE:
+            robot.rotate_90_right()
         if not self.current_node.node_visited:
             self.current_node.visit_node()
             self.stack_visited_node.append(self.current_node)

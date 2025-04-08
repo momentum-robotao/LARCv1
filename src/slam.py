@@ -3,7 +3,6 @@ from types_and_constants import Coordinate, TILE_SIZE
 from figure import fig
 import time
 import robot
-
 LIDAR_LIMIT =  TILE_SIZE * 8
 
 condicao = True
@@ -35,13 +34,14 @@ class Slam:
         self.list_y_atual = []
         if condicao : 
             self.atualizar_start_angle(robot_orientation)
-            LIDAR_LIMIT = LIDAR_LIMIT/2 # Atualiza o LIDAR_LIMIT PARA MENORAR O CAMPO DE VISÃO DO ROBÔ APOS O PRIMEIRO MOVIMENTO
+            LIDAR_LIMIT = LIDAR_LIMIT/4 # Atualiza o LIDAR_LIMIT PARA MENORAR O CAMPO DE VISÃO DO ROBÔ APOS O PRIMEIRO MOVIMENTO
+
             condicao = False
         
         
         for side_angle, distance in side_angle_to_distance_mapper.items():  
             if distance == float("inf"):
-                continue
+                continue    
             if distance < LIDAR_LIMIT : 
                 corrected_angle = side_angle + self.start_angle + orientation
 
