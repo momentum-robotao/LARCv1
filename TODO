@@ -18,6 +18,8 @@ Testar:
 
 Ajustar contantes: Brutar em vários mapas?
 
+- colocar no DockerFile
+
 - tempo entre reconhecimento de vítima (coloquei por estar lento)
 - acurácia mínima para reconhecer vítimas
 - distância mínima para não pegar vítima no mesmo lugar 2x
