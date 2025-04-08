@@ -10,8 +10,6 @@ from robot import (
 from types_and_constants import (
     DEBUG,
     DEGREE_IN_RAD,
-    EXPECTED_WALL_DISTANCE,
-    PI,
     QUADRANT_OF_DELTA,
     SLOW_DOWN_DIST,
     TILE_SIZE,
@@ -24,100 +22,11 @@ from utils import (
     calculate_wall_position,
     coordinate_after_move,
     cyclic_angle,
-    cyclic_angle_difference,
     get_blocking_wall,
     get_central_blocking_wall,
     side_angle_from_map_angle,
     tile_pos_with_quarter_tile,
 )
-
-
-def get_errors(robot: Robot, field_of_view: float):
-    y_error = 0.0
-    if robot.lidar.has_wall("back", field_of_view=field_of_view, use_min=True):
-        y_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance(
-            "back", field_of_view=field_of_view, use_min=True
-        )
-    elif robot.lidar.has_wall("front", field_of_view=field_of_view, use_min=True):
-        y_error = (
-            robot.lidar.get_side_distance(
-                "front", field_of_view=field_of_view, use_min=True
-            )
-            - EXPECTED_WALL_DISTANCE
-        )
-
-    x_error = 0.0
-    if robot.lidar.has_wall("right", field_of_view=field_of_view, use_min=True):
-        x_error = EXPECTED_WALL_DISTANCE - robot.lidar.get_side_distance(
-            "right",
-            use_min=True,
-            field_of_view=field_of_view,
-        )
-    elif robot.lidar.has_wall("left", field_of_view=field_of_view, use_min=True):
-        x_error = (
-            robot.lidar.get_side_distance(
-                "left", field_of_view=field_of_view, use_min=True
-            )
-            - EXPECTED_WALL_DISTANCE
-        )
-
-    angle_error = cyclic_angle_difference(
-        robot.imu.get_rotation_angle(), robot.expected_angle
-    )
-    return y_error, x_error, angle_error
-
-
-def adjust_wall_distance(
-    robot: Robot,
-    maze: Maze,
-    angle_max_error: float = 2 * DEGREE_IN_RAD,
-    field_of_view: float = 30 * DEGREE_IN_RAD,
-    wall_max_y_error: float = EXPECTED_WALL_DISTANCE / 5,
-    wall_max_x_error: float = EXPECTED_WALL_DISTANCE / 3,
-) -> None:
-    y_error, x_error, angle_error = get_errors(robot, field_of_view)
-
-    # Obstacle
-    if (
-        robot.lidar.get_side_distance("left", field_of_view=field_of_view, use_min=True)
-        + robot.lidar.get_side_distance(
-            "right", field_of_view=field_of_view, use_min=True
-        )
-        <= 0.03
-        or robot.lidar.get_side_distance(
-            "front", field_of_view=field_of_view, use_min=True
-        )
-        + robot.lidar.get_side_distance(
-            "back", field_of_view=field_of_view, use_min=True
-        )
-        <= 0.03
-    ):
-        return
-
-    if angle_error <= -angle_max_error:
-        robot.run(
-            Rotate("right", abs(angle_error), maze=maze, correction_rotation=True)
-        )
-        y_error, x_error, angle_error = get_errors(robot, field_of_view)
-    if angle_error >= angle_max_error:
-        robot.run(Rotate("left", angle_error, maze=maze, correction_rotation=True))
-        y_error, x_error, angle_error = get_errors(robot, field_of_view)
-
-    if y_error <= -wall_max_y_error:
-        robot.run(Move("backward", abs(y_error), maze=maze, correction_move=True))
-        y_error, x_error, angle_error = get_errors(robot, field_of_view)
-    if y_error >= wall_max_y_error:
-        robot.run(Move("forward", y_error, maze=maze, correction_move=True))
-        y_error, x_error, angle_error = get_errors(robot, field_of_view)
-
-    if x_error <= -wall_max_x_error:
-        robot.run(Rotate(direction="left", angle=PI / 2, maze=maze))
-        robot.run(Move("backward", abs(x_error), maze=maze, correction_move=True))
-        robot.run(Rotate(direction="right", angle=PI / 2, maze=maze))
-    if x_error >= wall_max_x_error:
-        robot.run(Rotate(direction="left", angle=PI / 2, maze=maze))
-        robot.run(Move("forward", x_error, maze=maze, correction_move=True))
-        robot.run(Rotate(direction="right", angle=PI / 2, maze=maze))
 
 
 def dfs(
@@ -147,7 +56,6 @@ def dfs(
 
     maze.mark_visited(position)
     robot.step()
-    adjust_wall_distance(robot, maze)
 
     # TODO-: swamp etc podem estar acessíveis apenas em certo quarter tile
     colored_tile = None
@@ -395,7 +303,6 @@ def dfs(
     # it is in the same direction and will properly "undo" the movement to
     # this tile, coming back to the last tile.
     robot.step()
-    adjust_wall_distance(robot, maze)
     robot.run(Rotate("fastest", start_angle, maze=maze))
 
     if DEBUG:

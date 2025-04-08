@@ -1,17 +1,19 @@
 - Dijkstra
-- retirar adjust_wall_distance
 - minimazar paradinha ao final de rotações e movimentações
-- Testar girada extra para pegar todas vítimas
-  - Implementar de jeito melho
-  - Projetar visão das câmeras e garantir que cobriu todas paredes?
 - mapear vítima
 - re-treinar modelo para vítima rotacionada
 - considerar orientação da vítima para mandar duas vítimas iguais em lados opostos de parede
 
 Testar:
 
+- girada extra para pegar todas vítimas
+  - Implementar de jeito melho
+  - Projetar visão das câmeras e garantir que cobriu todas paredes?
+- parede curva
+- obstáculo
 - reconhecimento de vítima
 - tempo
+- posição esperada e correção de rotação e movimentação
 - R1: vítimas reconhecidas do lado oposto da parede: considerar orientação
 
 Ajustar contantes: Brutar em vários mapas?
