@@ -285,14 +285,14 @@ class Maze:
 
     def get_wall_tokens_near(
         self, position: Coordinate, max_distance: float = MAX_RADIUS_TO_SEND_WT
-    ) -> list[WallToken]:
+    ) -> list[WallTokenEntry]:
         """
         Returns the found wall tokens that are at most max_distance from the robot
         and haven't been send yet.
         :param position: GPS axes
         """
         wall_tokens_near = [
-            wall_token.wt_type
+            wall_token
             for wall_token in self.wall_tokens_to_send
             if check_distance(wall_token.position, position, max_distance)
         ]

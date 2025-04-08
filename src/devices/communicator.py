@@ -7,7 +7,12 @@ from controller import Robot as WebotsRobot  # type: ignore
 
 from debugging import System, logger
 from maze import AnswerMaze
-from types_and_constants import METER_TO_CM, Coordinate, LackOfProgressError, WallToken
+from types_and_constants import (
+    METER_TO_CM,
+    Coordinate,
+    LackOfProgressError,
+    WallTokenEntry,
+)
 from utils import delay
 
 from .device import Device
@@ -70,20 +75,18 @@ class Communicator(Device):
         )
         return received_data
 
-    def send_wall_token_information(
-        self, position: Coordinate, wall_token: WallToken
-    ) -> None:
+    def send_wall_token_information(self, wall_token: WallTokenEntry) -> None:
         """
         Used to report the position and the type of the victim letter or hazard map.
         If correct, points are earned for identifying the game element.
         """
         logger.info(
-            f"Recebido {wall_token} em {position}",
+            f"Recebido {wall_token}",
             System.communicator_send_wall_token,
         )
-        wall_token_bytes = bytes(wall_token.value, "utf-8")
-        x_cm = int(position.x * METER_TO_CM)
-        y_cm = int(position.y * METER_TO_CM)
+        wall_token_bytes = bytes(wall_token.wt_type.value, "utf-8")
+        x_cm = int(wall_token.position.x * METER_TO_CM)
+        y_cm = int(wall_token.position.y * METER_TO_CM)
 
         logger.info(
             f"Enviando: {wall_token_bytes.decode()} em {x_cm=} e {y_cm=}",
